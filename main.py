@@ -7,6 +7,7 @@ Flux — AI чат-бот для Telegram.
 import os
 import re
 import logging
+import threading
 from flask import Flask, request
 import requests as http_requests
 
@@ -88,9 +89,11 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
         return "Упс, что-то пошло не так 😅 Попробуй написать ещё раз"
 
 
-def send_typing(chat_id: int):
+def send_typing(chat_id: int, stop_event: threading.Event):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendChatAction"
-    http_requests.post(url, json={"chat_id": chat_id, "action": "typing"})
+    while not stop_event.is_set():
+        http_requests.post(url, json={"chat_id": chat_id, "action": "typing"})
+        stop_event.wait(timeout=4)
 
 
 def send_message(chat_id: int, text: str, reply_to: int = None):
@@ -140,8 +143,14 @@ def webhook():
         send_message(chat_id, "Память очищена 🔄 Начнём сначала!", reply_to=message_id)
         return "ok"
 
-    send_typing(chat_id)
-    reply = get_ai_reply(chat_id, text)
+    stop_typing = threading.Event()
+    typing_thread = threading.Thread(target=send_typing, args=(chat_id, stop_typing), daemon=True)
+    typing_thread.start()
+    try:
+        reply = get_ai_reply(chat_id, text)
+    finally:
+        stop_typing.set()
+        typing_thread.join()
     send_message(chat_id, reply, reply_to=message_id)
     logger.info(f"Ответ: {reply}")
 
