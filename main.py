@@ -88,6 +88,11 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
         return "Упс, что-то пошло не так 😅 Попробуй написать ещё раз"
 
 
+def send_typing(chat_id: int):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendChatAction"
+    http_requests.post(url, json={"chat_id": chat_id, "action": "typing"})
+
+
 def send_message(chat_id: int, text: str, reply_to: int = None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     data = {"chat_id": chat_id, "text": text}
@@ -135,6 +140,7 @@ def webhook():
         send_message(chat_id, "Память очищена 🔄 Начнём сначала!", reply_to=message_id)
         return "ok"
 
+    send_typing(chat_id)
     reply = get_ai_reply(chat_id, text)
     send_message(chat_id, reply, reply_to=message_id)
     logger.info(f"Ответ: {reply}")
