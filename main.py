@@ -92,7 +92,10 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
 def send_typing(chat_id: int, stop_event: threading.Event):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendChatAction"
     while not stop_event.is_set():
-        http_requests.post(url, json={"chat_id": chat_id, "action": "typing"})
+        try:
+            http_requests.post(url, json={"chat_id": chat_id, "action": "typing"}, timeout=3)
+        except Exception:
+            pass
         stop_event.wait(timeout=4)
 
 
@@ -150,7 +153,7 @@ def webhook():
         reply = get_ai_reply(chat_id, text)
     finally:
         stop_typing.set()
-        typing_thread.join()
+        typing_thread.join(timeout=5)
     send_message(chat_id, reply, reply_to=message_id)
     logger.info(f"Ответ: {reply}")
 
