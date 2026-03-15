@@ -17,7 +17,7 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "Flux"
 AI_MODEL = "stepfun/step-3.5-flash:free"
-PORT = int(os.environ.get("PORT", 8080))
+PORT = int(os.environ.get("PORT", 5000))
 # ====================================
 
 SYSTEM_PROMPT = f"""Ты — {BOT_NAME}, дружелюбный AI-ассистент в Telegram с лёгким чувством юмора.
