@@ -134,16 +134,12 @@ def webhook():
 
     if text.strip() == "/start":
         chat_histories[chat_id] = []
-        send_message(
-            chat_id,
-            f"Привет! ⚡ Я {BOT_NAME} — AI-бот для общения. Пиши что угодно, поболтаем!",
-            reply_to=message_id
-        )
+        send_message(chat_id, f"Привет! ⚡ Я {BOT_NAME} — AI-бот для общения. Пиши что угодно, поболтаем!")
         return "ok"
 
     if text.strip() == "/reset":
         chat_histories[chat_id] = []
-        send_message(chat_id, "Память очищена 🔄 Начнём сначала!", reply_to=message_id)
+        send_message(chat_id, "Память очищена 🔄 Начнём сначала!")
         return "ok"
 
     stop_typing = threading.Event()
@@ -154,7 +150,7 @@ def webhook():
     finally:
         stop_typing.set()
         typing_thread.join(timeout=5)
-    send_message(chat_id, reply, reply_to=message_id)
+    send_message(chat_id, reply)
     logger.info(f"Ответ: {reply}")
 
     return "ok"
