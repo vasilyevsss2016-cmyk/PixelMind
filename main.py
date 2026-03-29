@@ -710,113 +710,10 @@ def generate_image(prompt: str) -> bytes | None:
     return None
 
 
-def generate_video_bytes(prompt: str) -> bytes | None:
-    """Генерирует видео: 3 кадра Gemini + xfade-переходы через ffmpeg."""
-    import subprocess, tempfile, os, threading
-
-    frame_prompts = [
-        f"{prompt}, beginning of scene, wide shot",
-        f"{prompt}, middle of action, dynamic angle",
-        f"{prompt}, final moment, close-up dramatic",
-    ]
-
-    frames: list[bytes | None] = [None, None, None]
-
-    def gen(idx: int, fp: str):
-        frames[idx] = generate_image(fp)
-
-    threads = [threading.Thread(target=gen, args=(i, p), daemon=True)
-               for i, p in enumerate(frame_prompts)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join(timeout=90)
-
-    valid = [(i, b) for i, b in enumerate(frames) if b]
-    if not valid:
-        logger.error("Видео: не удалось сгенерировать ни одного кадра")
-        return None
-
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            out_path = os.path.join(tmpdir, "output.mp4")
-            paths = []
-            for orig_i, data in valid:
-                p = os.path.join(tmpdir, f"frame{orig_i}.png")
-                with open(p, "wb") as f:
-                    f.write(data)
-                paths.append(p)
-
-            scale_filter = "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2"
-
-            if len(paths) == 1:
-                # Только один кадр — fade-in/out
-                cmd = [
-                    "ffmpeg", "-y", "-loop", "1", "-t", "5", "-i", paths[0],
-                    "-vf", f"{scale_filter},fade=t=in:st=0:d=0.5,fade=t=out:st=4.5:d=0.5",
-                    "-c:v", "libx264", "-preset", "ultrafast",
-                    "-r", "25", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out_path,
-                ]
-            elif len(paths) == 2:
-                # Два кадра — один xfade переход
-                cmd = [
-                    "ffmpeg", "-y",
-                    "-loop", "1", "-t", "4", "-i", paths[0],
-                    "-loop", "1", "-t", "4", "-i", paths[1],
-                    "-filter_complex",
-                    f"[0:v]{scale_filter}[v0];[1:v]{scale_filter}[v1];"
-                    "[v0][v1]xfade=transition=fade:duration=1:offset=3[out]",
-                    "-map", "[out]",
-                    "-c:v", "libx264", "-preset", "ultrafast",
-                    "-r", "25", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out_path,
-                ]
-            else:
-                # Три кадра — два xfade перехода
-                cmd = [
-                    "ffmpeg", "-y",
-                    "-loop", "1", "-t", "5", "-i", paths[0],
-                    "-loop", "1", "-t", "5", "-i", paths[1],
-                    "-loop", "1", "-t", "5", "-i", paths[2],
-                    "-filter_complex",
-                    f"[0:v]{scale_filter}[v0];[1:v]{scale_filter}[v1];[2:v]{scale_filter}[v2];"
-                    "[v0][v1]xfade=transition=fade:duration=1:offset=4[fx1];"
-                    "[fx1][v2]xfade=transition=fade:duration=1:offset=8[out]",
-                    "-map", "[out]",
-                    "-c:v", "libx264", "-preset", "ultrafast",
-                    "-r", "25", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out_path,
-                ]
-
-            result = subprocess.run(cmd, capture_output=True, timeout=60)
-            if result.returncode != 0:
-                logger.error(f"ffmpeg error: {result.stderr.decode()[-500:]}")
-                return None
-
-            with open(out_path, "rb") as f:
-                return f.read()
-    except Exception as e:
-        logger.error(f"Ошибка генерации видео: {e}")
-    return None
-
-
-def send_video_file(chat_id: int, video_bytes: bytes, caption: str = ""):
-    http_requests.post(
-        f"https://api.telegram.org/bot{BOT_TOKEN}/sendVideo",
-        data={"chat_id": chat_id, "caption": caption, "supports_streaming": "true"},
-        files={"video": ("video.mp4", video_bytes, "video/mp4")},
-        timeout=60
-    )
-
-
 _IMAGE_RE = re.compile(
     r"^(?:нарисуй(?:те)?|изобрази(?:те)?|создай\s+(?:картинку|изображение|рисунок|фото)|сгенерируй\s+(?:картинку|изображение|рисунок|фото)|draw|generate\s+(?:image|picture|photo))\s+(.+)$",
     re.IGNORECASE | re.DOTALL
 )
-
-_VIDEO_RE = re.compile(
-    r"^(?:сними\s+видео|сделай\s+видео|создай\s+видео|сгенерируй\s+видео|generate\s+video|create\s+video|make\s+video)\s+(.+)$",
-    re.IGNORECASE | re.DOTALL
-)
-
 
 # ============ KEEP-ALIVE ============
 
@@ -847,11 +744,9 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
             "/business — бизнес-режим\n"
             "/chat — обычный режим\n"
             "/reset — очистить историю\n\n"
-            "🎨 Изображения и видео:\n"
+            "🎨 Изображения:\n"
             "/image [запрос] — сгенерировать картинку\n"
-            "/vid [запрос] — сгенерировать видео (~30 сек)\n"
-            "Нарисуй кота — картинка без команды\n"
-            "Сделай видео с закатом — видео без команды\n\n"
+            "Нарисуй кота — картинка без команды\n\n"
             "🎤 Медиа (просто отправь):\n"
             "Голосовое — расшифрую и отвечу\n"
             "Кружок — расшифрую и отвечу\n"
@@ -928,19 +823,6 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
             send_photo_bytes(chat_id, img_bytes, f"🎨 {args}")
         else:
             send_message(chat_id, "Не удалось сгенерировать изображение 😔 Попробуй ещё раз.")
-        return True
-
-    if cmd == "vid":
-        if not args:
-            send_message(chat_id, "Использование: /vid [описание видео]\nНапример: /vid кот играет в мяч")
-            return True
-        send_message(chat_id, "🎬 Генерирую видео, подожди ~30 секунд...")
-        send_chat_action(chat_id, "upload_video")
-        video_bytes = generate_video_bytes(args)
-        if video_bytes:
-            send_video_file(chat_id, video_bytes, f"🎬 {args}")
-        else:
-            send_message(chat_id, "Не удалось сгенерировать видео 😔\nПопробуй ещё раз или измени запрос.")
         return True
 
     if cmd in ("typing", "voice", "video", "photo", "circle", "sticker", "file"):
@@ -1087,21 +969,6 @@ def process_message(message):
                 log_message(chat_id, "assistant", f"[Изображение]: {prompt}")
             else:
                 send_message(chat_id, "Не удалось сгенерировать изображение 😔 Попробуй ещё раз.")
-            return
-
-    if text:
-        vid_match = _VIDEO_RE.match(text.strip())
-        if vid_match:
-            prompt = vid_match.group(1).strip()
-            log_message(chat_id, "user", text)
-            send_message(chat_id, "🎬 Генерирую видео, подожди ~30 секунд...")
-            send_chat_action(chat_id, "upload_video")
-            video_bytes = generate_video_bytes(prompt)
-            if video_bytes:
-                send_video_file(chat_id, video_bytes, f"🎬 {prompt}")
-                log_message(chat_id, "assistant", f"[Видео]: {prompt}")
-            else:
-                send_message(chat_id, "Не удалось сгенерировать видео 😔\nПопробуй ещё раз или измени запрос.")
             return
 
     if text and re.match(r"(?i)создай\s+файл\s+\S+", text):
