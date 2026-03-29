@@ -2030,6 +2030,42 @@ def send_web_reg_code(email: str, code: str, username: str) -> bool:
         logger.error(f"Ошибка отправки email регистрации: {e}")
         return False
 
+@app.route("/app/register-noemail", methods=["POST"])
+def web_register_noemail():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    if not username or not password:
+        return jsonify({"ok": False, "error": "Заполните все поля"}), 400
+    if len(username) < 2:
+        return jsonify({"ok": False, "error": "Имя минимум 2 символа"}), 400
+    if len(password) < 6:
+        return jsonify({"ok": False, "error": "Пароль минимум 6 символов"}), 400
+    if len(username) > 32:
+        return jsonify({"ok": False, "error": "Имя не более 32 символов"}), 400
+    users = load_web_users()
+    for u in users.values():
+        if u["username"].lower() == username.lower():
+            return jsonify({"ok": False, "error": "Имя пользователя занято"}), 400
+    uid = secrets.token_hex(16)
+    from datetime import timedelta
+    users[uid] = {
+        "username": username,
+        "email": None,
+        "password_hash": web_hash_pwd(password),
+        "email_verified": False,
+        "email_required_after": (datetime.now() + timedelta(days=7)).isoformat(),
+        "created_at": datetime.now().isoformat(),
+        "chat_history": [],
+        "credits": 55,
+        "plan": "free",
+        "plan_expires": None
+    }
+    save_web_users(users)
+    session["web_user_id"] = uid
+    session["web_username"] = username
+    return jsonify({"ok": True, "username": username})
+
 @app.route("/app/register", methods=["POST"])
 def web_register():
     data = request.get_json(silent=True) or {}
@@ -2124,12 +2160,28 @@ def web_login():
     found_uid = None
     found_user = None
     for uid, u in users.items():
-        if u["email"] == login_val or u["username"].lower() == login_val:
+        umail = u.get("email") or ""
+        if umail == login_val or u["username"].lower() == login_val:
             found_uid = uid
             found_user = u
             break
     if not found_user or found_user["password_hash"] != web_hash_pwd(password):
         return jsonify({"ok": False, "error": "Неверный логин или пароль"}), 401
+    # Пользователь без email
+    if not found_user.get("email"):
+        # Прошла ли неделя?
+        req_after = found_user.get("email_required_after")
+        if req_after:
+            try:
+                if datetime.fromisoformat(req_after) < datetime.now():
+                    session["web_user_id"] = found_uid
+                    session["web_username"] = found_user["username"]
+                    return jsonify({"ok": True, "require_email": True, "username": found_user["username"]})
+            except Exception:
+                pass
+        session["web_user_id"] = found_uid
+        session["web_username"] = found_user["username"]
+        return jsonify({"ok": True, "username": found_user["username"]})
     # Проверяем верификацию email
     if not found_user.get("email_verified", True):
         code = str(random.randint(100000, 999999))
@@ -2148,6 +2200,36 @@ def web_login():
     session["web_username"] = found_user["username"]
     return jsonify({"ok": True, "username": found_user["username"]})
 
+@app.route("/app/add-email", methods=["POST"])
+def web_add_email():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"ok": False, "error": "Некорректный email"}), 400
+    users = load_web_users()
+    for oid, u in users.items():
+        if oid != uid and (u.get("email") or "") == email:
+            return jsonify({"ok": False, "error": "Email уже используется"}), 400
+    username = users.get(uid, {}).get("username", "")
+    code = str(random.randint(100000, 999999))
+    token = secrets.token_hex(20)
+    WEB_EMAIL_VERIFY[token] = {
+        "uid": uid,
+        "email": email,
+        "username": username,
+        "code": code,
+        "expires": time.time() + 600,
+        "resend_at": time.time() + 60,
+        "set_email": True
+    }
+    sent = send_web_reg_code(email, code, username)
+    if not sent:
+        return jsonify({"ok": False, "error": "Не удалось отправить письмо. Проверьте email."}), 500
+    return jsonify({"ok": True, "token": token})
+
 @app.route("/app/verify-email", methods=["POST"])
 def web_verify_email():
     data = request.get_json(silent=True) or {}
@@ -2165,6 +2247,10 @@ def web_verify_email():
     uid = pending["uid"]
     if uid in users:
         users[uid]["email_verified"] = True
+        # Если это добавление email к аккаунту без него
+        if pending.get("set_email"):
+            users[uid]["email"] = pending["email"]
+            users[uid].pop("email_required_after", None)
         save_web_users(users)
     WEB_EMAIL_VERIFY.pop(token, None)
     session["web_user_id"] = uid

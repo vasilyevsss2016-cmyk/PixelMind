@@ -298,6 +298,26 @@ header {
       <input class="auth-input" id="r-pwd" type="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password">
       <div class="auth-error" id="r-err"></div>
       <button class="auth-btn" id="r-btn" onclick="doRegister()">Получить код →</button>
+      <button onclick="showNoEmailRegister()" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:6px 0;text-align:center;width:100%;transition:color .2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text2)'">Продолжить без почты</button>
+    </div>
+
+    <!-- REGISTER без email -->
+    <div id="tab-register-noemail" class="auth-form" style="display:none">
+      <div style="text-align:center;background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.25);border-radius:10px;padding:10px 12px;font-size:12px;color:#f0b429;margin-bottom:4px">⚠ Через 7 дней потребуется добавить email для защиты аккаунта</div>
+      <input class="auth-input" id="rn-name" type="text" placeholder="Имя пользователя" autocomplete="username">
+      <input class="auth-input" id="rn-pwd" type="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password">
+      <div class="auth-error" id="rn-err"></div>
+      <button class="auth-btn" id="rn-btn" onclick="doRegisterNoEmail()">Создать аккаунт →</button>
+      <button onclick="switchTab('register')" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:6px 0;text-align:center;width:100%;transition:color .2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text2)'">← Назад</button>
+    </div>
+
+    <!-- ADD EMAIL (требуется через 7 дней) -->
+    <div id="tab-add-email" class="auth-form" style="display:none">
+      <div style="text-align:center;font-size:28px;margin-bottom:6px">📧</div>
+      <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:6px">Прошло 7 дней — добавьте email<br>для защиты аккаунта</div>
+      <input class="auth-input" id="ae-email" type="email" placeholder="Email" autocomplete="email">
+      <div class="auth-error" id="ae-err"></div>
+      <button class="auth-btn" id="ae-btn" onclick="doAddEmail()">Получить код →</button>
     </div>
 
     <!-- REGISTER step 2 — verify -->
@@ -565,22 +585,32 @@ function copyText(text) {
 }
 
 // ===== TABS =====
+const ALL_AUTH_TABS = ['tab-login','tab-register','tab-register-noemail','tab-add-email','tab-verify'];
+function hideAllAuthTabs() { ALL_AUTH_TABS.forEach(id => document.getElementById(id).style.display = 'none'); }
 function switchTab(tab) {
   document.querySelectorAll('.auth-tab').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
+  hideAllAuthTabs();
   document.getElementById('tab-login').style.display = tab==='login' ? 'flex' : 'none';
   document.getElementById('tab-register').style.display = tab==='register' ? 'flex' : 'none';
-  document.getElementById('tab-verify').style.display = 'none';
+}
+function showNoEmailRegister() {
+  hideAllAuthTabs();
+  document.getElementById('tab-register-noemail').style.display = 'flex';
+  document.getElementById('rn-name').focus();
+}
+function showAddEmailStep() {
+  hideAllAuthTabs();
+  document.getElementById('tab-add-email').style.display = 'flex';
+  document.getElementById('ae-email').focus();
 }
 function showVerifyStep(email, token, mode='reg') {
   regToken = token;
   verifyMode = mode;
-  document.getElementById('tab-register').style.display = 'none';
-  document.getElementById('tab-login').style.display = 'none';
+  hideAllAuthTabs();
   document.getElementById('tab-verify').style.display = 'flex';
   document.getElementById('verify-email-label').textContent = email;
   document.getElementById('v-code').value = '';
   document.getElementById('v-err').style.display = 'none';
-  document.getElementById('v-btn').textContent = mode === 'email' ? 'Подтвердить и войти' : 'Подтвердить и войти';
   document.getElementById('v-code').focus();
   startResendTimer(60);
 }
@@ -589,6 +619,8 @@ function backToRegister() {
   if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
   if (verifyMode === 'email') {
     document.getElementById('tab-login').style.display = 'flex';
+  } else if (verifyMode === 'add_email') {
+    showAddEmailStep();
   } else {
     document.getElementById('tab-register').style.display = 'flex';
   }
@@ -619,10 +651,45 @@ async function doLogin() {
     const r = await fetch('/app/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({login,password:pwd}) });
     const d = await r.json();
     if (d.ok && d.step === 'verify_email') { showVerifyStep(d.email, d.token, 'email'); }
+    else if (d.ok && d.require_email) { showAddEmailStep(); }
     else if (d.ok) { enterApp(d.username); }
     else { showErr(errEl, d.error || 'Ошибка'); }
   } catch(e) { showErr(errEl, 'Ошибка сети'); }
   btn.disabled = false; btn.textContent = 'Войти';
+}
+
+async function doRegisterNoEmail() {
+  const name = document.getElementById('rn-name').value.trim();
+  const pwd = document.getElementById('rn-pwd').value;
+  const errEl = document.getElementById('rn-err');
+  const btn = document.getElementById('rn-btn');
+  errEl.style.display = 'none';
+  if (!name || !pwd) { showErr(errEl, 'Заполните все поля'); return; }
+  if (pwd.length < 6) { showErr(errEl, 'Пароль минимум 6 символов'); return; }
+  btn.disabled = true; btn.textContent = 'Создаём…';
+  try {
+    const r = await fetch('/app/register-noemail', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:name, password:pwd}) });
+    const d = await r.json();
+    if (d.ok) { enterApp(d.username); toast('Добро пожаловать!', 'ok'); }
+    else { showErr(errEl, d.error || 'Ошибка'); }
+  } catch(e) { showErr(errEl, 'Ошибка сети'); }
+  btn.disabled = false; btn.textContent = 'Создать аккаунт →';
+}
+
+async function doAddEmail() {
+  const email = document.getElementById('ae-email').value.trim();
+  const errEl = document.getElementById('ae-err');
+  const btn = document.getElementById('ae-btn');
+  errEl.style.display = 'none';
+  if (!email) { showErr(errEl, 'Введите email'); return; }
+  btn.disabled = true; btn.textContent = 'Отправляем код…';
+  try {
+    const r = await fetch('/app/add-email', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({email}) });
+    const d = await r.json();
+    if (d.ok) { showVerifyStep(email, d.token, 'add_email'); }
+    else { showErr(errEl, d.error || 'Ошибка'); }
+  } catch(e) { showErr(errEl, 'Ошибка сети'); }
+  btn.disabled = false; btn.textContent = 'Получить код →';
 }
 
 async function doRegister() {
@@ -650,7 +717,7 @@ async function doVerify() {
   errEl.style.display = 'none';
   if (!code) { showErr(errEl, 'Введите код'); return; }
   btn.disabled = true; btn.textContent = 'Проверяем…';
-  const endpoint = verifyMode === 'email' ? '/app/verify-email' : '/app/verify';
+  const endpoint = (verifyMode === 'email' || verifyMode === 'add_email') ? '/app/verify-email' : '/app/verify';
   try {
     const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken, code}) });
     const d = await r.json();
@@ -663,7 +730,7 @@ async function doVerify() {
 async function doResendCode() {
   const errEl = document.getElementById('v-err');
   errEl.style.display = 'none';
-  const endpoint = verifyMode === 'email' ? '/app/resend-email-verify' : '/app/resend-code';
+  const endpoint = (verifyMode === 'email' || verifyMode === 'add_email') ? '/app/resend-email-verify' : '/app/resend-code';
   try {
     const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken}) });
     const d = await r.json();
