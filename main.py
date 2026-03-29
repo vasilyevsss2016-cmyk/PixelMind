@@ -292,19 +292,36 @@ TTS_VOICE = "ru-RU-DmitryNeural"
 def synthesize_speech(text: str) -> bytes | None:
     if not EDGE_TTS_AVAILABLE:
         return None
-    try:
-        async def _synth():
-            communicate = edge_tts.Communicate(text, TTS_VOICE)
-            buf = io.BytesIO()
-            async for chunk in communicate.stream():
-                if chunk["type"] == "audio":
-                    buf.write(chunk["data"])
-            buf.seek(0)
-            return buf.read()
-        return asyncio.run(_synth())
-    except Exception as e:
-        logger.error(f"Ошибка edge-tts: {e}")
+
+    result_holder = [None]
+    error_holder = [None]
+
+    def _run_in_thread():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            async def _synth():
+                communicate = edge_tts.Communicate(text, TTS_VOICE)
+                buf = io.BytesIO()
+                async for chunk in communicate.stream():
+                    if chunk["type"] == "audio":
+                        buf.write(chunk["data"])
+                buf.seek(0)
+                return buf.read()
+            result_holder[0] = loop.run_until_complete(_synth())
+        except Exception as e:
+            error_holder[0] = e
+        finally:
+            loop.close()
+
+    t = threading.Thread(target=_run_in_thread)
+    t.start()
+    t.join(timeout=30)
+
+    if error_holder[0]:
+        logger.error(f"Ошибка edge-tts: {error_holder[0]}")
         return None
+    return result_holder[0]
 
 
 def reply_with_voice_or_text(chat_id: int, text: str):
@@ -880,4 +897,4 @@ if __name__ == "__main__":
 
     print(f"⚡ Flux AI Bot | Модель: {AI_MODEL}")
     print(f"🌐 Админ-панель: https://{REPLIT_URL}/admin")
-    app.run(host="0.0.0.0", port=PORT)
+    app.run(host="0.0.0.0", port=PORT, threaded=True)
