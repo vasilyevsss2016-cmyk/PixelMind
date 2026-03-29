@@ -148,7 +148,7 @@ header {
 .status-badge.running { background:rgba(52,208,88,0.15); color:var(--accent2); border:1px solid rgba(52,208,88,0.3); }
 .status-badge.stopped { background:rgba(255,69,58,0.15); color:var(--danger); border:1px solid rgba(255,69,58,0.3); }
 .desktop-btns { display:flex; align-items:center; gap:7px; }
-#menu-btn { display:none; background:none; border:none; color:var(--text); font-size:22px; cursor:pointer; padding:6px 8px; border-radius:10px; transition:background .2s; }
+#menu-btn { display:flex; align-items:center; background:none; border:none; color:var(--text); font-size:22px; cursor:pointer; padding:6px 8px; border-radius:10px; transition:background .2s; }
 #menu-btn:hover { background:var(--glass-hover); }
 
 /* ===== BUTTONS ===== */
@@ -176,6 +176,12 @@ header {
 .menu-item { display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:500; border:none; background:none; color:var(--text); width:100%; text-align:left; transition:background .15s,transform .15s; }
 .menu-item:hover,.menu-item:active { background:var(--glass-hover); transform:scale(1.02); }
 .menu-sep { height:1px; background:var(--glass-border); margin:4px 0; }
+.menu-account-row { display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px; cursor:pointer; border:none; background:none; color:var(--text); width:100%; text-align:left; transition:background .15s; }
+.menu-account-row:hover { background:var(--glass-hover); }
+.menu-account-avatar { width:34px; height:34px; border-radius:50%; background:linear-gradient(135deg,rgba(90,171,255,0.5),rgba(59,130,246,0.7)); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; color:#fff; flex-shrink:0; }
+.menu-account-info { flex:1; }
+.menu-account-name { font-size:14px; font-weight:600; }
+.menu-account-sub { font-size:11px; color:var(--text3); margin-top:1px; }
 
 /* ===== STATS ===== */
 .stats-bar {
@@ -344,7 +350,6 @@ header {
   :root { --header-h:50px; --stats-h:42px; }
   .login-box { padding:30px 22px; }
   .desktop-btns { display:none; }
-  #menu-btn { display:flex; }
   .tabs-bar { display:none; }
   .main { position:relative; overflow:hidden; }
   .sidebar { position:absolute; inset:0; width:100%; z-index:10; border-right:none; }
@@ -490,16 +495,25 @@ header {
         <button class="btn btn-ghost" onclick="openChangePwd()">🔑 Пароль</button>
         <button class="btn btn-ghost" onclick="open2FASettings()">🔐 2FA</button>
         <button class="btn btn-ghost" id="add-account-btn" onclick="openAddAccount()" style="display:none">➕ Аккаунт</button>
-        <button class="btn btn-ghost" onclick="logout()">Выйти</button>
       </div>
       <button id="menu-btn" onclick="toggleMenu()">⋮</button>
     </div>
   </header>
 
   <div id="mobile-menu">
+    <button class="menu-account-row" id="menu-account-row" onclick="menuAction('profile')">
+      <div class="menu-account-avatar" id="menu-account-avatar">A</div>
+      <div class="menu-account-info">
+        <div class="menu-account-name" id="menu-account-name">—</div>
+        <div class="menu-account-sub">Открыть профиль</div>
+      </div>
+      <div style="color:var(--text3);font-size:14px">›</div>
+    </button>
+    <div class="menu-sep"></div>
     <button class="menu-item" onclick="menuAction('changepwd')">🔑 Сменить пароль</button>
     <button class="menu-item" onclick="menuAction('2fa')">🔐 Двухфакторная авторизация</button>
-    <button class="menu-item" onclick="logout()">🚪 Выйти</button>
+    <div class="menu-sep"></div>
+    <button class="menu-item" style="color:var(--danger)" onclick="logout()">🚪 Выйти</button>
   </div>
 
   <div class="stats-bar">
@@ -808,6 +822,31 @@ header {
   </div>
 </div>
 
+<!-- Admin profile modal -->
+<div class="modal-overlay" id="admin-profile-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+      <div id="apm-avatar" style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,rgba(90,171,255,0.5),rgba(59,130,246,0.8));display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;flex-shrink:0">A</div>
+      <div>
+        <div id="apm-name" style="font-size:20px;font-weight:700"></div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">Администратор</div>
+      </div>
+    </div>
+    <div class="fa-info-box" style="margin-bottom:16px">
+      📧 Email: <strong id="apm-email" style="color:var(--accent)">—</strong>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-ghost" onclick="closeAdminProfile();openChangePwd()" style="justify-content:flex-start;padding:13px 16px">🔑 Сменить пароль</button>
+      <button class="btn btn-ghost" onclick="closeAdminProfile();open2FASettings()" style="justify-content:flex-start;padding:13px 16px">🔐 Настройки 2FA</button>
+    </div>
+    <div class="modal-footer" style="margin-top:20px">
+      <button class="btn btn-ghost" onclick="closeAdminProfile()">Закрыть</button>
+      <button class="btn btn-red" onclick="logout()" style="justify-content:center">🚪 Выйти</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirm dialog -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
@@ -988,6 +1027,10 @@ async function showApp() {
   document.getElementById('nav-add-account').style.display = saDisplay;
   document.getElementById('tab-invite').style.display = saDisplay;
   document.getElementById('nav-invite').style.display = saDisplay;
+  // Имя аккаунта в дропдауне
+  const letter = (currentUsername || 'A')[0].toUpperCase();
+  document.getElementById('menu-account-name').textContent = currentUsername || '—';
+  document.getElementById('menu-account-avatar').textContent = letter;
   await loadInitialData();
   connectSSE();
   setInterval(loadStats, 30000);
@@ -1050,8 +1093,22 @@ document.addEventListener('click', e => {
   if(menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.remove('open');
 });
 function menuToggleBot() { document.getElementById('mobile-menu').classList.remove('open'); botActive?stopBot():startBot(); }
+async function openAdminProfile() {
+  document.getElementById('apm-name').textContent = currentUsername || '—';
+  document.getElementById('apm-avatar').textContent = (currentUsername || 'A')[0].toUpperCase();
+  document.getElementById('apm-email').textContent = '…';
+  document.getElementById('admin-profile-modal').classList.add('open');
+  try {
+    const d = await api('/has-email');
+    document.getElementById('apm-email').textContent = d.email || 'не задан';
+  } catch(e) {}
+}
+function closeAdminProfile() { document.getElementById('admin-profile-modal').classList.remove('open'); }
+document.getElementById('admin-profile-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAdminProfile(); });
+
 function menuAction(a) {
   document.getElementById('mobile-menu').classList.remove('open');
+  if(a==='profile') { openAdminProfile(); return; }
   if(a==='broadcast') openBroadcast();
   else if(a==='changepwd') openChangePwd();
   else if(a==='addaccount') openAddAccount();
