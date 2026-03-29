@@ -193,9 +193,10 @@ header {
 .sv-blue { color:var(--accent); } .sv-green { color:var(--accent2); } .sv-red { color:var(--danger); }
 
 /* ===== DESKTOP TABS ===== */
-.tabs-bar { display:flex; gap:2px; padding:8px 12px; flex-shrink:0; background:rgba(8,14,28,0.5); border-bottom:1px solid var(--glass-border);  }
-.tab-btn { flex:1; padding:8px 6px; border:none; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; transition:all .18s; background:transparent; color:var(--text2); }
+.tabs-bar { display:flex; gap:2px; padding:8px 12px; flex-shrink:0; background:rgba(8,14,28,0.5); border-bottom:1px solid var(--glass-border); overflow:visible; }
+.tab-btn { flex:1; padding:8px 6px; border:none; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; transition:all .18s; background:transparent; color:var(--text2); position:relative; z-index:0; }
 .tab-btn.active { background:rgba(255,255,255,0.1); color:var(--text); box-shadow:inset 0 1px 0 rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.1); }
+.tab-btn:hover { transform:translateY(-1px) scale(1.06); z-index:2; }
 .tab-btn:hover:not(.active) { background:rgba(255,255,255,0.05); color:var(--text); }
 
 /* ===== MAIN LAYOUT ===== */
