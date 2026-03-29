@@ -1018,6 +1018,30 @@ def admin_set_email():
     return jsonify({"ok": True})
 
 
+@app.route("/admin/api/add-account", methods=["POST"])
+def admin_add_account():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if username != "sergey_defa":
+        return jsonify({"ok": False, "error": "Нет доступа"}), 403
+    data = request.get_json()
+    new_username = data.get("username", "").strip()
+    new_password = data.get("password", "").strip()
+    if not new_username:
+        return jsonify({"ok": False, "error": "Введи логин"}), 400
+    if len(new_username) < 3:
+        return jsonify({"ok": False, "error": "Логин слишком короткий (минимум 3 символа)"}), 400
+    if new_username in ADMIN_ACCOUNTS:
+        return jsonify({"ok": False, "error": f'Аккаунт «{new_username}» уже существует'}), 400
+    if len(new_password) < 4:
+        return jsonify({"ok": False, "error": "Пароль слишком короткий (минимум 4 символа)"}), 400
+    ADMIN_ACCOUNTS[new_username] = new_password
+    save_admin_accounts()
+    _rebuild_tokens()
+    logger.info(f"sergey_defa создал новый аккаунт: {new_username}")
+    return jsonify({"ok": True})
+
+
 @app.route("/admin/api/has-email")
 def admin_has_email():
     token = request.headers.get("X-Admin-Token", "")

@@ -338,6 +338,7 @@ header {
         <button class="btn btn-warn" onclick="openBroadcast()">📢 Рассылка</button>
         <button class="btn btn-ghost" onclick="manualRefresh()">🔄 Обновить</button>
         <button class="btn btn-ghost" onclick="openChangePwd()">🔑 Пароль</button>
+        <button class="btn btn-ghost" id="add-account-btn" onclick="openAddAccount()" style="display:none">➕ Аккаунт</button>
         <button class="btn btn-ghost" onclick="logout()">Выйти</button>
       </div>
       <button id="menu-btn" onclick="toggleMenu()">⋮</button>
@@ -350,6 +351,7 @@ header {
     <button class="menu-item" onclick="menuAction('refresh')">🔄 Обновить</button>
     <div class="menu-sep"></div>
     <button class="menu-item" onclick="menuAction('changepwd')">🔑 Сменить пароль</button>
+    <button class="menu-item" id="add-account-menu-btn" onclick="menuAction('addaccount')" style="display:none">➕ Добавить аккаунт</button>
     <button class="menu-item" onclick="logout()">🚪 Выйти</button>
   </div>
 
@@ -527,6 +529,29 @@ header {
   </div>
 </div>
 
+<!-- Add account modal (sergey_defa only) -->
+<div class="modal-overlay" id="addaccount-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>➕ Новый аккаунт</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">Создай нового администратора. Доступно только тебе.</div>
+    <input type="text" id="addaccount-login" placeholder="Логин (минимум 3 символа)" autocomplete="off"
+      style="width:100%;padding:13px 16px;margin-bottom:10px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:var(--text);font-size:15px;outline:none;transition:border .2s;font-family:inherit"
+      onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+    <input type="password" id="addaccount-pw" placeholder="Пароль (минимум 4 символа)" autocomplete="new-password"
+      style="width:100%;padding:13px 16px;margin-bottom:10px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:var(--text);font-size:15px;outline:none;transition:border .2s;font-family:inherit"
+      onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+    <input type="password" id="addaccount-pw2" placeholder="Повторите пароль" autocomplete="new-password"
+      style="width:100%;padding:13px 16px;margin-bottom:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:var(--text);font-size:15px;outline:none;transition:border .2s;font-family:inherit"
+      onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+    <div id="addaccount-error" style="font-size:13px;color:var(--danger);min-height:18px;margin-bottom:12px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddAccount()">Отмена</button>
+      <button class="btn btn-blue" onclick="doAddAccount()">Создать</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirm dialog -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
@@ -584,6 +609,10 @@ async function checkAuth() {
 async function showApp() {
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
+  // Кнопки добавления аккаунта — только для sergey_defa
+  const isSuperAdmin = currentUsername === 'sergey_defa';
+  document.getElementById('add-account-btn').style.display = isSuperAdmin ? '' : 'none';
+  document.getElementById('add-account-menu-btn').style.display = isSuperAdmin ? '' : 'none';
   await loadInitialData();
   connectSSE();
   setInterval(loadStats, 30000);
@@ -640,6 +669,7 @@ function menuAction(a) {
   document.getElementById('mobile-menu').classList.remove('open');
   if(a==='broadcast') openBroadcast();
   else if(a==='changepwd') openChangePwd();
+  else if(a==='addaccount') openAddAccount();
   else manualRefresh();
 }
 function mobileToggleBot() { botActive?stopBot():startBot(); }
@@ -1049,6 +1079,39 @@ async function doSetEmail() {
     toast('Email успешно привязан', 'success');
   } else {
     errEl.textContent = d.error || 'Ошибка при сохранении';
+  }
+}
+
+/* ===== ADD ACCOUNT (sergey_defa only) ===== */
+function openAddAccount() {
+  document.getElementById('addaccount-login').value = '';
+  document.getElementById('addaccount-pw').value = '';
+  document.getElementById('addaccount-pw2').value = '';
+  document.getElementById('addaccount-error').textContent = '';
+  document.getElementById('addaccount-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('addaccount-login').focus(), 100);
+}
+function closeAddAccount() { document.getElementById('addaccount-modal').classList.remove('open'); }
+document.getElementById('addaccount-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAddAccount(); });
+document.getElementById('addaccount-login').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addaccount-pw').focus(); });
+document.getElementById('addaccount-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('addaccount-pw2').focus(); });
+document.getElementById('addaccount-pw2').addEventListener('keydown', e=>{ if(e.key==='Enter') doAddAccount(); });
+
+async function doAddAccount() {
+  const login = document.getElementById('addaccount-login').value.trim();
+  const pw    = document.getElementById('addaccount-pw').value;
+  const pw2   = document.getElementById('addaccount-pw2').value;
+  const errEl = document.getElementById('addaccount-error');
+  errEl.textContent = '';
+  if (login.length < 3)  { errEl.textContent = 'Логин слишком короткий (минимум 3 символа)'; return; }
+  if (pw.length < 4)     { errEl.textContent = 'Пароль слишком короткий (минимум 4 символа)'; return; }
+  if (pw !== pw2)        { errEl.textContent = 'Пароли не совпадают'; return; }
+  const d = await api('/add-account', 'POST', { username: login, password: pw });
+  if (d.ok) {
+    closeAddAccount();
+    toast(`Аккаунт «${login}» создан`, 'success');
+  } else {
+    errEl.textContent = d.error || 'Ошибка при создании аккаунта';
   }
 }
 
