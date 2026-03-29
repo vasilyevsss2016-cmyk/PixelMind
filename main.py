@@ -588,7 +588,7 @@ def generate_image(prompt: str) -> bytes | None:
             json={
                 "model": IMAGE_GEN_MODEL,
                 "messages": [{"role": "user", "content": f"Generate an image: {prompt}"}],
-                "max_tokens": 4096,
+                "max_tokens": 512,
             },
             timeout=60,
         )
