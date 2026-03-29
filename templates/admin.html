@@ -555,10 +555,15 @@ header {
         <h3>Пользователи</h3>
         <div class="search-wrap">
           <span class="search-icon">🔍</span>
-          <input class="search-input" type="search" placeholder="Поиск..." id="user-search" oninput="renderUserList()" />
+          <input class="search-input" type="search" placeholder="Поиск..." id="user-search" oninput="renderUserList();renderWebUserList()" />
         </div>
       </div>
-      <div class="list-scroll" id="user-list"><div class="no-items">Нет пользователей</div></div>
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column">
+        <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);padding:10px 16px 4px">Telegram-бот</div>
+        <div id="user-list"><div class="no-items">Нет пользователей</div></div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text2);padding:10px 16px 4px;border-top:1px solid var(--glass-border);margin-top:4px">Веб-чат</div>
+        <div id="web-user-list"><div class="no-items">Загрузка…</div></div>
+      </div>
     </div>
 
     <!-- Chat panel (Чаты tab) -->
@@ -1108,7 +1113,7 @@ function switchTab(tab) {
     const tb = document.getElementById('tab-'+t);
     if (tb) tb.className = 'tab-btn' + (t===tab ? ' active' : '');
   });
-  if (isUsers) renderUserList();
+  if (isUsers) { renderUserList(); loadWebUsersTab(); }
   if (isInvite) loadInviteList();
   if (isPayments) { loadPayments(); loadWebUsersCredits(); }
 }
@@ -1130,7 +1135,7 @@ function mobileTab(tab) {
     const nb = document.getElementById('nav-'+t);
     if (nb) nb.className = 'nav-btn' + (t===tab ? ' active' : '');
   });
-  if (isUsers) renderUserList();
+  if (isUsers) { renderUserList(); loadWebUsersTab(); }
   if (isInvite) loadInviteList();
   if (isPayments) { loadPayments(); loadWebUsersCredits(); }
 }
@@ -1350,6 +1355,73 @@ async function selectUser(chatId) {
   openMobilePanel();
 }
 
+/* ===== WEB USERS TAB ===== */
+let webUsersCache = [];
+let selectedWebUid = null;
+
+async function loadWebUsersTab() {
+  const el = document.getElementById('web-user-list');
+  const d = await api('/web-users');
+  if (!d.ok) { el.innerHTML = '<div class="no-items">Ошибка загрузки</div>'; return; }
+  webUsersCache = d.users || [];
+  renderWebUserList();
+}
+
+function renderWebUserList() {
+  const q = (document.getElementById('user-search').value || '').toLowerCase();
+  const el = document.getElementById('web-user-list');
+  const filtered = webUsersCache.filter(u =>
+    !q || u.username.toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q)
+  );
+  if (!filtered.length) { el.innerHTML = '<div class="no-items">Нет</div>'; return; }
+  el.innerHTML = filtered.map(u => {
+    const active = u.uid === selectedWebUid ? ' active' : '';
+    const cr = u.credits === -1 ? '∞' : u.credits;
+    const crCol = u.credits === -1 ? 'var(--accent)' : u.credits === 0 ? 'var(--danger)' : u.credits <= 10 ? '#f0b429' : 'var(--accent-green,#22c55e)';
+    return `<div class="user-item${active}" onclick="selectWebUser('${u.uid}')">
+      <div class="avatar av-default">${u.username.charAt(0).toUpperCase()}</div>
+      <div class="user-info">
+        <div class="user-name">${escHtml(u.username)} <span style="font-size:11px;color:var(--text2)">${u.plan !== 'free' ? u.plan : ''}</span></div>
+        <div class="user-sub">${escHtml(u.email || 'без email')}</div>
+      </div>
+      <div style="font-weight:700;color:${crCol};font-size:14px;min-width:30px;text-align:right">${cr}</div>
+    </div>`;
+  }).join('');
+}
+
+async function selectWebUser(uid) {
+  selectedWebUid = uid;
+  renderWebUserList();
+  const u = webUsersCache.find(x => x.uid === uid);
+  if (!u) return;
+  renderWebUserProfile(u);
+  openMobilePanel();
+}
+
+function renderWebUserProfile(u) {
+  document.getElementById('profile-empty').style.display = 'none';
+  document.getElementById('profile-content').style.display = 'block';
+  const av = document.getElementById('prof-avatar');
+  av.textContent = u.username.charAt(0).toUpperCase();
+  av.className = 'profile-avatar av-default';
+  document.getElementById('prof-name').textContent = u.username;
+  document.getElementById('prof-username').textContent = u.email || 'без email';
+  document.getElementById('prof-banned-badge').className = 'profile-banned-badge';
+  const cr = u.credits === -1 ? '∞' : u.credits;
+  document.getElementById('prof-msgs').textContent = cr;
+  document.getElementById('prof-id').textContent = u.plan || 'free';
+  document.getElementById('prof-row-name').textContent = u.username;
+  document.getElementById('prof-row-user').textContent = u.email || '—';
+  document.getElementById('prof-row-id').textContent = u.email_verified ? '✅ Подтверждён' : '⚠ Не подтверждён';
+  document.querySelectorAll('.profile-stat-lbl')[0].textContent = 'Кредиты';
+  document.querySelectorAll('.profile-stat-lbl')[1].textContent = 'План';
+  const actions = document.getElementById('profile-content').querySelector('.profile-actions');
+  actions.innerHTML = `
+    <button class="btn btn-blue btn-lg" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','add')">➕ Добавить кредиты</button>
+    <button class="btn btn-ban btn-lg" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','deduct')">➖ Списать кредиты</button>
+  `;
+}
+
 async function renderProfile(chatId) {
   const c=allChats[chatId]||{};
   document.getElementById('profile-empty').style.display='none';
@@ -1368,6 +1440,14 @@ async function renderProfile(chatId) {
   document.getElementById('prof-row-name').textContent=c.name||'—';
   document.getElementById('prof-row-user').textContent=c.username?`@${c.username}`:'—';
   document.getElementById('prof-row-id').textContent=chatId;
+  // Восстанавливаем метки и кнопки для Telegram-пользователя
+  document.querySelectorAll('.profile-stat-lbl')[0].textContent='Сообщений';
+  document.querySelectorAll('.profile-stat-lbl')[1].textContent='Telegram ID';
+  const actions=document.getElementById('profile-content').querySelector('.profile-actions');
+  actions.innerHTML=`
+    <button class="btn btn-blue btn-lg" onclick="openChatFromProfile()">💬 Открыть чат</button>
+    <button class="btn btn-ban btn-lg" id="prof-ban-btn" onclick="toggleBanFromProfile()">🚫 Заблокировать</button>
+  `;
   const banBtn=document.getElementById('prof-ban-btn');
   if(c.banned) {
     banBtn.className='btn btn-unban btn-lg';
@@ -1376,6 +1456,7 @@ async function renderProfile(chatId) {
     banBtn.className='btn btn-ban btn-lg';
     banBtn.textContent='🚫 Заблокировать';
   }
+  selectedWebUid = null;
 }
 
 function openProfileFromChat() {
@@ -1794,15 +1875,15 @@ async function loadPayments() {
 async function approvePayment(pid) {
   if (!confirm('Одобрить платёж?')) return;
   const d = await api('/web-payments/' + pid + '/approve', 'POST', {});
-  if (d.ok) { showToast('Платёж одобрен ✅'); loadPayments(); }
-  else showToast(d.error || 'Ошибка', true);
+  if (d.ok) { toast('Платёж одобрен ✅','success'); loadPayments(); }
+  else toast(d.error || 'Ошибка','error');
 }
 
 async function rejectPayment(pid) {
   if (!confirm('Отклонить платёж?')) return;
   const d = await api('/web-payments/' + pid + '/reject', 'POST', {});
-  if (d.ok) { showToast('Платёж отклонён'); loadPayments(); }
-  else showToast(d.error || 'Ошибка', true);
+  if (d.ok) { toast('Платёж отклонён','success'); loadPayments(); }
+  else toast(d.error || 'Ошибка','error');
 }
 
 /* ===== WEB USERS CREDITS ===== */
@@ -1865,8 +1946,13 @@ async function confirmCreditsAdjust() {
   const d = await api('/adjust-credits', 'POST', { uid: creditsModalUid, amount });
   btn.disabled = false; btn.textContent = 'Применить';
   if (d.ok) {
-    showToast(creditsModalMode === 'add' ? `+${val} кредитов добавлено ✅` : `−${val} кредитов списано`);
+    toast(creditsModalMode === 'add' ? `+${val} кредитов добавлено ✅` : `−${val} кредитов списано`, 'success');
     closeCreditsModal();
+    // Обновляем кеш и перерисовываем профиль
+    const cached = webUsersCache.find(x => x.uid === creditsModalUid);
+    if (cached) { cached.credits = d.credits; }
+    if (selectedWebUid === creditsModalUid && cached) renderWebUserProfile(cached);
+    renderWebUserList();
     loadWebUsersCredits();
   } else {
     errEl.textContent = d.error || 'Ошибка';
