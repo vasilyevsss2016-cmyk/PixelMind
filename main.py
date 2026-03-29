@@ -67,20 +67,40 @@ def _rebuild_tokens():
 ADMIN_TOKENS: dict[str, str] = {}
 
 def load_admin_accounts():
-    """Загружает аккаунты из файла; при первом запуске создаёт файл с дефолтами."""
+    """
+    Приоритет загрузки:
+    1. admin_accounts.json — если существует (содержит актуальные пароли после смены)
+    2. Секрет ADMIN_ACCOUNTS (JSON-строка) — первичный источник
+    3. Хардкод _DEFAULT_ADMIN_ACCOUNTS — последний резерв
+    """
     global ADMIN_ACCOUNTS
     if os.path.exists(ADMIN_ACCOUNTS_FILE):
+        # Файл существует → самый актуальный источник (пароли уже менялись)
         try:
             with open(ADMIN_ACCOUNTS_FILE, "r", encoding="utf-8") as f:
                 ADMIN_ACCOUNTS.update(json.load(f))
             logger.info(f"📂 Загружено {len(ADMIN_ACCOUNTS)} аккаунтов из {ADMIN_ACCOUNTS_FILE}")
         except Exception as e:
             logger.error(f"Ошибка загрузки аккаунтов: {e}")
-            ADMIN_ACCOUNTS.update(_DEFAULT_ADMIN_ACCOUNTS)
     else:
-        ADMIN_ACCOUNTS.update(_DEFAULT_ADMIN_ACCOUNTS)
-        save_admin_accounts()
-        logger.info("📂 Создан admin_accounts.json с дефолтными аккаунтами")
+        # Файла нет → пробуем секрет ADMIN_ACCOUNTS
+        secret_str = os.environ.get("ADMIN_ACCOUNTS", "").strip()
+        if secret_str:
+            try:
+                loaded = json.loads(secret_str)
+                if isinstance(loaded, dict) and loaded:
+                    ADMIN_ACCOUNTS.update(loaded)
+                    save_admin_accounts()   # сохраняем в файл для следующих запусков
+                    logger.info(f"🔐 Загружено {len(ADMIN_ACCOUNTS)} аккаунтов из секрета ADMIN_ACCOUNTS")
+                else:
+                    raise ValueError("Неверный формат")
+            except Exception as e:
+                logger.error(f"Ошибка разбора секрета ADMIN_ACCOUNTS: {e}")
+        if not ADMIN_ACCOUNTS:
+            # Секрета тоже нет → дефолты
+            ADMIN_ACCOUNTS.update(_DEFAULT_ADMIN_ACCOUNTS)
+            save_admin_accounts()
+            logger.warning("⚠️  Секрет ADMIN_ACCOUNTS не задан — используются дефолтные аккаунты")
     _rebuild_tokens()
 
 def save_admin_accounts():
