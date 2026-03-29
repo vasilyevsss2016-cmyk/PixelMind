@@ -336,6 +336,7 @@ header {
         <button class="btn btn-green" id="start-btn" onclick="startBot()" style="display:none">▶ Старт</button>
         <button class="btn btn-warn" onclick="openBroadcast()">📢 Рассылка</button>
         <button class="btn btn-ghost" onclick="manualRefresh()">🔄 Обновить</button>
+        <button class="btn btn-ghost" onclick="openChangePwd()">🔑 Пароль</button>
         <button class="btn btn-ghost" onclick="logout()">Выйти</button>
       </div>
       <button id="menu-btn" onclick="toggleMenu()">⋮</button>
@@ -347,6 +348,7 @@ header {
     <button class="menu-item" onclick="menuAction('broadcast')">📢 Рассылка</button>
     <button class="menu-item" onclick="menuAction('refresh')">🔄 Обновить</button>
     <div class="menu-sep"></div>
+    <button class="menu-item" onclick="menuAction('changepwd')">🔑 Сменить пароль</button>
     <button class="menu-item" onclick="logout()">🚪 Выйти</button>
   </div>
 
@@ -470,6 +472,26 @@ header {
   </div>
 </div>
 
+<!-- Change password modal -->
+<div class="modal-overlay" id="changepwd-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🔑 Смена пароля</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">Введи новый пароль для аккаунта <strong id="changepwd-user" style="color:var(--accent)"></strong></div>
+    <input type="password" id="changepwd-new" placeholder="Новый пароль" autocomplete="new-password"
+      style="width:100%;padding:13px 16px;margin-bottom:10px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:var(--text);font-size:15px;outline:none;transition:border .2s,background .2s;font-family:inherit"
+      onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+    <input type="password" id="changepwd-confirm" placeholder="Подтверди пароль" autocomplete="new-password"
+      style="width:100%;padding:13px 16px;margin-bottom:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:var(--text);font-size:15px;outline:none;transition:border .2s,background .2s;font-family:inherit"
+      onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+    <div id="changepwd-error" style="font-size:13px;color:var(--danger);margin-bottom:12px;min-height:18px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeChangePwd()">Отмена</button>
+      <button class="btn btn-blue" onclick="doChangePwd()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirm dialog -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
@@ -485,6 +507,7 @@ header {
 
 <script>
 let token = localStorage.getItem('flux_admin_token') || '';
+let currentUsername = localStorage.getItem('flux_admin_user') || '';
 let allChats = {};
 let selectedChatId = null;
 let selectedProfileId = null;
@@ -514,7 +537,7 @@ async function login() {
   if (!username) { errEl.style.display='block'; errEl.textContent='Введи логин'; return; }
   const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password:pw}) });
   const data = await res.json();
-  if (data.ok) { token=data.token; localStorage.setItem('flux_admin_token',token); showApp(); }
+  if (data.ok) { token=data.token; currentUsername=data.username||username; localStorage.setItem('flux_admin_token',token); localStorage.setItem('flux_admin_user',currentUsername); showApp(); }
   else { errEl.style.display='block'; errEl.textContent='Неверный логин или пароль'; }
 }
 document.getElementById('username-input').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('password-input').focus(); });
@@ -576,7 +599,12 @@ document.addEventListener('click', e => {
   if(menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.remove('open');
 });
 function menuToggleBot() { document.getElementById('mobile-menu').classList.remove('open'); botActive?stopBot():startBot(); }
-function menuAction(a) { document.getElementById('mobile-menu').classList.remove('open'); if(a==='broadcast') openBroadcast(); else manualRefresh(); }
+function menuAction(a) {
+  document.getElementById('mobile-menu').classList.remove('open');
+  if(a==='broadcast') openBroadcast();
+  else if(a==='changepwd') openChangePwd();
+  else manualRefresh();
+}
 function mobileToggleBot() { botActive?stopBot():startBot(); }
 
 /* ===== SSE ===== */
@@ -871,6 +899,39 @@ async function sendMsg(){
   toast('Отправлено','success');inp.focus();
 }
 document.getElementById('msg-input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';});
+
+/* ===== CHANGE PASSWORD ===== */
+function openChangePwd() {
+  document.getElementById('changepwd-user').textContent = currentUsername || 'аккаунт';
+  document.getElementById('changepwd-new').value = '';
+  document.getElementById('changepwd-confirm').value = '';
+  document.getElementById('changepwd-error').textContent = '';
+  document.getElementById('changepwd-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('changepwd-new').focus(), 100);
+}
+function closeChangePwd() {
+  document.getElementById('changepwd-modal').classList.remove('open');
+}
+document.getElementById('changepwd-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeChangePwd(); });
+async function doChangePwd() {
+  const np = document.getElementById('changepwd-new').value;
+  const cp = document.getElementById('changepwd-confirm').value;
+  const errEl = document.getElementById('changepwd-error');
+  errEl.textContent = '';
+  if (np.length < 4) { errEl.textContent = 'Минимум 4 символа'; return; }
+  if (np !== cp) { errEl.textContent = 'Пароли не совпадают'; return; }
+  const d = await api('/change-password', 'POST', { new_password: np });
+  if (d.ok) {
+    token = d.token;
+    currentUsername = d.username || currentUsername;
+    localStorage.setItem('flux_admin_token', token);
+    localStorage.setItem('flux_admin_user', currentUsername);
+    closeChangePwd();
+    toast('Пароль успешно изменён', 'success');
+  } else {
+    errEl.textContent = d.error || 'Ошибка при смене пароля';
+  }
+}
 
 /* ===== BROADCAST ===== */
 function openBroadcast(){document.getElementById('broadcast-modal').classList.add('open');}

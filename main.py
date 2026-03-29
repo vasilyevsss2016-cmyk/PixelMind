@@ -868,6 +868,26 @@ def admin_login():
     return jsonify({"ok": False}), 401
 
 
+@app.route("/admin/api/change-password", methods=["POST"])
+def admin_change_password():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    new_password = data.get("new_password", "").strip()
+    if len(new_password) < 4:
+        return jsonify({"ok": False, "error": "Пароль слишком короткий (минимум 4 символа)"}), 400
+    # Удаляем старый токен
+    ADMIN_TOKENS.pop(token, None)
+    # Обновляем пароль и токен
+    ADMIN_ACCOUNTS[username] = new_password
+    new_token = _make_token(username, new_password)
+    ADMIN_TOKENS[new_token] = username
+    logger.info(f"Пользователь {username} сменил пароль")
+    return jsonify({"ok": True, "token": new_token, "username": username})
+
+
 # ============ ADMIN API ============
 
 @app.route("/admin/api/status")
