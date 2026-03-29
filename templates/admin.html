@@ -290,12 +290,13 @@ header {
     border-top:1px solid var(--glass-border); box-shadow:0 -1px 0 var(--glass-shine);
     padding-bottom:env(safe-area-inset-bottom); position:relative; z-index:20;
   }
-  .nav-btn { display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--text2); cursor:pointer; font-size:10px; padding:6px 10px; border-radius:10px; min-width:56px; transition:color .2s; }
-  .nav-btn .nav-icon { font-size:22px; line-height:1; }
+  .nav-btn { display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none; color:var(--text2); cursor:pointer; font-size:9.5px; padding:5px 7px; border-radius:10px; min-width:46px; transition:color .2s; flex:1; }
+  .nav-btn .nav-icon { font-size:20px; line-height:1; }
   .nav-btn:active { background:rgba(255,255,255,.07); }
   .nav-btn.active { color:var(--accent); }
   .nav-btn.bot-on { color:var(--accent2); }
   .nav-btn.bot-off { color:var(--danger); }
+  .nav-divider { width:1px; height:36px; background:rgba(255,255,255,0.12); flex-shrink:0; margin:0 2px; }
   .stat { padding:4px 10px; font-size:11px; }
   .stat-val { font-size:13px; }
   .toast { bottom:calc(var(--bottom-nav-h) + 12px + env(safe-area-inset-bottom)); }
@@ -454,6 +455,13 @@ header {
     </button>
     <button class="nav-btn" onclick="mobileTab('users')" id="nav-users">
       <span class="nav-icon">👥</span><span>Польз.</span>
+    </button>
+    <div class="nav-divider"></div>
+    <button class="nav-btn" onclick="openBroadcast()">
+      <span class="nav-icon">📢</span><span>Рассылка</span>
+    </button>
+    <button class="nav-btn" onclick="manualRefresh()">
+      <span class="nav-icon">🔄</span><span>Обновить</span>
     </button>
     <button class="nav-btn bot-on" id="nav-bot" onclick="mobileToggleBot()">
       <span class="nav-icon" id="nav-bot-icon">🟢</span>
