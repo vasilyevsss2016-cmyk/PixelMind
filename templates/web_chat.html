@@ -172,12 +172,100 @@ header {
 .toast.err { border-color:rgba(255,69,58,0.35); color:var(--danger); }
 .toast.info { border-color:rgba(90,171,255,0.35); color:var(--accent); }
 
+/* ===== CREDITS BADGE ===== */
+.credits-badge {
+  display:flex; align-items:center; gap:5px;
+  padding:5px 11px; border-radius:20px; font-size:12px; font-weight:600;
+  background:rgba(255,149,0,0.12); border:1px solid rgba(255,149,0,0.25); color:var(--warn);
+  cursor:pointer; transition:all .2s;
+}
+.credits-badge.ok { background:rgba(52,208,88,0.1); border-color:rgba(52,208,88,0.25); color:var(--accent2); }
+.credits-badge.low { background:rgba(255,149,0,0.12); border-color:rgba(255,149,0,0.3); color:var(--warn); }
+.credits-badge.empty { background:rgba(255,69,58,0.12); border-color:rgba(255,69,58,0.3); color:var(--danger); animation:pulse 1.5s infinite; }
+.credits-badge.unlimited { background:rgba(167,139,250,0.12); border-color:rgba(167,139,250,0.3); color:#a78bfa; cursor:default; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.6; } }
+
+/* ===== UPGRADE MODAL ===== */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px);
+  z-index:500; display:none; align-items:center; justify-content:center; padding:16px;
+}
+.modal-overlay.visible { display:flex; }
+.modal-box {
+  width:100%; max-width:480px; max-height:90vh; overflow-y:auto;
+  background:rgba(12,18,34,0.97); backdrop-filter:blur(24px);
+  border:1px solid var(--glass-border); border-radius:22px;
+  padding:28px 24px; box-shadow:0 24px 80px rgba(0,0,0,0.6);
+  scrollbar-width:thin;
+}
+.modal-title { font-size:18px; font-weight:700; margin-bottom:4px; }
+.modal-sub { color:var(--text2); font-size:13px; margin-bottom:22px; }
+.modal-close { float:right; background:none; border:none; color:var(--text2); font-size:20px; cursor:pointer; line-height:1; padding:0; }
+.modal-close:hover { color:var(--text); }
+
+.plan-cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+.plan-card {
+  padding:16px; border-radius:14px; border:1.5px solid var(--glass-border);
+  background:var(--glass); cursor:pointer; transition:all .2s; position:relative;
+}
+.plan-card:hover { border-color:rgba(90,171,255,0.4); background:rgba(90,171,255,0.06); transform:translateY(-2px); }
+.plan-card.selected { border-color:var(--accent); background:rgba(90,171,255,0.1); }
+.plan-card.pro-card { border-color:rgba(167,139,250,0.3); }
+.plan-card.pro-card:hover { border-color:rgba(167,139,250,0.6); background:rgba(167,139,250,0.08); }
+.plan-card.pro-card.selected { border-color:#a78bfa; background:rgba(167,139,250,0.12); }
+.plan-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px; margin-bottom:8px; display:inline-block; }
+.plan-badge.core { background:rgba(90,171,255,0.2); color:var(--accent); }
+.plan-badge.pro { background:rgba(167,139,250,0.2); color:#a78bfa; }
+.plan-price { font-size:22px; font-weight:700; margin:4px 0 2px; }
+.plan-price span { font-size:13px; font-weight:400; color:var(--text2); }
+.plan-desc { font-size:12px; color:var(--text2); }
+
+.section-label { font-size:12px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+.credit-packs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.credit-pack {
+  padding:8px 14px; border-radius:10px; border:1.5px solid var(--glass-border);
+  background:var(--glass); cursor:pointer; font-size:13px; font-weight:600;
+  transition:all .18s; color:var(--text);
+}
+.credit-pack:hover { border-color:rgba(52,208,88,0.4); background:rgba(52,208,88,0.06); }
+.credit-pack.selected { border-color:var(--accent2); background:rgba(52,208,88,0.1); color:var(--accent2); }
+.credit-custom-row { display:flex; gap:8px; align-items:center; margin-bottom:18px; }
+.credit-custom-row input { flex:1; padding:9px 12px; border-radius:10px; font-size:14px; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:var(--text); outline:none; }
+.credit-custom-row input:focus { border-color:rgba(52,208,88,0.4); }
+.credit-custom-row span { font-size:13px; color:var(--text2); white-space:nowrap; }
+
+.order-summary { background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:12px; padding:14px 16px; margin-bottom:18px; }
+.order-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px; }
+.order-row:last-child { margin-bottom:0; font-weight:700; color:var(--text); }
+.order-row span:first-child { color:var(--text2); }
+
+.sbp-box { background:rgba(52,208,88,0.06); border:1px solid rgba(52,208,88,0.2); border-radius:14px; padding:18px; margin-bottom:16px; }
+.sbp-title { font-size:15px; font-weight:700; margin-bottom:12px; color:var(--accent2); }
+.sbp-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:13px; }
+.sbp-row span:first-child { color:var(--text2); }
+.sbp-val { font-weight:600; display:flex; align-items:center; gap:6px; }
+.copy-btn { background:none; border:none; cursor:pointer; font-size:14px; opacity:.7; transition:opacity .2s; padding:0; }
+.copy-btn:hover { opacity:1; }
+.sbp-note { font-size:12px; color:var(--text2); margin-top:10px; line-height:1.5; }
+
+.upg-btn {
+  width:100%; padding:13px; border-radius:12px; font-size:14px; font-weight:700;
+  border:none; cursor:pointer; transition:all .18s; margin-bottom:10px;
+}
+.upg-btn-blue { background:linear-gradient(135deg,#3a8eff,#1a6edc); color:#fff; box-shadow:0 4px 16px rgba(58,142,255,0.3); }
+.upg-btn-blue:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(58,142,255,0.45); }
+.upg-btn-ghost { background:var(--glass); color:var(--text2); border:1px solid var(--glass-border); }
+.upg-btn-ghost:hover { background:var(--glass-hover); color:var(--text); }
+.upg-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
 /* ===== MOBILE ===== */
 @media(max-width:600px) {
   .auth-box { padding:28px 20px 22px; }
   .user-chip span.uname { display:none; }
   #chat-area { padding:14px; }
   .msg { max-width:90%; }
+  .plan-cards { grid-template-columns:1fr; }
+  .credits-badge span.cr-label { display:none; }
 }
 </style>
 </head>
@@ -237,6 +325,9 @@ header {
       <span class="name">Flux AI</span>
     </div>
     <div class="header-right">
+      <div class="credits-badge ok" id="credits-badge" onclick="openUpgrade()" title="Кредиты">
+        <span>⚡</span><span id="credits-count">—</span><span class="cr-label">кр.</span>
+      </div>
       <div class="user-chip">
         <div class="user-avatar" id="user-avatar-letter">?</div>
         <span class="uname" id="header-username"></span>
@@ -245,6 +336,78 @@ header {
       <button class="hdr-btn hdr-btn-red" onclick="doLogout()">Выйти</button>
     </div>
   </header>
+
+  <!-- UPGRADE MODAL -->
+  <div class="modal-overlay" id="upgrade-modal" onclick="if(event.target===this&&upgradeStep!=='sbp')closeUpgrade()">
+    <div class="modal-box">
+      <!-- Step: choose -->
+      <div id="upg-step-choose">
+        <button class="modal-close" onclick="closeUpgrade()">✕</button>
+        <div class="modal-title">⚡ Пополнить кредиты</div>
+        <div class="modal-sub" id="upg-sub-text">Выберите подписку или купите кредиты</div>
+
+        <div class="section-label">Подписки</div>
+        <div class="plan-cards">
+          <div class="plan-card" id="pc-core" onclick="selectPlan('core')">
+            <div class="plan-badge core">CORE</div>
+            <div class="plan-price">550₽ <span>/ год</span></div>
+            <div class="plan-desc">1 000 000 кредитов<br>в год</div>
+          </div>
+          <div class="plan-card pro-card" id="pc-pro" onclick="selectPlan('pro')">
+            <div class="plan-badge pro">PRO</div>
+            <div class="plan-price">1 100₽ <span>/ год</span></div>
+            <div class="plan-desc">10 000 000 кредитов<br>в год</div>
+          </div>
+        </div>
+
+        <div class="section-label">Кредиты (разово · 1 кр. = 15₽)</div>
+        <div class="credit-packs">
+          <div class="credit-pack" id="cp-20" onclick="selectCredits(20)">20 кр. — 300₽</div>
+          <div class="credit-pack" id="cp-30" onclick="selectCredits(30)">30 кр. — 450₽</div>
+          <div class="credit-pack" id="cp-40" onclick="selectCredits(40)">40 кр. — 600₽</div>
+          <div class="credit-pack" id="cp-55" onclick="selectCredits(55)">55 кр. — 825₽</div>
+        </div>
+        <div class="credit-custom-row">
+          <input type="number" id="custom-credits" min="1" placeholder="Свой объём" oninput="onCustomInput(this)">
+          <span id="custom-price-label">— ₽</span>
+        </div>
+
+        <div class="order-summary" id="order-summary" style="display:none">
+          <div class="order-row"><span>Тариф</span><span id="ord-label">—</span></div>
+          <div class="order-row"><span>Кредиты</span><span id="ord-credits">—</span></div>
+          <div class="order-row"><span>Итого</span><span id="ord-price">—₽</span></div>
+        </div>
+
+        <button class="upg-btn upg-btn-blue" id="upg-pay-btn" onclick="goToSBP()" disabled>Перейти к оплате →</button>
+        <button class="upg-btn upg-btn-ghost" onclick="closeUpgrade()">Закрыть</button>
+      </div>
+
+      <!-- Step: SBP -->
+      <div id="upg-step-sbp" style="display:none">
+        <button class="modal-close" onclick="closeUpgrade()">✕</button>
+        <div class="modal-title">💳 Оплата через СБП</div>
+        <div class="modal-sub">Переведите точную сумму по реквизитам ниже</div>
+        <div class="sbp-box">
+          <div class="sbp-title">Реквизиты для перевода</div>
+          <div class="sbp-row"><span>Банк</span><div class="sbp-val">Т-Банк</div></div>
+          <div class="sbp-row"><span>Номер СБП</span><div class="sbp-val"><span id="sbp-phone-val">+7 981 969 43 98</span> <button class="copy-btn" onclick="copyText('+79819694398')" title="Копировать">📋</button></div></div>
+          <div class="sbp-row"><span>Сумма</span><div class="sbp-val" style="color:var(--accent2)"><span id="sbp-amount-val">—</span> ₽ <button class="copy-btn" onclick="copyText(document.getElementById('sbp-amount-val').textContent)" title="Копировать">📋</button></div></div>
+          <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="sbp-comment-val">Flux —</span> <button class="copy-btn" onclick="copyText(document.getElementById('sbp-comment-val').textContent)" title="Копировать">📋</button></div></div>
+          <div class="sbp-note">⚠️ Обязательно укажи комментарий — так мы найдём твой платёж. После перевода нажми «Я оплатил», кредиты добавятся после проверки администратором.</div>
+        </div>
+        <button class="upg-btn upg-btn-blue" id="paid-btn" onclick="confirmPaid()">✅ Я оплатил</button>
+        <button class="upg-btn upg-btn-ghost" onclick="upgradeStep='choose';showUpgradeStep('choose')">← Назад</button>
+      </div>
+
+      <!-- Step: done -->
+      <div id="upg-step-done" style="display:none;text-align:center;padding:12px 0">
+        <div style="font-size:48px;margin-bottom:12px">🎉</div>
+        <div class="modal-title" style="margin-bottom:8px">Заявка принята!</div>
+        <div style="color:var(--text2);font-size:14px;margin-bottom:24px">Кредиты добавятся после подтверждения администратором. Обычно это занимает до нескольких часов.</div>
+        <button class="upg-btn upg-btn-blue" onclick="closeUpgrade()">Хорошо</button>
+      </div>
+    </div>
+  </div>
 
   <div id="chat-area">
     <div class="empty-chat" id="empty-state">
@@ -267,6 +430,7 @@ header {
 
 <script>
 let currentUsername = '';
+let currentCredits = 0;
 let isSending = false;
 const toastQ = [];
 let toastBusy = false;
@@ -274,6 +438,131 @@ let toastBusy = false;
 let regToken = '';
 let verifyMode = 'reg'; // 'reg' | 'email'
 let resendTimer = null;
+
+// ===== UPGRADE / CREDITS =====
+let upgradeStep = 'choose';
+let selectedType = null; // 'core' | 'pro' | 'credits'
+let selectedCreditsAmt = 0;
+let selectedPaymentData = null;
+
+function updateCreditsBadge(credits) {
+  currentCredits = credits;
+  const badge = document.getElementById('credits-badge');
+  const countEl = document.getElementById('credits-count');
+  if (!badge) return;
+  if (credits === -1) {
+    countEl.textContent = '∞';
+    badge.className = 'credits-badge unlimited';
+    badge.onclick = null;
+    return;
+  }
+  countEl.textContent = credits;
+  badge.onclick = openUpgrade;
+  if (credits === 0) badge.className = 'credits-badge empty';
+  else if (credits <= 10) badge.className = 'credits-badge low';
+  else badge.className = 'credits-badge ok';
+}
+
+function openUpgrade() {
+  if (currentCredits === -1) return;
+  const sub = currentCredits === 0
+    ? 'Кредиты закончились — выберите подписку или пополните баланс'
+    : `Осталось ${currentCredits} кредитов. Пополните заранее!`;
+  document.getElementById('upg-sub-text').textContent = sub;
+  // Reset state
+  selectedType = null; selectedCreditsAmt = 0;
+  document.querySelectorAll('.plan-card,.credit-pack').forEach(el=>el.classList.remove('selected'));
+  document.getElementById('custom-credits').value = '';
+  document.getElementById('custom-price-label').textContent = '— ₽';
+  document.getElementById('order-summary').style.display = 'none';
+  document.getElementById('upg-pay-btn').disabled = true;
+  upgradeStep = 'choose';
+  showUpgradeStep('choose');
+  document.getElementById('upgrade-modal').classList.add('visible');
+}
+function closeUpgrade() {
+  document.getElementById('upgrade-modal').classList.remove('visible');
+  selectedPaymentData = null;
+}
+function showUpgradeStep(step) {
+  upgradeStep = step;
+  ['choose','sbp','done'].forEach(s => {
+    const el = document.getElementById(`upg-step-${s}`);
+    if (el) el.style.display = s === step ? 'block' : 'none';
+  });
+}
+function selectPlan(plan) {
+  selectedType = plan; selectedCreditsAmt = 0;
+  document.querySelectorAll('.plan-card').forEach(el=>el.classList.remove('selected'));
+  document.querySelectorAll('.credit-pack').forEach(el=>el.classList.remove('selected'));
+  document.getElementById(`pc-${plan}`).classList.add('selected');
+  document.getElementById('custom-credits').value = '';
+  document.getElementById('custom-price-label').textContent = '— ₽';
+  const credits = plan === 'core' ? '1 000 000' : '10 000 000';
+  const price = plan === 'core' ? 550 : 1100;
+  document.getElementById('ord-label').textContent = plan === 'core' ? 'Core (1 год)' : 'Pro (1 год)';
+  document.getElementById('ord-credits').textContent = credits + ' кр.';
+  document.getElementById('ord-price').textContent = price + ' ₽';
+  document.getElementById('order-summary').style.display = 'block';
+  document.getElementById('upg-pay-btn').disabled = false;
+}
+function selectCredits(amt) {
+  selectedType = 'credits'; selectedCreditsAmt = amt;
+  document.querySelectorAll('.plan-card').forEach(el=>el.classList.remove('selected'));
+  document.querySelectorAll('.credit-pack').forEach(el=>el.classList.remove('selected'));
+  document.getElementById(`cp-${amt}`).classList.add('selected');
+  document.getElementById('custom-credits').value = '';
+  document.getElementById('custom-price-label').textContent = '— ₽';
+  document.getElementById('ord-label').textContent = `${amt} кредитов (разово)`;
+  document.getElementById('ord-credits').textContent = `${amt} кр.`;
+  document.getElementById('ord-price').textContent = (amt * 15) + ' ₽';
+  document.getElementById('order-summary').style.display = 'block';
+  document.getElementById('upg-pay-btn').disabled = false;
+}
+function onCustomInput(el) {
+  const val = parseInt(el.value) || 0;
+  document.querySelectorAll('.plan-card,.credit-pack').forEach(e=>e.classList.remove('selected'));
+  if (val > 0) {
+    selectedType = 'credits'; selectedCreditsAmt = val;
+    document.getElementById('custom-price-label').textContent = (val * 15) + ' ₽';
+    document.getElementById('ord-label').textContent = `${val} кредитов (разово)`;
+    document.getElementById('ord-credits').textContent = `${val} кр.`;
+    document.getElementById('ord-price').textContent = (val * 15) + ' ₽';
+    document.getElementById('order-summary').style.display = 'block';
+    document.getElementById('upg-pay-btn').disabled = false;
+  } else {
+    selectedType = null;
+    document.getElementById('custom-price-label').textContent = '— ₽';
+    document.getElementById('order-summary').style.display = 'none';
+    document.getElementById('upg-pay-btn').disabled = true;
+  }
+}
+async function goToSBP() {
+  if (!selectedType) return;
+  const btn = document.getElementById('upg-pay-btn');
+  btn.disabled = true; btn.textContent = 'Создаём заявку…';
+  const body = { type: selectedType };
+  if (selectedType === 'credits') body.amount_credits = selectedCreditsAmt;
+  try {
+    const r = await fetch('/app/request-payment', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+    const d = await r.json();
+    if (!d.ok) { toast(d.error || 'Ошибка', 'err'); btn.disabled=false; btn.textContent='Перейти к оплате →'; return; }
+    selectedPaymentData = d;
+    document.getElementById('sbp-amount-val').textContent = d.amount_rub;
+    document.getElementById('sbp-comment-val').textContent = d.comment;
+    showUpgradeStep('sbp');
+  } catch(e) { toast('Ошибка сети','err'); }
+  btn.disabled = false; btn.textContent = 'Перейти к оплате →';
+}
+async function confirmPaid() {
+  const btn = document.getElementById('paid-btn');
+  btn.disabled = true; btn.textContent = 'Отправляем…';
+  // Payment request already created, just show done
+  setTimeout(() => { showUpgradeStep('done'); }, 500);
+}
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Скопировано!','ok')).catch(()=>{});
+}
 
 // ===== TABS =====
 function switchTab(tab) {
@@ -394,13 +683,19 @@ async function doLogout() {
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
-function enterApp(username) {
+async function enterApp(username) {
   currentUsername = username;
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-screen').classList.add('visible');
   document.getElementById('header-username').textContent = username;
   document.getElementById('user-avatar-letter').textContent = username.charAt(0).toUpperCase();
   loadHistory();
+  // Load credits
+  try {
+    const r = await fetch('/app/credits');
+    const d = await r.json();
+    if (d.ok) updateCreditsBadge(d.credits);
+  } catch(e) {}
   document.getElementById('msg-input').focus();
 }
 
@@ -467,6 +762,7 @@ function hideTyping() {
 
 async function sendMsg() {
   if (isSending) return;
+  if (currentCredits === 0) { openUpgrade(); return; }
   const input = document.getElementById('msg-input');
   const text = input.value.trim();
   if (!text) return;
@@ -487,6 +783,12 @@ async function sendMsg() {
     hideTyping();
     if (d.ok) {
       appendMsg('assistant', d.reply, new Date().toISOString());
+      if (d.credits !== undefined) updateCreditsBadge(d.credits);
+      if (d.credits === 0) { toast('Кредиты закончились! Пополните баланс.','err'); setTimeout(openUpgrade, 800); }
+      else if (d.credits <= 5 && d.credits > 0) toast(`Осталось ${d.credits} кредитов`,'info');
+    } else if (d.no_credits) {
+      updateCreditsBadge(0);
+      openUpgrade();
     } else {
       appendMsg('assistant', '⚠ ' + (d.error || 'Ошибка'), new Date().toISOString());
       toast(d.error || 'Ошибка', 'err');

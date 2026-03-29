@@ -532,6 +532,7 @@ header {
     <button class="tab-btn active" onclick="switchTab('chats')" id="tab-chats">💬 Чаты</button>
     <button class="tab-btn" onclick="switchTab('users')" id="tab-users">👥 Пользователи</button>
     <button class="tab-btn" onclick="switchTab('invite')" id="tab-invite">📨 Email-рассылка</button>
+    <button class="tab-btn" onclick="switchTab('payments')" id="tab-payments">💳 Платежи</button>
   </div>
 
   <div class="main" id="main-area">
@@ -614,6 +615,22 @@ header {
     </div>
 
     <!-- Invite panel (Email-рассылка tab) -->
+    <div id="payments-panel" style="display:none">
+      <div class="invite-content">
+        <div class="invite-header-card">
+          <h2>💳 Платежи веб-чата</h2>
+          <p>Заявки на пополнение баланса и подписки от пользователей веб-чата. Одобряй или отклоняй платежи вручную после проверки СБП-перевода.</p>
+          <div style="display:flex;gap:10px;margin-top:12px">
+            <button class="btn btn-ghost" onclick="loadPayments()">🔄 Обновить</button>
+          </div>
+        </div>
+        <div class="invite-list-card">
+          <div class="invite-list-header">Заявки на оплату</div>
+          <div id="payments-list"><div class="invite-empty">Нет заявок</div></div>
+        </div>
+      </div>
+    </div>
+
     <div id="invite-panel">
       <div class="invite-content">
         <div class="invite-header-card">
@@ -656,6 +673,9 @@ header {
     </button>
     <button class="nav-btn" onclick="mobileTab('invite')" id="nav-invite">
       <span class="nav-icon">📨</span><span>Invite</span>
+    </button>
+    <button class="nav-btn" onclick="mobileTab('payments')" id="nav-payments">
+      <span class="nav-icon">💳</span><span>Платежи</span>
     </button>
     <div class="nav-divider"></div>
     <button class="nav-btn" id="nav-broadcast-btn" onclick="openBroadcast()">
@@ -1054,16 +1074,20 @@ function switchTab(tab) {
   const isChats = tab === 'chats';
   const isUsers = tab === 'users';
   const isInvite = tab === 'invite';
+  const isPayments = tab === 'payments';
   document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
   document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
   document.getElementById('profile-panel').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('invite-panel').style.display = isInvite ? 'flex' : 'none';
-  document.getElementById('tab-chats').className = 'tab-btn' + (isChats ? ' active' : '');
-  document.getElementById('tab-users').className = 'tab-btn' + (isUsers ? ' active' : '');
-  document.getElementById('tab-invite').className = 'tab-btn' + (isInvite ? ' active' : '');
+  document.getElementById('payments-panel').style.display = isPayments ? 'flex' : 'none';
+  ['chats','users','invite','payments'].forEach(t => {
+    const tb = document.getElementById('tab-'+t);
+    if (tb) tb.className = 'tab-btn' + (t===tab ? ' active' : '');
+  });
   if (isUsers) renderUserList();
   if (isInvite) loadInviteList();
+  if (isPayments) loadPayments();
 }
 
 function mobileTab(tab) {
@@ -1072,21 +1096,20 @@ function mobileTab(tab) {
   const isChats = tab === 'chats';
   const isUsers = tab === 'users';
   const isInvite = tab === 'invite';
-  document.getElementById('sidebar-chats').style.display = (isChats || isInvite) ? 'flex' : 'none';
+  const isPayments = tab === 'payments';
+  document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
   document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
   document.getElementById('profile-panel').style.display = isUsers ? 'flex' : 'none';
-  document.getElementById('invite-panel').style.display = isInvite ? 'flex' : 'none';
-  if (isInvite) {
-    document.getElementById('sidebar-chats').style.display = 'none';
-    document.getElementById('invite-panel').style.display = 'flex';
-  }
-  ['chats','users','invite'].forEach(t => {
+  document.getElementById('invite-panel').style.display = (isInvite) ? 'flex' : 'none';
+  document.getElementById('payments-panel').style.display = isPayments ? 'flex' : 'none';
+  ['chats','users','invite','payments'].forEach(t => {
     const nb = document.getElementById('nav-'+t);
     if (nb) nb.className = 'nav-btn' + (t===tab ? ' active' : '');
   });
   if (isUsers) renderUserList();
   if (isInvite) loadInviteList();
+  if (isPayments) loadPayments();
 }
 
 function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
@@ -1718,6 +1741,45 @@ async function loadInviteList() {
   if (!d.ok) return;
   inviteEmails = d.emails || [];
   renderInviteList();
+}
+
+/* ===== PAYMENTS ===== */
+async function loadPayments() {
+  const d = await api('/web-payments');
+  const el = document.getElementById('payments-list');
+  if (!d.ok || !d.payments || !d.payments.length) {
+    el.innerHTML = '<div class="no-items">Нет заявок</div>'; return;
+  }
+  el.innerHTML = d.payments.map(p => {
+    const statusIcon = p.status === 'pending' ? '🕐' : p.status === 'approved' ? '✅' : '❌';
+    const statusLabel = p.status === 'pending' ? 'Ожидает' : p.status === 'approved' ? 'Одобрено' : 'Отклонено';
+    const btns = p.status === 'pending' ? `
+      <button class="btn btn-sm" style="background:var(--accent-green,#22c55e);color:#fff;margin-right:6px" onclick="approvePayment('${p.id}')">✓ Одобрить</button>
+      <button class="btn btn-sm" style="background:#ef4444;color:#fff" onclick="rejectPayment('${p.id}')">✗ Отклонить</button>` : '';
+    return `<div class="user-item" style="flex-direction:column;align-items:flex-start;gap:6px;padding:14px">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <b>${p.username}</b>
+        <span>${statusIcon} ${statusLabel}</span>
+      </div>
+      <div style="font-size:13px;opacity:.7">${p.plan_label || p.plan} — ${p.amount}₽ • ${new Date(p.created_at*1000).toLocaleString('ru')}</div>
+      ${p.comment ? `<div style="font-size:12px;opacity:.55">${p.comment}</div>` : ''}
+      ${btns ? `<div style="margin-top:4px">${btns}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function approvePayment(pid) {
+  if (!confirm('Одобрить платёж?')) return;
+  const d = await api('/web-payments/' + pid + '/approve', 'POST', {});
+  if (d.ok) { showToast('Платёж одобрен ✅'); loadPayments(); }
+  else showToast(d.error || 'Ошибка', true);
+}
+
+async function rejectPayment(pid) {
+  if (!confirm('Отклонить платёж?')) return;
+  const d = await api('/web-payments/' + pid + '/reject', 'POST', {});
+  if (d.ok) { showToast('Платёж отклонён'); loadPayments(); }
+  else showToast(d.error || 'Ошибка', true);
 }
 
 function renderInviteList() {

@@ -2214,6 +2214,26 @@ def web_history():
     u = users.get(uid, {})
     return jsonify({"ok": True, "history": u.get("chat_history", [])})
 
+WEB_PAYMENTS_FILE = "web_payments.json"
+
+def load_web_payments() -> dict:
+    try:
+        with open(WEB_PAYMENTS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_web_payments(data: dict):
+    with open(WEB_PAYMENTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+PLAN_CREDITS = {"core": 1_000_000, "pro": 10_000_000}
+PLAN_PRICE = {"core": 550, "pro": 1100}
+CREDIT_PACKS = [20, 30, 40, 55]
+CREDIT_PRICE = 15  # ₽ per credit
+SBP_PHONE = "+79819694398"
+SBP_BANK = "Т-Банк"
+
 @app.route("/app/chat", methods=["POST"])
 def web_chat_send():
     uid = get_web_user_id()
@@ -2227,8 +2247,11 @@ def web_chat_send():
     u = users.get(uid)
     if not u:
         return jsonify({"ok": False, "error": "Пользователь не найден"}), 401
+    # Credits check
+    credits = u.get("credits", 0)
+    if credits == 0:
+        return jsonify({"ok": False, "no_credits": True, "error": "Кредиты закончились"}), 402
     history = u.get("chat_history", [])
-    # Build messages for API
     messages = [{"role": "system", "content": f"Ты — Flux, дружелюбный AI-ассистент. Отвечай на русском языке. Текущая дата: {datetime.now().strftime('%d.%m.%Y')}."}]
     for msg in history[-20:]:
         messages.append({"role": msg["role"], "content": msg["content"]})
@@ -2244,6 +2267,9 @@ def web_chat_send():
         reply = resp.json()["choices"][0]["message"]["content"].strip()
     except Exception as e:
         return jsonify({"ok": False, "error": f"Ошибка AI: {str(e)}"}), 500
+    # Deduct credit (skip if unlimited: credits == -1)
+    if credits > 0:
+        u["credits"] = credits - 1
     now = datetime.now().isoformat()
     history.append({"role": "user", "content": text, "ts": now})
     history.append({"role": "assistant", "content": reply, "ts": datetime.now().isoformat()})
@@ -2251,7 +2277,154 @@ def web_chat_send():
         history = history[-200:]
     u["chat_history"] = history
     save_web_users(users)
-    return jsonify({"ok": True, "reply": reply})
+    remaining = u["credits"]
+    return jsonify({"ok": True, "reply": reply, "credits": remaining})
+
+@app.route("/app/credits")
+def web_get_credits():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    u = users.get(uid, {})
+    return jsonify({
+        "ok": True,
+        "credits": u.get("credits", 0),
+        "plan": u.get("plan", "free"),
+        "plan_expires": u.get("plan_expires")
+    })
+
+@app.route("/app/request-payment", methods=["POST"])
+def web_request_payment():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    ptype = data.get("type")  # "credits" | "core" | "pro"
+    amount_credits = int(data.get("amount_credits", 0))
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False}), 401
+    if ptype == "core":
+        amount_rub = PLAN_PRICE["core"]
+        credits_to_add = PLAN_CREDITS["core"]
+        label = "Core (1 год)"
+    elif ptype == "pro":
+        amount_rub = PLAN_PRICE["pro"]
+        credits_to_add = PLAN_CREDITS["pro"]
+        label = "Pro (1 год)"
+    elif ptype == "credits":
+        if amount_credits < 1:
+            return jsonify({"ok": False, "error": "Некорректное количество"}), 400
+        amount_rub = amount_credits * CREDIT_PRICE
+        credits_to_add = amount_credits
+        label = f"{amount_credits} кредитов"
+    else:
+        return jsonify({"ok": False, "error": "Неверный тип"}), 400
+    pid = secrets.token_hex(10)
+    payments = load_web_payments()
+    payments[pid] = {
+        "uid": uid,
+        "username": u["username"],
+        "email": u.get("email", ""),
+        "type": ptype,
+        "label": label,
+        "amount_rub": amount_rub,
+        "credits_to_add": credits_to_add,
+        "status": "pending",
+        "created_at": datetime.now().isoformat()
+    }
+    save_web_payments(payments)
+    return jsonify({
+        "ok": True,
+        "pid": pid,
+        "amount_rub": amount_rub,
+        "label": label,
+        "sbp_phone": SBP_PHONE,
+        "sbp_bank": SBP_BANK,
+        "comment": f"Flux {u['username']}"
+    })
+
+def _get_payments_list():
+    payments = load_web_payments()
+    lst = []
+    for pid, p in payments.items():
+        item = dict(p)
+        item["id"] = pid
+        lst.append(item)
+    lst.sort(key=lambda x: x.get("created_at", 0), reverse=True)
+    return lst
+
+@app.route("/admin/web-payments")
+def admin_web_payments():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    lst = _get_payments_list()
+    return jsonify({"ok": True, "payments": lst, "total": len(lst)})
+
+@app.route("/admin/api/web-payments")
+def admin_api_web_payments():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    lst = _get_payments_list()
+    return jsonify({"ok": True, "payments": lst, "total": len(lst)})
+
+def _do_approve_payment(pid):
+    payments = load_web_payments()
+    p = payments.get(pid)
+    if not p:
+        return jsonify({"ok": False, "error": "Не найдено"}), 404
+    users = load_web_users()
+    u = users.get(p["uid"])
+    if u:
+        cur = u.get("credits", 0)
+        if cur != -1:
+            u["credits"] = cur + p.get("credits_to_add", 0)
+        if p.get("type") in ("core", "pro"):
+            u["plan"] = p["type"]
+            from datetime import timedelta
+            u["plan_expires"] = (datetime.now() + timedelta(days=365)).isoformat()
+        save_web_users(users)
+    p["status"] = "approved"
+    p["approved_at"] = datetime.now().isoformat()
+    p["approved_by"] = request.headers.get("X-Admin-Token", "?")[:8]
+    save_web_payments(payments)
+    return jsonify({"ok": True})
+
+def _do_reject_payment(pid):
+    payments = load_web_payments()
+    p = payments.get(pid)
+    if not p:
+        return jsonify({"ok": False, "error": "Не найдено"}), 404
+    p["status"] = "rejected"
+    p["rejected_at"] = datetime.now().isoformat()
+    save_web_payments(payments)
+    return jsonify({"ok": True})
+
+@app.route("/admin/web-payments/<pid>/approve", methods=["POST"])
+def admin_approve_payment(pid):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    return _do_approve_payment(pid)
+
+@app.route("/admin/api/web-payments/<pid>/approve", methods=["POST"])
+def admin_api_approve_payment(pid):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    return _do_approve_payment(pid)
+
+@app.route("/admin/web-payments/<pid>/reject", methods=["POST"])
+def admin_reject_payment(pid):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    return _do_reject_payment(pid)
+
+@app.route("/admin/api/web-payments/<pid>/reject", methods=["POST"])
+def admin_api_reject_payment(pid):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    return _do_reject_payment(pid)
 
 @app.route("/app/clear", methods=["POST"])
 def web_clear_history():

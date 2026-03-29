@@ -16,7 +16,10 @@
         "ts": "2026-03-29T14:54:35.720564"
       }
     ],
-    "email_verified": false
+    "email_verified": false,
+    "credits": 55,
+    "plan": "free",
+    "plan_expires": null
   },
   "b0fe3a5b3ad1c34a0a680eb6cfbd8f37": {
     "username": "sergey_defa",
@@ -24,6 +27,9 @@
     "password_hash": "56e3db5c14a8765f4742ea9914e381acb70e2d9a614c0b14c92bad81763812df",
     "email_verified": true,
     "created_at": "2026-03-29T15:12:37.839960",
-    "chat_history": []
+    "chat_history": [],
+    "credits": -1,
+    "plan": "admin",
+    "plan_expires": null
   }
 }
