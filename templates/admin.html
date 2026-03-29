@@ -347,12 +347,7 @@ header {
   </header>
 
   <div id="mobile-menu">
-    <button class="menu-item" id="menu-bot-toggle" onclick="menuToggleBot()">⏹ Остановить бота</button>
-    <button class="menu-item" onclick="menuAction('broadcast')">📢 Рассылка</button>
-    <button class="menu-item" onclick="menuAction('refresh')">🔄 Обновить</button>
-    <div class="menu-sep"></div>
     <button class="menu-item" onclick="menuAction('changepwd')">🔑 Сменить пароль</button>
-    <button class="menu-item" id="add-account-menu-btn" onclick="menuAction('addaccount')" style="display:none">➕ Добавить аккаунт</button>
     <button class="menu-item" onclick="logout()">🚪 Выйти</button>
   </div>
 
@@ -462,6 +457,9 @@ header {
     </button>
     <button class="nav-btn" onclick="manualRefresh()">
       <span class="nav-icon">🔄</span><span>Обновить</span>
+    </button>
+    <button class="nav-btn" id="nav-add-account" onclick="openAddAccount()" style="display:none">
+      <span class="nav-icon">➕</span><span>Аккаунт</span>
     </button>
     <button class="nav-btn bot-on" id="nav-bot" onclick="mobileToggleBot()">
       <span class="nav-icon" id="nav-bot-icon">🟢</span>
@@ -620,7 +618,7 @@ async function showApp() {
   // Кнопки добавления аккаунта — только для sergey_defa
   const isSuperAdmin = currentUsername === 'sergey_defa';
   document.getElementById('add-account-btn').style.display = isSuperAdmin ? '' : 'none';
-  document.getElementById('add-account-menu-btn').style.display = isSuperAdmin ? '' : 'none';
+  document.getElementById('nav-add-account').style.display = isSuperAdmin ? '' : 'none';
   await loadInitialData();
   connectSSE();
   setInterval(loadStats, 30000);
