@@ -1321,6 +1321,30 @@ def admin_verify_2fa():
     return jsonify({"ok": True, "token": token, "username": username})
 
 
+@app.route("/admin/resend-2fa", methods=["POST"])
+def admin_resend_2fa():
+    data = request.get_json()
+    fa_token = data.get("fa_token", "").strip()
+    session = FA_SESSIONS.get(fa_token)
+    if not session:
+        return jsonify({"ok": False, "error": "Сессия устарела. Войди заново."}), 400
+    username = session["username"]
+    code = str(random.randint(100000, 999999))
+    FA_SESSIONS[fa_token] = {
+        "username": username,
+        "code": code,
+        "expires": time.time() + 300,
+        "method": session.get("method", "email"),
+    }
+    email = ADMIN_EMAILS.get(username, "")
+    if not email:
+        return jsonify({"ok": False, "error": "Email не задан в профиле."}), 400
+    sent = send_2fa_email(email, username, code)
+    if not sent:
+        return jsonify({"ok": False, "error": "Не удалось отправить код."}), 500
+    return jsonify({"ok": True})
+
+
 @app.route("/admin/api/2fa/settings", methods=["GET"])
 def admin_get_2fa_settings():
     token = request.headers.get("X-Admin-Token", "")
