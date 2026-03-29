@@ -120,6 +120,12 @@ SMTP_PORT     = 465
 ADMIN_EMAILS_FILE = "admin_emails.json"
 ADMIN_EMAILS: dict[str, str] = {}   # username → email
 RESET_TOKENS: dict[str, dict] = {}  # token → {username, expires}
+
+INVITE_EMAILS_FILE = "invite_emails.json"
+INVITE_EMAILS: list[dict] = []      # [{email, added, sent, sent_at}]
+
+BOT_USERNAME = "flux_ai_chat_bot"
+BOT_LINK = f"https://t.me/{BOT_USERNAME}"
 # ====================================
 
 SYSTEM_PROMPT_CHAT = f"""Ты — {BOT_NAME}, дружелюбный AI-ассистент в Telegram с лёгким чувством юмора.
@@ -243,6 +249,100 @@ def save_admin_emails():
             json.dump(ADMIN_EMAILS, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"Ошибка сохранения email: {e}")
+
+
+def load_invite_emails():
+    global INVITE_EMAILS
+    try:
+        if os.path.exists(INVITE_EMAILS_FILE):
+            with open(INVITE_EMAILS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            INVITE_EMAILS = data.get("emails", [])
+            logger.info(f"📂 Загружено {len(INVITE_EMAILS)} email для рассылки приглашений")
+    except Exception as e:
+        logger.error(f"Ошибка загрузки invite emails: {e}")
+
+
+def save_invite_emails():
+    try:
+        with open(INVITE_EMAILS_FILE, "w", encoding="utf-8") as f:
+            json.dump({"emails": INVITE_EMAILS}, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения invite emails: {e}")
+
+
+def send_invite_email(to_email: str) -> bool:
+    """Отправляет приглашение на бота по email."""
+    if not SMTP_USER or not SMTP_PASSWORD:
+        logger.error("SMTP не настроен")
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Тебя приглашают в Flux AI — умный Telegram-бот"
+        msg["From"] = f"Flux AI <{SMTP_USER}>"
+        msg["To"] = to_email
+
+        text = (
+            f"Привет!\n\n"
+            f"Тебя приглашают попробовать Flux — умного AI-бота в Telegram.\n\n"
+            f"Flux умеет:\n"
+            f"• Общаться на любые темы\n"
+            f"• Генерировать изображения и видео\n"
+            f"• Преобразовывать голос в текст\n"
+            f"• Читать и анализировать файлы\n\n"
+            f"Открыть бота: {BOT_LINK}\n\n"
+            f"— Команда Defa Projects"
+        )
+        html = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a">
+<div style="max-width:520px;margin:32px auto;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6)">
+  <div style="background:linear-gradient(135deg,#0d1f3c 0%,#1a2d5a 50%,#0f1525 100%);padding:44px 40px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1)">
+    <div style="font-size:56px;margin-bottom:12px;filter:drop-shadow(0 0 20px rgba(90,171,255,0.6))">⚡</div>
+    <h1 style="margin:0 0 6px;font-size:32px;font-weight:800;color:#5aabff;letter-spacing:-1px">Flux AI</h1>
+    <p style="margin:0;color:#7a90b0;font-size:15px">Умный ассистент в Telegram</p>
+  </div>
+  <div style="background:rgba(15,24,48,0.97);padding:36px 40px">
+    <p style="color:#d0ddf0;font-size:16px;margin:0 0 24px;line-height:1.6">Привет! Тебя приглашают попробовать <strong style="color:#5aabff">Flux</strong> — AI-ассистента нового поколения прямо в Telegram.</p>
+    <div style="display:grid;gap:12px;margin-bottom:32px">
+      <div style="background:rgba(90,171,255,0.08);border:1px solid rgba(90,171,255,0.2);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px">
+        <span style="font-size:26px">🎨</span>
+        <div><div style="color:#e8eef8;font-weight:600;font-size:14px">Генерация изображений и видео</div><div style="color:#6a7f9a;font-size:12px;margin-top:2px">Создаёт картинки и короткие ролики по описанию</div></div>
+      </div>
+      <div style="background:rgba(52,208,88,0.08);border:1px solid rgba(52,208,88,0.2);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px">
+        <span style="font-size:26px">🎤</span>
+        <div><div style="color:#e8eef8;font-weight:600;font-size:14px">Голосовые и видео-сообщения</div><div style="color:#6a7f9a;font-size:12px;margin-top:2px">Транскрибирует аудио и видео в текст</div></div>
+      </div>
+      <div style="background:rgba(255,179,64,0.08);border:1px solid rgba(255,179,64,0.2);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px">
+        <span style="font-size:26px">📄</span>
+        <div><div style="color:#e8eef8;font-weight:600;font-size:14px">Анализ файлов и документов</div><div style="color:#6a7f9a;font-size:12px;margin-top:2px">Читает PDF, Word, картинки и объясняет содержимое</div></div>
+      </div>
+      <div style="background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px">
+        <span style="font-size:26px">💬</span>
+        <div><div style="color:#e8eef8;font-weight:600;font-size:14px">AI-общение без ограничений</div><div style="color:#6a7f9a;font-size:12px;margin-top:2px">Отвечает на любые вопросы, помогает с задачами</div></div>
+      </div>
+    </div>
+    <a href="{BOT_LINK}" style="display:block;text-align:center;padding:16px 28px;background:linear-gradient(135deg,#5aabff,#3b82f6);color:#fff;text-decoration:none;border-radius:16px;font-weight:700;font-size:17px;box-shadow:0 6px 24px rgba(90,171,255,0.4);letter-spacing:.2px">
+      ⚡ Открыть Flux в Telegram
+    </a>
+    <p style="text-align:center;color:#3a4f6a;font-size:12px;margin:28px 0 0;line-height:1.6">
+      Это письмо отправлено командой <strong style="color:#5a7aaa">Defa Projects</strong>.<br>
+      Если ты не хочешь получать подобные письма — просто проигнори.
+    </p>
+  </div>
+</div>
+</body></html>"""
+
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
+
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        logger.info(f"Приглашение отправлено на {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки приглашения на {to_email}: {e}")
+        return False
 
 
 def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
@@ -1537,6 +1637,98 @@ def set_webhook():
     logger.info(f"Webhook: {r.json()}")
 
 
+@app.route("/admin/api/invite/list")
+def api_invite_list():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "emails": INVITE_EMAILS})
+
+
+@app.route("/admin/api/invite/add", methods=["POST"])
+def api_invite_add():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"ok": False, "error": "Некорректный email"}), 400
+    if any(e["email"] == email for e in INVITE_EMAILS):
+        return jsonify({"ok": False, "error": "Этот email уже в списке"}), 400
+    import datetime
+    INVITE_EMAILS.append({
+        "email": email,
+        "added": datetime.datetime.now().strftime("%d.%m.%Y"),
+        "sent": False,
+        "sent_at": None
+    })
+    save_invite_emails()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/invite/remove", methods=["POST"])
+def api_invite_remove():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    global INVITE_EMAILS
+    INVITE_EMAILS = [e for e in INVITE_EMAILS if e["email"] != email]
+    save_invite_emails()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/invite/send-one", methods=["POST"])
+def api_invite_send_one():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    entry = next((e for e in INVITE_EMAILS if e["email"] == email), None)
+    if not entry:
+        return jsonify({"ok": False, "error": "Email не найден в списке"}), 404
+    ok = send_invite_email(email)
+    if ok:
+        import datetime
+        entry["sent"] = True
+        entry["sent_at"] = datetime.datetime.now().strftime("%d.%m %H:%M")
+        save_invite_emails()
+    return jsonify({"ok": ok, "error": None if ok else "Ошибка отправки — проверь SMTP"})
+
+
+@app.route("/admin/api/invite/send-all", methods=["POST"])
+def api_invite_send_all():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    import datetime
+    sent, failed = 0, 0
+    for entry in INVITE_EMAILS:
+        if not entry.get("sent"):
+            ok = send_invite_email(entry["email"])
+            if ok:
+                entry["sent"] = True
+                entry["sent_at"] = datetime.datetime.now().strftime("%d.%m %H:%M")
+                sent += 1
+            else:
+                failed += 1
+    save_invite_emails()
+    return jsonify({"ok": True, "sent": sent, "failed": failed})
+
+
+@app.route("/admin/api/invite/reset", methods=["POST"])
+def api_invite_reset():
+    """Сбросить статус 'отправлено' — чтобы можно было отправить повторно."""
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    entry = next((e for e in INVITE_EMAILS if e["email"] == email), None)
+    if entry:
+        entry["sent"] = False
+        entry["sent_at"] = None
+        save_invite_emails()
+    return jsonify({"ok": True})
+
+
 def startup():
     if not BOT_TOKEN:
         logger.error("❌ Не указан BOT_TOKEN — добавь его в Secrets")
@@ -1549,6 +1741,7 @@ def startup():
     load_users()
     load_chat_log()
     load_admin_emails()
+    load_invite_emails()
 
     if REPLIT_URL:
         try:

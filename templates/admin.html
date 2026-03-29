@@ -309,6 +309,60 @@ header {
   .modal-handle { display:none; }
   #profile-panel { border-left:1px solid var(--glass-border); }
 }
+
+/* ===== INVITE PANEL ===== */
+#invite-panel {
+  flex:1; display:none; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:rgba(8,14,28,0.4);
+}
+.invite-content { padding:28px 24px; max-width:680px; width:100%; margin:0 auto; }
+.invite-header-card {
+  padding:28px; border-radius:22px; margin-bottom:20px;
+  background:rgba(12,22,46,0.7); backdrop-filter:blur(32px) saturate(180%); -webkit-backdrop-filter:blur(32px) saturate(180%);
+  border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 40px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,0.1);
+}
+.invite-header-card h2 { font-size:20px; font-weight:700; margin:0 0 6px; }
+.invite-header-card p { color:var(--text2); font-size:14px; margin:0 0 20px; line-height:1.5; }
+.invite-add-row { display:flex; gap:10px; align-items:stretch; }
+.invite-add-row input {
+  flex:1; padding:12px 16px;
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
+  border-radius:12px; color:var(--text); font-size:15px; outline:none; transition:border .2s,background .2s; font-family:inherit;
+}
+.invite-add-row input:focus { border-color:rgba(90,171,255,.45); background:rgba(255,255,255,0.1); }
+.invite-stats { display:flex; gap:12px; margin-top:20px; flex-wrap:wrap; }
+.invite-stat { flex:1; min-width:90px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px; text-align:center; }
+.invite-stat-val { font-size:26px; font-weight:700; }
+.invite-stat-lbl { font-size:12px; color:var(--text2); margin-top:3px; }
+.invite-actions-row { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.invite-actions-row .btn { flex:1; justify-content:center; min-width:140px; }
+.invite-list-card {
+  border-radius:18px; overflow:hidden;
+  background:rgba(12,22,46,0.6); backdrop-filter:blur(24px); -webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,0.08);
+}
+.invite-list-header { padding:14px 18px; font-size:12px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.invite-row {
+  display:flex; align-items:center; gap:12px; padding:13px 18px;
+  border-bottom:1px solid rgba(255,255,255,0.04); transition:background .15s;
+}
+.invite-row:last-child { border-bottom:none; }
+.invite-row:hover { background:rgba(255,255,255,0.03); }
+.invite-email { flex:1; font-size:14px; font-weight:500; word-break:break-all; }
+.invite-badge-sent { background:rgba(52,208,88,0.15); color:var(--accent2); border:1px solid rgba(52,208,88,0.3); font-size:11px; font-weight:600; padding:3px 9px; border-radius:8px; white-space:nowrap; }
+.invite-badge-new { background:rgba(90,171,255,0.12); color:var(--accent); border:1px solid rgba(90,171,255,0.25); font-size:11px; font-weight:600; padding:3px 9px; border-radius:8px; white-space:nowrap; }
+.invite-date { font-size:11px; color:var(--text3); white-space:nowrap; }
+.invite-row-actions { display:flex; gap:6px; flex-shrink:0; }
+.invite-row-actions .btn { padding:5px 10px; font-size:12px; border-radius:8px; }
+.invite-empty { padding:40px; text-align:center; color:var(--text3); font-size:14px; }
+@media (max-width:640px) {
+  .invite-content { padding:14px; }
+  .invite-header-card { padding:18px; }
+  .invite-add-row { flex-direction:column; }
+  .invite-actions-row { flex-direction:column; }
+  .invite-row { flex-wrap:wrap; gap:8px; }
+  .invite-row-actions { width:100%; justify-content:flex-end; }
+}
 </style>
 </head>
 <body>
@@ -361,6 +415,7 @@ header {
   <div class="tabs-bar">
     <button class="tab-btn active" onclick="switchTab('chats')" id="tab-chats">💬 Чаты</button>
     <button class="tab-btn" onclick="switchTab('users')" id="tab-users">👥 Пользователи</button>
+    <button class="tab-btn" onclick="switchTab('invite')" id="tab-invite">📨 Email-рассылка</button>
   </div>
 
   <div class="main" id="main-area">
@@ -441,6 +496,38 @@ header {
         </div>
       </div>
     </div>
+
+    <!-- Invite panel (Email-рассылка tab) -->
+    <div id="invite-panel">
+      <div class="invite-content">
+        <div class="invite-header-card">
+          <h2>📨 Email-рассылка приглашений</h2>
+          <p>Добавляй email-адреса тех, кто ещё не подписан на бота, и отправляй им красивое письмо-приглашение со ссылкой на <strong>@flux_ai_chat_bot</strong>.</p>
+          <div class="invite-add-row">
+            <input type="email" id="invite-email-input" placeholder="email@example.com" autocomplete="off"
+              onkeydown="if(event.key==='Enter')addInviteEmail()"
+              onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+            <button class="btn btn-blue" onclick="addInviteEmail()">➕ Добавить</button>
+          </div>
+          <div id="invite-add-error" style="font-size:13px;color:var(--danger);margin-top:8px;min-height:18px"></div>
+          <div class="invite-stats">
+            <div class="invite-stat"><div class="invite-stat-val sv-blue" id="inv-stat-total">0</div><div class="invite-stat-lbl">Всего</div></div>
+            <div class="invite-stat"><div class="invite-stat-val sv-green" id="inv-stat-sent">0</div><div class="invite-stat-lbl">Отправлено</div></div>
+            <div class="invite-stat"><div class="invite-stat-val" id="inv-stat-pending">0</div><div class="invite-stat-lbl">Ожидают</div></div>
+          </div>
+        </div>
+
+        <div class="invite-actions-row">
+          <button class="btn btn-green btn-lg" id="send-all-btn" onclick="sendAllInvites()">📤 Отправить всем новым</button>
+          <button class="btn btn-ghost btn-lg" onclick="loadInviteList()">🔄 Обновить</button>
+        </div>
+
+        <div class="invite-list-card">
+          <div class="invite-list-header">Список email-адресов</div>
+          <div id="invite-list"><div class="invite-empty">Список пуст — добавь email выше</div></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Mobile bottom nav -->
@@ -450,6 +537,9 @@ header {
     </button>
     <button class="nav-btn" onclick="mobileTab('users')" id="nav-users">
       <span class="nav-icon">👥</span><span>Польз.</span>
+    </button>
+    <button class="nav-btn" onclick="mobileTab('invite')" id="nav-invite">
+      <span class="nav-icon">📨</span><span>Invite</span>
     </button>
     <div class="nav-divider"></div>
     <button class="nav-btn" onclick="openBroadcast()">
@@ -631,31 +721,41 @@ function logout() { if(eventSource) eventSource.close(); localStorage.removeItem
 function switchTab(tab) {
   currentTab = tab;
   const isChats = tab === 'chats';
+  const isUsers = tab === 'users';
+  const isInvite = tab === 'invite';
   document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
-  document.getElementById('sidebar-users').style.display = isChats ? 'none' : 'flex';
+  document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
-  document.getElementById('profile-panel').style.display = isChats ? 'none' : 'flex';
+  document.getElementById('profile-panel').style.display = isUsers ? 'flex' : 'none';
+  document.getElementById('invite-panel').style.display = isInvite ? 'flex' : 'none';
   document.getElementById('tab-chats').className = 'tab-btn' + (isChats ? ' active' : '');
-  document.getElementById('tab-users').className = 'tab-btn' + (!isChats ? ' active' : '');
-  if (!isChats) renderUserList();
+  document.getElementById('tab-users').className = 'tab-btn' + (isUsers ? ' active' : '');
+  document.getElementById('tab-invite').className = 'tab-btn' + (isInvite ? ' active' : '');
+  if (isUsers) renderUserList();
+  if (isInvite) loadInviteList();
 }
 
 function mobileTab(tab) {
   currentTab = tab;
-  // reset panel slide
   document.getElementById('main-area').classList.remove('panel-open');
-  // show correct sidebar
   const isChats = tab === 'chats';
-  document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
-  document.getElementById('sidebar-users').style.display = isChats ? 'none' : 'flex';
-  document.getElementById('chat-panel').style.display = 'flex';
-  document.getElementById('profile-panel').style.display = 'flex';
-  // nav highlight
-  ['chats','users'].forEach(t => {
+  const isUsers = tab === 'users';
+  const isInvite = tab === 'invite';
+  document.getElementById('sidebar-chats').style.display = (isChats || isInvite) ? 'flex' : 'none';
+  document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
+  document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
+  document.getElementById('profile-panel').style.display = isUsers ? 'flex' : 'none';
+  document.getElementById('invite-panel').style.display = isInvite ? 'flex' : 'none';
+  if (isInvite) {
+    document.getElementById('sidebar-chats').style.display = 'none';
+    document.getElementById('invite-panel').style.display = 'flex';
+  }
+  ['chats','users','invite'].forEach(t => {
     const nb = document.getElementById('nav-'+t);
     if (nb) nb.className = 'nav-btn' + (t===tab ? ' active' : '');
   });
-  if (!isChats) renderUserList();
+  if (isUsers) renderUserList();
+  if (isInvite) loadInviteList();
 }
 
 function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
@@ -1130,6 +1230,99 @@ async function sendBroadcast(){
   if(!text)return;
   const d=await api('/broadcast','POST',{text});
   closeBroadcast();toast(`Отправлено ${d.sent||0} польз.`,'success');
+}
+
+/* ===== INVITE EMAILS ===== */
+let inviteEmails = [];
+
+async function loadInviteList() {
+  const d = await api('/invite/list');
+  if (!d.ok) return;
+  inviteEmails = d.emails || [];
+  renderInviteList();
+}
+
+function renderInviteList() {
+  const total = inviteEmails.length;
+  const sent = inviteEmails.filter(e => e.sent).length;
+  const pending = total - sent;
+  document.getElementById('inv-stat-total').textContent = total;
+  document.getElementById('inv-stat-sent').textContent = sent;
+  document.getElementById('inv-stat-pending').textContent = pending;
+
+  const el = document.getElementById('invite-list');
+  if (!total) { el.innerHTML = '<div class="invite-empty">Список пуст — добавь email выше</div>'; return; }
+
+  el.innerHTML = inviteEmails.map(e => {
+    const badge = e.sent
+      ? `<span class="invite-badge-sent">✅ Отправлено${e.sent_at ? ' · '+escHtml(e.sent_at) : ''}</span>`
+      : `<span class="invite-badge-new">⏳ Новый</span>`;
+    const sendBtn = e.sent
+      ? `<button class="btn btn-ghost" onclick="resetAndSendOne('${escHtml(e.email)}')" title="Отправить повторно">↩ Повтор</button>`
+      : `<button class="btn btn-blue" onclick="sendOneInvite('${escHtml(e.email)}')" title="Отправить">📤 Отправить</button>`;
+    return `<div class="invite-row" id="inv-row-${btoa(e.email).replace(/=/g,'')}">
+      <div class="invite-email">${escHtml(e.email)}</div>
+      ${badge}
+      <span class="invite-date">+${escHtml(e.added||'')}</span>
+      <div class="invite-row-actions">
+        ${sendBtn}
+        <button class="btn btn-red" onclick="removeInviteEmail('${escHtml(e.email)}')" title="Удалить">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function addInviteEmail() {
+  const inp = document.getElementById('invite-email-input');
+  const errEl = document.getElementById('invite-add-error');
+  const email = inp.value.trim().toLowerCase();
+  errEl.textContent = '';
+  if (!email || !email.includes('@') || !email.split('@')[1]?.includes('.')) {
+    errEl.textContent = 'Введи корректный email'; return;
+  }
+  const d = await api('/invite/add', 'POST', { email });
+  if (d.ok) {
+    inp.value = '';
+    await loadInviteList();
+    toast(`${email} добавлен`, 'success');
+  } else {
+    errEl.textContent = d.error || 'Ошибка добавления';
+  }
+}
+
+async function removeInviteEmail(email) {
+  showConfirm('🗑 Удалить', `Удалить ${email} из списка?`, async () => {
+    const d = await api('/invite/remove', 'POST', { email });
+    if (d.ok) { await loadInviteList(); toast('Удалено', 'error'); }
+  }, 'Удалить');
+}
+
+async function sendOneInvite(email) {
+  const btn = event?.target;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  const d = await api('/invite/send-one', 'POST', { email });
+  if (d.ok) { await loadInviteList(); toast(`✅ Письмо отправлено на ${email}`, 'success'); }
+  else toast(d.error || 'Ошибка отправки', 'error');
+  if (btn) { btn.disabled = false; }
+}
+
+async function resetAndSendOne(email) {
+  await api('/invite/reset', 'POST', { email });
+  await sendOneInvite(email);
+}
+
+async function sendAllInvites() {
+  const pending = inviteEmails.filter(e => !e.sent).length;
+  if (!pending) { toast('Нет новых адресатов', 'warn'); return; }
+  showConfirm('📤 Отправить всем', `Отправить приглашение ${pending} новым адресатам?`, async () => {
+    const btn = document.getElementById('send-all-btn');
+    btn.disabled = true; btn.textContent = '⏳ Отправляем…';
+    const d = await api('/invite/send-all', 'POST', {});
+    btn.disabled = false; btn.textContent = '📤 Отправить всем новым';
+    await loadInviteList();
+    if (d.ok) toast(`✅ Отправлено: ${d.sent}, ошибок: ${d.failed}`, d.failed ? 'warn' : 'success');
+    else toast('Ошибка отправки', 'error');
+  }, `Отправить ${pending}`);
 }
 
 /* ===== CONFIRM ===== */
