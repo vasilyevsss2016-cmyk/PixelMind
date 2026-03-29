@@ -23,6 +23,9 @@ from email.mime.text import MIMEText
 from flask import Flask, request, jsonify, render_template, redirect, session, Response, stream_with_context
 import requests as http_requests
 
+import pyotp
+import qrcode
+
 try:
     import edge_tts
     import asyncio
@@ -131,6 +134,7 @@ BOT_LINK = f"https://t.me/{BOT_USERNAME}"
 TWO_FA_FILE = "admin_2fa.json"
 ADMIN_2FA: dict[str, dict] = {}     # {username: {enabled, method, phone}}
 FA_SESSIONS: dict[str, dict] = {}   # {fa_token: {username, code, expires}}
+TOTP_PENDING: dict[str, str] = {}  # {username: temp_secret} — до подтверждения
 SMSRU_API_KEY = os.environ.get("SMSRU_API_KEY", "")
 # ====================================
 
@@ -1254,8 +1258,25 @@ def admin_login():
     fa_settings = ADMIN_2FA.get(username, {})
     if fa_settings.get("enabled"):
         method = fa_settings.get("method", "email")
-        code = str(random.randint(100000, 999999))
         fa_token = secrets.token_urlsafe(32)
+
+        if method == "totp":
+            # TOTP — не отправляем код, просто создаём сессию
+            FA_SESSIONS[fa_token] = {
+                "username": username,
+                "code": None,
+                "expires": time.time() + 300,
+                "method": "totp",
+            }
+            return jsonify({
+                "ok": True,
+                "require_2fa": True,
+                "fa_token": fa_token,
+                "method": "totp",
+                "dest": "Google Authenticator",
+            })
+
+        code = str(random.randint(100000, 999999))
         FA_SESSIONS[fa_token] = {
             "username": username,
             "code": code,
@@ -1271,7 +1292,6 @@ def admin_login():
                 sent = send_2fa_email(email, username, code)
                 dest = email[:2] + "*" * (email.index("@") - 2) + email[email.index("@"):]
             else:
-                # Email не задан — отказываем
                 return jsonify({"ok": False, "error": "Email не задан в профиле. Сначала укажи email."}), 400
         elif method == "sms":
             phone = fa_settings.get("phone", "")
@@ -1310,11 +1330,22 @@ def admin_verify_2fa():
     if time.time() > session["expires"]:
         FA_SESSIONS.pop(fa_token, None)
         return jsonify({"ok": False, "error": "Код истёк. Войди заново."}), 400
-    if code != session["code"]:
-        return jsonify({"ok": False, "error": "Неверный код."}), 401
+
+    username = session["username"]
+    method = session.get("method", "email")
+
+    if method == "totp":
+        totp_secret = ADMIN_2FA.get(username, {}).get("totp_secret", "")
+        if not totp_secret:
+            return jsonify({"ok": False, "error": "TOTP не настроен."}), 400
+        totp = pyotp.TOTP(totp_secret)
+        if not totp.verify(code, valid_window=1):
+            return jsonify({"ok": False, "error": "Неверный код. Проверь время на устройстве."}), 401
+    else:
+        if code != session["code"]:
+            return jsonify({"ok": False, "error": "Неверный код."}), 401
 
     FA_SESSIONS.pop(fa_token, None)
-    username = session["username"]
     password = ADMIN_ACCOUNTS.get(username, "")
     token = _make_token(username, password)
     ADMIN_TOKENS[token] = username
@@ -1351,7 +1382,13 @@ def admin_get_2fa_settings():
     username = ADMIN_TOKENS.get(token)
     if not username:
         return jsonify({"ok": False}), 403
-    settings = ADMIN_2FA.get(username, {"enabled": False, "method": "email", "phone": ""})
+    raw = ADMIN_2FA.get(username, {"enabled": False, "method": "email", "phone": ""})
+    settings = {
+        "enabled": raw.get("enabled", False),
+        "method": raw.get("method", "email"),
+        "phone": raw.get("phone", ""),
+        "totp_secret": "SET" if raw.get("totp_secret") else "",
+    }
     return jsonify({"ok": True, "settings": settings})
 
 
@@ -1366,14 +1403,22 @@ def admin_save_2fa_settings():
     method = data.get("method", "email")
     phone = data.get("phone", "").strip()
 
-    if method not in ("email", "sms"):
+    if method not in ("email", "sms", "totp"):
         return jsonify({"ok": False, "error": "Неверный метод"}), 400
     if enabled and method == "email" and not ADMIN_EMAILS.get(username):
         return jsonify({"ok": False, "error": "Сначала укажи email в профиле."}), 400
     if enabled and method == "sms" and not phone:
         return jsonify({"ok": False, "error": "Введи номер телефона."}), 400
+    if enabled and method == "totp" and not ADMIN_2FA.get(username, {}).get("totp_secret"):
+        return jsonify({"ok": False, "error": "Сначала настрой Google Authenticator."}), 400
 
-    ADMIN_2FA[username] = {"enabled": enabled, "method": method, "phone": phone}
+    existing = ADMIN_2FA.get(username, {})
+    ADMIN_2FA[username] = {
+        "enabled": enabled,
+        "method": method,
+        "phone": phone,
+        "totp_secret": existing.get("totp_secret", ""),
+    }
     save_admin_2fa()
     logger.info(f"2FA для {username}: enabled={enabled}, method={method}")
     return jsonify({"ok": True})
@@ -1403,6 +1448,66 @@ def admin_2fa_send_test():
     if not sent:
         return jsonify({"ok": False, "error": "Не удалось отправить тестовый код."}), 500
     return jsonify({"ok": True, "dest": dest})
+
+
+@app.route("/admin/api/2fa/totp/setup", methods=["GET"])
+def admin_totp_setup():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    secret = pyotp.random_base32()
+    TOTP_PENDING[username] = secret
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=username, issuer_name="Flux Admin")
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, "PNG")
+    qr_b64 = base64.b64encode(buf.getvalue()).decode()
+    return jsonify({"ok": True, "secret": secret, "qr": qr_b64})
+
+
+@app.route("/admin/api/2fa/totp/enable", methods=["POST"])
+def admin_totp_enable():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    code = data.get("code", "").strip()
+    secret = TOTP_PENDING.get(username)
+    if not secret:
+        return jsonify({"ok": False, "error": "Сначала получи QR-код."}), 400
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(code, valid_window=1):
+        return jsonify({"ok": False, "error": "Неверный код. Попробуй ещё раз."}), 401
+    TOTP_PENDING.pop(username, None)
+    existing = ADMIN_2FA.get(username, {})
+    ADMIN_2FA[username] = {
+        "enabled": existing.get("enabled", False),
+        "method": existing.get("method", "email"),
+        "phone": existing.get("phone", ""),
+        "totp_secret": secret,
+    }
+    save_admin_2fa()
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/2fa/totp/disable", methods=["POST"])
+def admin_totp_disable():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    TOTP_PENDING.pop(username, None)
+    existing = ADMIN_2FA.get(username, {})
+    existing["totp_secret"] = ""
+    if existing.get("method") == "totp":
+        existing["method"] = "email"
+        existing["enabled"] = False
+    ADMIN_2FA[username] = existing
+    save_admin_2fa()
+    return jsonify({"ok": True})
 
 
 @app.route("/admin/api/change-password", methods=["POST"])

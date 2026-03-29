@@ -24,7 +24,7 @@ Feature-rich Telegram AI chatbot with web admin panel. Built on Python/Flask wit
 - **Liquid Glass design**: backdrop-filter blur, rgba backgrounds, inset highlights
 - **SSE real-time updates**: `/admin/api/stream?token=...`
 - **Auth**: 2 hardcoded accounts (`sergey_defa`/`Ser123asd`, `Blackjack`/`Sergey`); SHA256 tokens per account
-- **2FA**: per-account two-factor auth via email or SMS (SMS.ru); 🔐 button in header/menu; 6-digit code, 5 min TTL
+- **2FA**: per-account two-factor auth via email, SMS (SMS.ru), or **Google Authenticator (TOTP)**; 🔐 button in header/menu; 6-digit code, 5 min TTL; TOTP: pyotp + qrcode QR setup in admin panel
 - **Change password**: 🔑 button in header / mobile menu; rotates token immediately
 - **Email recovery**: attach email per account; forgot link on login → reset email → /admin/reset?token=...
 - **Email prompt**: shown after login if no email linked (can dismiss with "Позже")

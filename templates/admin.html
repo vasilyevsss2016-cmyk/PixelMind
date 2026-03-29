@@ -118,6 +118,14 @@ body {
   border-radius:12px; color:var(--text); font-size:15px; outline:none; transition:border .2s; font-family:inherit;
 }
 .fa-phone-row input:focus { border-color:rgba(90,171,255,.5); }
+/* TOTP setup */
+.totp-qr-wrap { text-align:center; margin:16px 0 12px; }
+.totp-qr-wrap img { width:180px; height:180px; border-radius:12px; border:3px solid rgba(90,171,255,0.4); }
+.totp-secret-box { font-family:'SF Mono',monospace; font-size:13px; letter-spacing:2px; padding:10px 14px; background:rgba(255,255,255,0.07); border-radius:10px; color:var(--accent); margin-bottom:12px; word-break:break-all; cursor:pointer; border:1px solid rgba(255,255,255,0.1); transition:background .2s; }
+.totp-secret-box:hover { background:rgba(255,255,255,0.11); }
+.totp-status-ok { display:flex; align-items:center; gap:10px; padding:12px 14px; background:rgba(52,208,88,0.1); border:1px solid rgba(52,208,88,0.3); border-radius:12px; color:var(--success); font-size:14px; font-weight:500; margin:16px 0 8px; }
+.totp-verify-input { width:100%; padding:14px; text-align:center; background:rgba(255,255,255,0.07); border:2px solid rgba(90,171,255,0.35); border-radius:14px; color:var(--accent); font-size:26px; font-weight:700; letter-spacing:8px; outline:none; font-family:'SF Mono',monospace; margin:10px 0; }
+.totp-verify-input:focus { border-color:rgba(90,171,255,.7); }
 .fa-info-box { background:rgba(90,171,255,0.08); border:1px solid rgba(90,171,255,0.2); border-radius:12px; padding:12px; margin:12px 0; font-size:12px; color:var(--text2); line-height:1.5; }
 .fa-info-box strong { color:var(--accent); }
 
@@ -460,11 +468,12 @@ header {
         maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code"
         oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter')verify2FA()" />
     </div>
-    <div class="fa-timer">Код действителен <span id="fa-timer-val">5:00</span></div>
+    <div class="fa-timer" id="fa-timer-row">Код действителен <span id="fa-timer-val">5:00</span></div>
     <button class="login-box button" style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(90,171,255,0.9),rgba(59,130,246,0.9));backdrop-filter:blur(10px);border:1px solid rgba(90,171,255,0.4);box-shadow:0 4px 20px rgba(90,171,255,0.3),inset 0 1px 0 rgba(255,255,255,0.25);border-radius:14px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s" onclick="verify2FA()">Подтвердить</button>
     <div class="login-error" id="fa-error" style="display:none"></div>
     <button class="fa-back" id="fa-resend-btn" onclick="resend2FA()" style="margin-top:10px;color:var(--accent);opacity:.8">🔄 Отправить код ещё раз</button>
     <button class="fa-back" onclick="cancelFA()">← Вернуться к входу</button>
+    
   </div>
 </div>
 
@@ -718,12 +727,12 @@ header {
   <div class="modal">
     <div class="modal-handle"></div>
     <h3>🔐 Двухфакторная авторизация <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:7px;background:rgba(255,179,64,0.18);color:var(--warn);border:1px solid rgba(255,179,64,0.35);vertical-align:middle;letter-spacing:.3px">БЕТА</span></h3>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.5">Дополнительная защита входа в панель. После ввода пароля на email придёт одноразовый код.</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.5">Дополнительная защита входа в панель.</div>
 
     <div class="fa-toggle-row">
       <div>
         <div class="fa-toggle-label">Включить 2FA</div>
-        <div class="fa-toggle-sub">При входе потребуется код</div>
+        <div class="fa-toggle-sub">При входе потребуется второй фактор</div>
       </div>
       <label class="toggle-switch">
         <input type="checkbox" id="fa-enabled-toggle" onchange="on2FAToggle()" />
@@ -732,12 +741,39 @@ header {
     </div>
 
     <div id="fa-settings-body" style="display:none">
-      <div id="fa-email-info" class="fa-info-box" style="margin-top:16px">
-        Код будет отправлен на: <strong id="fa-email-display" style="color:var(--accent)">…</strong>
+      <div class="fa-method-row" style="margin-top:16px">
+        <button class="fa-method-btn active" id="fa-m-email" onclick="setFA2Method('email')">📧 Email</button>
+        <button class="fa-method-btn" id="fa-m-totp" onclick="setFA2Method('totp')">📱 Google Auth</button>
       </div>
 
-      <div style="margin-top:12px">
-        <button class="btn btn-ghost" onclick="send2FATest()" style="width:100%;justify-content:center;margin-bottom:8px">📨 Отправить тестовый код</button>
+      <!-- Email section -->
+      <div id="fa-section-email">
+        <div class="fa-info-box">
+          Код будет отправлен на: <strong id="fa-email-display" style="color:var(--accent)">…</strong>
+        </div>
+        <button class="btn btn-ghost" onclick="send2FATest()" style="width:100%;justify-content:center">📨 Отправить тестовый код</button>
+      </div>
+
+      <!-- Google Authenticator section -->
+      <div id="fa-section-totp" style="display:none">
+        <!-- Status: not configured -->
+        <div id="totp-setup-area">
+          <div style="font-size:13px;color:var(--text2);margin:12px 0 4px;line-height:1.5">Отсканируй QR-код в приложении <b>Google Authenticator</b> или введи ключ вручную.</div>
+          <button class="btn btn-ghost" id="totp-gen-btn" onclick="totpGenQR()" style="width:100%;justify-content:center;margin-bottom:12px">🔑 Получить QR-код</button>
+          <div id="totp-qr-block" style="display:none">
+            <div class="totp-qr-wrap"><img id="totp-qr-img" src="" alt="QR" /></div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Или введи ключ вручную:</div>
+            <div class="totp-secret-box" id="totp-secret-box" onclick="totpCopySecret()" title="Нажми чтобы скопировать">…</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Введи 6-значный код из приложения для подтверждения:</div>
+            <input class="totp-verify-input" type="text" id="totp-verify-code" maxlength="6" inputmode="numeric" placeholder="000000" oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter')totpConfirmEnable()" />
+            <button class="btn btn-blue" onclick="totpConfirmEnable()" style="width:100%;justify-content:center;margin-top:6px">✓ Подтвердить и сохранить</button>
+          </div>
+        </div>
+        <!-- Status: configured -->
+        <div id="totp-active-area" style="display:none">
+          <div class="totp-status-ok">✅ Google Authenticator подключён</div>
+          <button class="btn btn-red" onclick="totpDisable()" style="width:100%;justify-content:center;margin-top:8px">🗑 Отвязать приложение</button>
+        </div>
       </div>
     </div>
 
@@ -832,15 +868,20 @@ async function login() {
   } else if (data.ok && data.require_2fa) {
     faToken = data.fa_token;
     faExpires = Date.now() + 300000;
+    const method = data.method || 'email';
     const dest = data.dest || '';
-    document.getElementById('fa-desc').innerHTML =
-      `Код отправлен на email<br><strong>${dest}</strong><br>Введи 6-значный код ниже.`;
+    const isTOTP = method === 'totp';
+    document.getElementById('fa-desc').innerHTML = isTOTP
+      ? '📱 Открой <strong>Google Authenticator</strong> и введи 6-значный код.'
+      : `Код отправлен на email<br><strong>${dest}</strong><br>Введи 6-значный код ниже.`;
+    document.getElementById('fa-timer-row').style.display = isTOTP ? 'none' : '';
+    document.getElementById('fa-resend-btn').style.display = isTOTP ? 'none' : '';
     document.getElementById('fa-code-input').value = '';
     document.getElementById('fa-error').style.display = 'none';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('fa-screen').style.display = 'flex';
     if (btn) { btn.disabled = false; btn.textContent = 'Войти'; }
-    startFATimer();
+    if (!isTOTP) startFATimer();
     setTimeout(() => document.getElementById('fa-code-input').focus(), 100);
   } else {
     errEl.style.display='block';
@@ -1324,25 +1365,38 @@ function closeChangePwd() {
 document.getElementById('changepwd-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeChangePwd(); });
 
 /* ===== 2FA SETTINGS ===== */
+let _fa2Method = 'email';
+function setFA2Method(m) {
+  _fa2Method = m;
+  document.getElementById('fa-m-email').classList.toggle('active', m==='email');
+  document.getElementById('fa-m-totp').classList.toggle('active', m==='totp');
+  document.getElementById('fa-section-email').style.display = m==='email' ? '' : 'none';
+  document.getElementById('fa-section-totp').style.display = m==='totp' ? '' : 'none';
+}
 async function open2FASettings() {
+  _fa2Method = 'email';
   document.getElementById('fa-settings-msg').textContent = '';
+  document.getElementById('totp-qr-block').style.display = 'none';
+  document.getElementById('totp-gen-btn').style.display = '';
   document.getElementById('fa-settings-modal').classList.add('open');
   try {
     const [d2fa, dEmail] = await Promise.all([api('/2fa/settings'), api('/has-email')]);
     if (d2fa.ok) {
-      document.getElementById('fa-enabled-toggle').checked = !!d2fa.settings.enabled;
-      document.getElementById('fa-settings-body').style.display = d2fa.settings.enabled ? '' : 'none';
+      const s = d2fa.settings;
+      document.getElementById('fa-enabled-toggle').checked = !!s.enabled;
+      document.getElementById('fa-settings-body').style.display = s.enabled ? '' : 'none';
+      const m = s.method || 'email';
+      _fa2Method = m;
+      setFA2Method(m);
+      const hasTOTP = !!s.totp_secret;
+      document.getElementById('totp-setup-area').style.display = hasTOTP ? 'none' : '';
+      document.getElementById('totp-active-area').style.display = hasTOTP ? '' : 'none';
     }
     if (dEmail.ok) {
       const email = dEmail.email || '';
       const emailEl = document.getElementById('fa-email-display');
-      if (email) {
-        emailEl.textContent = email;
-        emailEl.style.color = 'var(--accent)';
-      } else {
-        emailEl.textContent = 'не задан — укажи email в профиле';
-        emailEl.style.color = 'var(--danger)';
-      }
+      emailEl.textContent = email || 'не задан — укажи email в профиле';
+      emailEl.style.color = email ? 'var(--accent)' : 'var(--danger)';
     }
   } catch(e) {}
 }
@@ -1359,7 +1413,7 @@ async function save2FASettings() {
   const msgEl = document.getElementById('fa-settings-msg');
   msgEl.style.color = 'var(--text2)';
   msgEl.textContent = 'Сохраняю...';
-  const d = await api('/2fa/settings', 'POST', { enabled, method: 'email', phone: '' });
+  const d = await api('/2fa/settings', 'POST', { enabled, method: _fa2Method, phone: '' });
   if (d.ok) {
     msgEl.style.color = 'var(--accent2)';
     msgEl.textContent = '✓ Настройки сохранены';
@@ -1369,6 +1423,60 @@ async function save2FASettings() {
     msgEl.textContent = d.error || 'Ошибка сохранения';
   }
 }
+
+let _totpSecret = '';
+async function totpGenQR() {
+  const msgEl = document.getElementById('fa-settings-msg');
+  msgEl.textContent = 'Генерирую QR-код...'; msgEl.style.color='var(--text2)';
+  const d = await api('/2fa/totp/setup');
+  if (d.ok) {
+    _totpSecret = d.secret;
+    document.getElementById('totp-qr-img').src = 'data:image/png;base64,' + d.qr;
+    document.getElementById('totp-secret-box').textContent = d.secret;
+    document.getElementById('totp-verify-code').value = '';
+    document.getElementById('totp-qr-block').style.display = '';
+    document.getElementById('totp-gen-btn').style.display = 'none';
+    msgEl.textContent = '';
+  } else {
+    msgEl.textContent = d.error || 'Ошибка'; msgEl.style.color='var(--danger)';
+  }
+}
+function totpCopySecret() {
+  navigator.clipboard.writeText(_totpSecret).then(()=>toast('Ключ скопирован','success'));
+}
+async function totpConfirmEnable() {
+  const code = document.getElementById('totp-verify-code').value.trim();
+  const msgEl = document.getElementById('fa-settings-msg');
+  if (code.length !== 6) { msgEl.textContent='Введи 6-значный код'; msgEl.style.color='var(--danger)'; return; }
+  msgEl.textContent='Проверяю...'; msgEl.style.color='var(--text2)';
+  const d = await api('/2fa/totp/enable', 'POST', { code });
+  if (d.ok) {
+    document.getElementById('totp-setup-area').style.display = 'none';
+    document.getElementById('totp-active-area').style.display = '';
+    msgEl.textContent = '✅ Google Authenticator подключён'; msgEl.style.color='var(--accent2)';
+    _totpSecret = '';
+  } else {
+    msgEl.textContent = d.error || 'Ошибка'; msgEl.style.color='var(--danger)';
+  }
+}
+async function totpDisable() {
+  const msgEl = document.getElementById('fa-settings-msg');
+  msgEl.textContent='Отвязываю...'; msgEl.style.color='var(--text2)';
+  const d = await api('/2fa/totp/disable', 'POST', {});
+  if (d.ok) {
+    document.getElementById('totp-setup-area').style.display = '';
+    document.getElementById('totp-active-area').style.display = 'none';
+    document.getElementById('totp-qr-block').style.display = 'none';
+    document.getElementById('totp-gen-btn').style.display = '';
+    setFA2Method('email');
+    document.getElementById('fa-enabled-toggle').checked = false;
+    document.getElementById('fa-settings-body').style.display = 'none';
+    msgEl.textContent = '✓ Отвязано. 2FA отключена.'; msgEl.style.color='var(--accent2)';
+  } else {
+    msgEl.textContent = d.error || 'Ошибка'; msgEl.style.color='var(--danger)';
+  }
+}
+
 async function send2FATest() {
   const msgEl = document.getElementById('fa-settings-msg');
   msgEl.style.color = 'var(--text2)';
