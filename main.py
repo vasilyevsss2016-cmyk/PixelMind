@@ -820,8 +820,11 @@ def api_bot_start():
 
 def set_webhook():
     webhook_url = f"https://{REPLIT_URL}/webhook"
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook?url={webhook_url}"
-    r = http_requests.get(url, timeout=10)
+    r = http_requests.post(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/setWebhook",
+        json={"url": webhook_url, "drop_pending_updates": True},
+        timeout=10
+    )
     logger.info(f"Webhook: {r.json()}")
 
 
