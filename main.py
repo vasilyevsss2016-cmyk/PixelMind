@@ -6,6 +6,7 @@ import os
 import re
 import io
 import json
+import uuid as uuid_module
 import base64
 import hashlib
 import logging
@@ -2291,6 +2292,139 @@ def web_me():
         return jsonify({"ok": False}), 401
     return jsonify({"ok": True, "username": u["username"], "email": u["email"]})
 
+def _ensure_chats(u: dict) -> dict:
+    """Гарантирует наличие структуры мульти-чатов, мигрирует старый chat_history."""
+    if "chats" not in u or not u["chats"]:
+        old = u.pop("chat_history", [])
+        cid = str(uuid_module.uuid4())
+        u["chats"] = {
+            cid: {
+                "name": "Чат 1",
+                "history": old,
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat(),
+            }
+        }
+        u["active_chat_id"] = cid
+    else:
+        # Убедимся что active_chat_id валиден
+        if u.get("active_chat_id") not in u["chats"]:
+            u["active_chat_id"] = next(iter(u["chats"]))
+    return u["chats"]
+
+def _active_chat(u: dict) -> tuple:
+    """Возвращает (chat_id, chat_dict) активного чата."""
+    _ensure_chats(u)
+    cid = u["active_chat_id"]
+    return cid, u["chats"][cid]
+
+@app.route("/app/chats")
+def web_get_chats():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    u = users.get(uid, {})
+    _ensure_chats(u)
+    lst = []
+    for cid, c in u["chats"].items():
+        h = c.get("history", [])
+        last = h[-1]["content"][:60] if h else ""
+        lst.append({
+            "id": cid,
+            "name": c.get("name", "Чат"),
+            "last": last,
+            "updated_at": c.get("updated_at", ""),
+            "msg_count": len(h),
+        })
+    lst.sort(key=lambda x: x["updated_at"], reverse=True)
+    return jsonify({"ok": True, "chats": lst, "active_id": u["active_chat_id"]})
+
+@app.route("/app/chats/new", methods=["POST"])
+def web_new_chat():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    name = data.get("name", "").strip() or f"Чат {datetime.now().strftime('%d.%m %H:%M')}"
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False}), 401
+    _ensure_chats(u)
+    cid = str(uuid_module.uuid4())
+    u["chats"][cid] = {
+        "name": name,
+        "history": [],
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+    }
+    u["active_chat_id"] = cid
+    save_web_users(users)
+    return jsonify({"ok": True, "chat_id": cid, "name": name})
+
+@app.route("/app/chats/switch", methods=["POST"])
+def web_switch_chat():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    cid = data.get("chat_id", "")
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False}), 401
+    _ensure_chats(u)
+    if cid not in u["chats"]:
+        return jsonify({"ok": False, "error": "Чат не найден"}), 404
+    u["active_chat_id"] = cid
+    save_web_users(users)
+    chat = u["chats"][cid]
+    return jsonify({"ok": True, "history": chat.get("history", []), "name": chat.get("name", "Чат")})
+
+@app.route("/app/chats/delete", methods=["POST"])
+def web_delete_chat():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    cid = data.get("chat_id", "")
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False}), 401
+    _ensure_chats(u)
+    if cid not in u["chats"]:
+        return jsonify({"ok": False, "error": "Чат не найден"}), 404
+    if len(u["chats"]) <= 1:
+        return jsonify({"ok": False, "error": "Нельзя удалить последний чат"}), 400
+    del u["chats"][cid]
+    if u["active_chat_id"] == cid:
+        u["active_chat_id"] = next(iter(u["chats"]))
+    save_web_users(users)
+    return jsonify({"ok": True, "active_id": u["active_chat_id"]})
+
+@app.route("/app/chats/rename", methods=["POST"])
+def web_rename_chat():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    cid = data.get("chat_id", "")
+    name = data.get("name", "").strip()
+    if not name:
+        return jsonify({"ok": False, "error": "Имя не может быть пустым"}), 400
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False}), 401
+    _ensure_chats(u)
+    if cid not in u["chats"]:
+        return jsonify({"ok": False, "error": "Чат не найден"}), 404
+    u["chats"][cid]["name"] = name
+    save_web_users(users)
+    return jsonify({"ok": True})
+
 @app.route("/app/history")
 def web_history():
     uid = get_web_user_id()
@@ -2298,7 +2432,9 @@ def web_history():
         return jsonify({"ok": False}), 401
     users = load_web_users()
     u = users.get(uid, {})
-    return jsonify({"ok": True, "history": u.get("chat_history", [])})
+    _ensure_chats(u)
+    _, chat = _active_chat(u)
+    return jsonify({"ok": True, "history": chat.get("history", []), "active_id": u["active_chat_id"]})
 
 WEB_PAYMENTS_FILE = "web_payments.json"
 
@@ -2337,7 +2473,10 @@ def web_chat_send():
     credits = u.get("credits", 0)
     if credits == 0:
         return jsonify({"ok": False, "no_credits": True, "error": "Кредиты закончились"}), 402
-    history = u.get("chat_history", [])
+    # Multi-chat: get active chat history
+    _ensure_chats(u)
+    cid, chat = _active_chat(u)
+    history = chat.get("history", [])
     messages = [{"role": "system", "content": f"Ты — Flux, дружелюбный AI-ассистент. Отвечай на русском языке. Текущая дата: {datetime.now().strftime('%d.%m.%Y')}."}]
     for msg in history[-20:]:
         messages.append({"role": msg["role"], "content": msg["content"]})
@@ -2361,10 +2500,14 @@ def web_chat_send():
     history.append({"role": "assistant", "content": reply, "ts": datetime.now().isoformat()})
     if len(history) > 200:
         history = history[-200:]
-    u["chat_history"] = history
+    chat["history"] = history
+    chat["updated_at"] = datetime.now().isoformat()
+    # Auto-name chat from first user message
+    if len(history) == 2 and chat.get("name", "").startswith("Чат "):
+        chat["name"] = text[:32] + ("…" if len(text) > 32 else "")
     save_web_users(users)
     remaining = u["credits"]
-    return jsonify({"ok": True, "reply": reply, "credits": remaining})
+    return jsonify({"ok": True, "reply": reply, "credits": remaining, "chat_name": chat["name"]})
 
 @app.route("/app/credits")
 def web_get_credits():
@@ -2373,12 +2516,14 @@ def web_get_credits():
         return jsonify({"ok": False}), 401
     users = load_web_users()
     u = users.get(uid, {})
+    _ensure_chats(u)
+    _, chat = _active_chat(u)
     return jsonify({
         "ok": True,
         "credits": u.get("credits", 0),
         "plan": u.get("plan", "free"),
         "plan_expires": u.get("plan_expires"),
-        "msg_count": len(u.get("chat_history", []))
+        "msg_count": len(chat.get("history", []))
     })
 
 @app.route("/app/request-payment", methods=["POST"])
@@ -2589,9 +2734,11 @@ def admin_api_web_chat_get(uid):
     u = users.get(uid)
     if not u:
         return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
+    _ensure_chats(u)
+    _, chat = _active_chat(u)
     return jsonify({
         "ok": True,
-        "history": u.get("chat_history", []),
+        "history": chat.get("history", []),
         "username": u.get("username", ""),
         "credits": u.get("credits", 0),
         "plan": u.get("plan", "free"),
@@ -2609,14 +2756,17 @@ def admin_api_web_chat_send(uid):
     u = users.get(uid)
     if not u:
         return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
-    history = u.get("chat_history", [])
+    _ensure_chats(u)
+    _, chat = _active_chat(u)
+    history = chat.get("history", [])
     history.append({
         "role": "assistant",
         "content": text,
         "ts": datetime.now().isoformat(),
         "from_admin": True
     })
-    u["chat_history"] = history
+    chat["history"] = history
+    chat["updated_at"] = datetime.now().isoformat()
     save_web_users(users)
     return jsonify({"ok": True})
 
@@ -2627,7 +2777,11 @@ def admin_api_web_chat_clear(uid):
     users = load_web_users()
     if uid not in users:
         return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
-    users[uid]["chat_history"] = []
+    u = users[uid]
+    _ensure_chats(u)
+    _, chat = _active_chat(u)
+    chat["history"] = []
+    chat["updated_at"] = datetime.now().isoformat()
     save_web_users(users)
     return jsonify({"ok": True})
 
@@ -2638,7 +2792,11 @@ def web_clear_history():
         return jsonify({"ok": False}), 401
     users = load_web_users()
     if uid in users:
-        users[uid]["chat_history"] = []
+        u = users[uid]
+        _ensure_chats(u)
+        _, chat = _active_chat(u)
+        chat["history"] = []
+        chat["updated_at"] = datetime.now().isoformat()
         save_web_users(users)
     return jsonify({"ok": True})
 
