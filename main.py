@@ -879,6 +879,25 @@ def api_chat(chat_id):
     })
 
 
+@app.route("/admin/api/chat/<int:chat_id>/message/<int:msg_idx>", methods=["DELETE"])
+def api_delete_message(chat_id, msg_idx):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    log = full_chat_log.get(chat_id, [])
+    if 0 <= msg_idx < len(log):
+        log.pop(msg_idx)
+        return jsonify({"ok": True})
+    return jsonify({"ok": False, "error": "index out of range"}), 400
+
+
+@app.route("/admin/api/chat/<int:chat_id>/clear", methods=["DELETE"])
+def api_clear_chat(chat_id):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    full_chat_log[chat_id] = []
+    return jsonify({"ok": True})
+
+
 @app.route("/admin/api/send", methods=["POST"])
 def api_send():
     if not check_admin_token():
