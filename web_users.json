@@ -16,9 +16,9 @@
         "ts": "2026-03-29T14:54:35.720564"
       }
     ],
-    "email_verified": false,
-    "credits": 55,
-    "plan": "free",
+    "email_verified": true,
+    "credits": -1,
+    "plan": "admin",
     "plan_expires": null
   },
   "b0fe3a5b3ad1c34a0a680eb6cfbd8f37": {
