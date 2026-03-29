@@ -310,7 +310,7 @@ def keep_alive_loop():
     time.sleep(30)
     while True:
         try:
-            http_requests.get(f"https://{REPLIT_URL}/", timeout=10)
+            http_requests.get(f"https://{REPLIT_URL}/", timeout=10, verify=False)
             logger.info("Keep-alive ping отправлен")
         except Exception as e:
             logger.warning(f"Keep-alive ошибка: {e}")
@@ -524,6 +524,29 @@ def webhook():
         logger.info(f"Команда от @{username}: {text}")
         log_message(chat_id, "user", text)
         handle_command(chat_id, text, message_id, username)
+        return "ok"
+
+    # Автоматическое озвучивание по слову "озвучь"
+    if text and re.match(r"(?i)^(озвучь|озвучи)\s+", text):
+        tts_text = re.sub(r"(?i)^(озвучь|озвучи)\s+", "", text).strip()
+        log_message(chat_id, "user", text)
+        if not tts_text:
+            send_message(chat_id, "Напиши что озвучить, например: Озвучь привет как дела")
+            return "ok"
+        if not GTTS_AVAILABLE:
+            send_message(chat_id, "Озвучка временно недоступна 😔")
+            return "ok"
+        send_chat_action(chat_id, "record_voice")
+        try:
+            tts = gTTS(text=tts_text, lang="ru")
+            buf = io.BytesIO()
+            tts.write_to_fp(buf)
+            buf.seek(0)
+            send_voice(chat_id, buf.read())
+            log_message(chat_id, "assistant", f"🔊 [Озвучено]: {tts_text}")
+        except Exception as e:
+            logger.error(f"TTS ошибка: {e}")
+            send_message(chat_id, "Не удалось озвучить текст 😔")
         return "ok"
 
     if text and re.match(r"(?i)создай\s+файл\s+\S+", text):
