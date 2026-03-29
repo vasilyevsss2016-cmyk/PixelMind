@@ -700,6 +700,7 @@ header {
           <div class="wc-sub" id="wc-sub">—</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost action-chip" onclick="openPlanModal()" title="Сменить план">🎯</button>
           <button class="btn btn-ghost action-chip" onclick="openWcCreditsModal()" title="Кредиты">⚡</button>
           <button class="btn btn-red action-chip" onclick="clearWcChat()" title="Очистить историю">🗑</button>
         </div>
@@ -752,6 +753,33 @@ header {
           <button class="btn btn-ghost" style="flex:1" onclick="closeCreditsModal()">Отмена</button>
         </div>
         <div id="credits-modal-err" style="color:var(--danger);font-size:13px;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
+    <!-- Plan change modal -->
+    <div id="plan-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
+      <div style="background:var(--glass-bg,#1a2540);border:1px solid var(--glass-border);border-radius:18px;padding:28px;width:340px;max-width:92vw;backdrop-filter:blur(20px)">
+        <div style="font-size:18px;font-weight:700;margin-bottom:4px">🎯 Сменить план</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:18px" id="plan-modal-sub">—</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+          <button class="plan-opt-btn" id="po-free"  onclick="selectPlanOpt('free')"  style="border-radius:12px;padding:14px 10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center">
+            🆓<br><span style="font-size:12px;color:var(--text2);font-weight:400">Бесплатный</span>
+          </button>
+          <button class="plan-opt-btn" id="po-core" onclick="selectPlanOpt('core')"  style="border-radius:12px;padding:14px 10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center">
+            🔵 Core<br><span style="font-size:12px;color:var(--text2);font-weight:400">1 год · 1М кр.</span>
+          </button>
+          <button class="plan-opt-btn" id="po-pro"  onclick="selectPlanOpt('pro')"  style="border-radius:12px;padding:14px 10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center">
+            🟣 Pro<br><span style="font-size:12px;color:var(--text2);font-weight:400">1 год · 10М кр.</span>
+          </button>
+          <button class="plan-opt-btn" id="po-admin" onclick="selectPlanOpt('admin')" style="border-radius:12px;padding:14px 10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center">
+            ⚡ Admin<br><span style="font-size:12px;color:var(--text2);font-weight:400">Безлимит</span>
+          </button>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn" id="plan-modal-confirm" style="flex:1;background:var(--accent);color:#fff" onclick="confirmPlanChange()">Применить</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="closePlanModal()">Отмена</button>
+        </div>
+        <div id="plan-modal-err" style="color:var(--danger);font-size:13px;margin-top:8px;display:none"></div>
       </div>
     </div>
 
@@ -1613,6 +1641,81 @@ function openWcCreditsModal() {
   const u = webUsersCache.find(x => x.uid === currentWcUid) || {};
   openCreditsModal(currentWcUid, u.username || currentWcUid, 'add');
 }
+
+/* ===== PLAN MODAL ===== */
+let selectedPlanOpt = null;
+
+function openPlanModal() {
+  if (!currentWcUid) return;
+  const u = webUsersCache.find(x => x.uid === currentWcUid) || {};
+  selectedPlanOpt = u.plan || 'free';
+  document.getElementById('plan-modal-sub').textContent = `Пользователь: ${u.username || currentWcUid}`;
+  document.getElementById('plan-modal-err').style.display = 'none';
+  _highlightPlanOpt(selectedPlanOpt);
+  const m = document.getElementById('plan-modal');
+  m.style.display = 'flex';
+}
+
+function closePlanModal() {
+  document.getElementById('plan-modal').style.display = 'none';
+  selectedPlanOpt = null;
+}
+
+function selectPlanOpt(plan) {
+  selectedPlanOpt = plan;
+  _highlightPlanOpt(plan);
+}
+
+function _highlightPlanOpt(plan) {
+  ['free','core','pro','admin'].forEach(p => {
+    const btn = document.getElementById('po-' + p);
+    if (!btn) return;
+    const isActive = p === plan;
+    btn.style.background = isActive ? 'rgba(90,171,255,0.2)' : 'rgba(255,255,255,.05)';
+    btn.style.borderColor = isActive ? 'rgba(90,171,255,0.6)' : 'var(--glass-border)';
+    btn.style.color = isActive ? 'var(--accent)' : 'var(--text)';
+  });
+}
+
+async function confirmPlanChange() {
+  if (!currentWcUid || !selectedPlanOpt) return;
+  const errEl = document.getElementById('plan-modal-err');
+  errEl.style.display = 'none';
+  const btn = document.getElementById('plan-modal-confirm');
+  btn.disabled = true; btn.textContent = 'Применяем…';
+  const d = await api('/change-plan', 'POST', { uid: currentWcUid, plan: selectedPlanOpt });
+  btn.disabled = false; btn.textContent = 'Применить';
+  if (d.ok) {
+    const planLabel = { free:'Бесплатный', core:'Core', pro:'Pro', admin:'Admin' }[selectedPlanOpt] || selectedPlanOpt;
+    toast(`✅ План изменён на ${planLabel}`, 'success');
+    // Обновляем кеш
+    const cached = webUsersCache.find(x => x.uid === currentWcUid);
+    if (cached) {
+      cached.plan = d.plan;
+      cached.credits = d.credits;
+    }
+    // Обновляем подзаголовок WC-панели
+    if (cached) {
+      const cr = cached.credits === -1 ? '∞' : cached.credits;
+      const subEl = document.getElementById('wc-sub');
+      if (subEl) subEl.textContent =
+        `${cached.email || 'без email'} · ${cached.plan || 'free'} · ⚡ ${cr} кр.`;
+    }
+    renderWebUserList();
+    loadWebUsersCredits();
+    closePlanModal();
+  } else {
+    errEl.textContent = d.error || 'Ошибка';
+    errEl.style.display = 'block';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('plan-modal').style.display === 'flex') closePlanModal();
+});
+document.getElementById('plan-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePlanModal();
+});
 
 function closeWcPanel() {
   selectedWebUid = null;

@@ -2557,6 +2557,30 @@ def admin_api_reject_payment(pid):
         return jsonify({"ok": False}), 401
     return _do_reject_payment(pid)
 
+@app.route("/admin/api/change-plan", methods=["POST"])
+def admin_api_change_plan():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    uid = data.get("uid", "").strip()
+    plan = data.get("plan", "").strip()
+    if not uid or plan not in ("free", "core", "pro", "admin"):
+        return jsonify({"ok": False, "error": "Неверные параметры"}), 400
+    users = load_web_users()
+    if uid not in users:
+        return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
+    u = users[uid]
+    u["plan"] = plan
+    if plan == "admin":
+        u["credits"] = -1
+        u["plan_expires"] = None
+    elif plan == "free":
+        u["plan_expires"] = None
+    elif plan in ("core", "pro"):
+        u["plan_expires"] = (datetime.now() + timedelta(days=365)).isoformat()
+    save_web_users(users)
+    return jsonify({"ok": True, "plan": plan, "credits": u.get("credits", 0)})
+
 @app.route("/admin/api/web-chat/<uid>")
 def admin_api_web_chat_get(uid):
     if not check_admin_token():
