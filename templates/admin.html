@@ -315,13 +315,13 @@ header {
 .confirm-actions .btn { flex:1; justify-content:center; padding:12px; font-size:14px; }
 
 /* ===== TOAST ===== */
-.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); padding:11px 22px; border-radius:12px; font-size:14px; font-weight:500; z-index:600; animation:slideUp .25s ease; white-space:nowrap; pointer-events:none; backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15); }
+.toast { position:fixed; bottom:80px; right:20px; left:auto; transform:none; padding:11px 22px; border-radius:12px; font-size:14px; font-weight:500; z-index:600; animation:slideUp .25s ease; white-space:nowrap; pointer-events:none; backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15); }
 .toast.hiding { animation:slideDown .35s ease forwards; }
-@keyframes slideDown { from{opacity:1;transform:translateX(-50%) translateY(0)} to{opacity:0;transform:translateX(-50%) translateY(16px)} }
+@keyframes slideDown { from{opacity:1;transform:translateY(0)} to{opacity:0;transform:translateY(16px)} }
 .toast.success { background:rgba(52,208,88,0.85); color:#fff; box-shadow:0 4px 20px rgba(52,208,88,.4); }
 .toast.error { background:rgba(255,69,58,0.85); color:#fff; box-shadow:0 4px 20px rgba(255,69,58,.4); }
 .toast.warn { background:rgba(255,179,64,0.85); color:#fff; box-shadow:0 4px 20px rgba(255,179,64,.4); }
-@keyframes slideUp { from{transform:translateX(-50%) translateY(10px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1} }
+@keyframes slideUp { from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1} }
 
 /* ===== BOTTOM NAV ===== */
 #bottom-nav { display:none; }
@@ -366,7 +366,7 @@ header {
   .nav-divider { width:1px; height:36px; background:rgba(255,255,255,0.12); flex-shrink:0; margin:0 2px; }
   .stat { padding:4px 10px; font-size:11px; }
   .stat-val { font-size:13px; }
-  .toast { bottom:calc(var(--bottom-nav-h) + 12px + env(safe-area-inset-bottom)); }
+  .toast { bottom:calc(var(--bottom-nav-h) + 12px + env(safe-area-inset-bottom)); right:16px; }
   .profile-content { padding:16px; }
   .profile-card { padding:20px; }
 }
