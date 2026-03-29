@@ -56,6 +56,69 @@ body {
 .login-box button:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(90,171,255,0.4); }
 .login-error { color:var(--danger); font-size:13px; margin-top:12px; display:none; }
 
+/* ===== 2FA CODE SCREEN ===== */
+#fa-screen { display:none; align-items:center; justify-content:center; height:100vh; padding:20px; }
+.fa-box {
+  width:100%; max-width:380px; padding:44px 36px; border-radius:28px; text-align:center;
+  background:rgba(15,24,48,0.75);
+  backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%);
+  border:1px solid rgba(255,255,255,0.14);
+  box-shadow:0 24px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.fa-box h2 { font-size:22px; font-weight:700; color:var(--accent); margin-bottom:6px; }
+.fa-desc { color:var(--text2); font-size:13px; margin-bottom:28px; line-height:1.5; }
+.fa-code-wrap { position:relative; margin-bottom:14px; }
+.fa-code-input {
+  width:100%; padding:18px; text-align:center;
+  background:rgba(255,255,255,0.07); border:2px solid rgba(90,171,255,0.35);
+  border-radius:16px; color:var(--accent); font-size:30px; font-weight:700;
+  letter-spacing:10px; outline:none; font-family:'SF Mono',monospace;
+  font-variant-numeric:tabular-nums; transition:border .2s,background .2s;
+}
+.fa-code-input:focus { border-color:rgba(90,171,255,.7); background:rgba(255,255,255,0.11); }
+.fa-timer { font-size:12px; color:var(--text3); margin:8px 0 18px; }
+.fa-timer span { color:var(--warn); font-weight:600; }
+.fa-back { background:none; border:none; color:var(--text3); font-size:13px; cursor:pointer; margin-top:14px; transition:color .2s; }
+.fa-back:hover { color:var(--text); }
+
+/* ===== 2FA SETTINGS MODAL ===== */
+.fa-toggle-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.07); }
+.fa-toggle-label { font-size:15px; font-weight:500; }
+.fa-toggle-sub { font-size:12px; color:var(--text3); margin-top:2px; }
+.toggle-switch { position:relative; width:50px; height:28px; flex-shrink:0; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider {
+  position:absolute; inset:0; background:rgba(255,255,255,0.12);
+  border-radius:28px; cursor:pointer; transition:background .2s;
+  border:1px solid rgba(255,255,255,0.15);
+}
+.toggle-slider:before {
+  content:''; position:absolute; width:22px; height:22px; background:#fff;
+  border-radius:50%; left:3px; top:2px; transition:transform .2s;
+  box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
+.toggle-switch input:checked + .toggle-slider { background:var(--accent); }
+.toggle-switch input:checked + .toggle-slider:before { transform:translateX(22px); }
+.fa-method-row { display:flex; gap:10px; margin:16px 0; }
+.fa-method-btn {
+  flex:1; padding:11px; border-radius:12px; cursor:pointer; font-size:14px; font-weight:500;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  color:var(--text2); transition:all .2s;
+}
+.fa-method-btn.active {
+  background:rgba(90,171,255,0.15); border-color:rgba(90,171,255,0.5);
+  color:var(--accent);
+}
+.fa-phone-row { display:flex; gap:8px; margin-bottom:4px; }
+.fa-phone-row input {
+  flex:1; padding:12px 14px;
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
+  border-radius:12px; color:var(--text); font-size:15px; outline:none; transition:border .2s; font-family:inherit;
+}
+.fa-phone-row input:focus { border-color:rgba(90,171,255,.5); }
+.fa-info-box { background:rgba(90,171,255,0.08); border:1px solid rgba(90,171,255,0.2); border-radius:12px; padding:12px; margin:12px 0; font-size:12px; color:var(--text2); line-height:1.5; }
+.fa-info-box strong { color:var(--accent); }
+
 /* ===== APP ===== */
 #app { display:none; flex-direction:column; height:100vh; height:100dvh; }
 
@@ -382,6 +445,24 @@ header {
   </div>
 </div>
 
+<!-- 2FA code entry screen -->
+<div id="fa-screen">
+  <div class="fa-box">
+    <div class="login-logo">🔐</div>
+    <h2>Двухфакторная авторизация</h2>
+    <p class="fa-desc" id="fa-desc">Код отправлен на твой email.<br>Введи 6-значный код ниже.</p>
+    <div class="fa-code-wrap">
+      <input class="fa-code-input" type="text" id="fa-code-input" placeholder="000000"
+        maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code"
+        oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter')verify2FA()" />
+    </div>
+    <div class="fa-timer">Код действителен <span id="fa-timer-val">5:00</span></div>
+    <button class="login-box button" style="width:100%;padding:14px;background:linear-gradient(135deg,rgba(90,171,255,0.9),rgba(59,130,246,0.9));backdrop-filter:blur(10px);border:1px solid rgba(90,171,255,0.4);box-shadow:0 4px 20px rgba(90,171,255,0.3),inset 0 1px 0 rgba(255,255,255,0.25);border-radius:14px;color:#fff;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s" onclick="verify2FA()">Подтвердить</button>
+    <div class="login-error" id="fa-error" style="display:none"></div>
+    <button class="fa-back" onclick="cancelFA()">← Вернуться к входу</button>
+  </div>
+</div>
+
 <div id="app">
   <header>
     <div class="logo"><span class="sse-dot" id="sse-dot"></span>⚡ Flux Admin</div>
@@ -393,6 +474,7 @@ header {
         <button class="btn btn-warn" onclick="openBroadcast()">📢 Рассылка</button>
         <button class="btn btn-ghost" onclick="manualRefresh()">🔄 Обновить</button>
         <button class="btn btn-ghost" onclick="openChangePwd()">🔑 Пароль</button>
+        <button class="btn btn-ghost" onclick="open2FASettings()">🔐 2FA</button>
         <button class="btn btn-ghost" id="add-account-btn" onclick="openAddAccount()" style="display:none">➕ Аккаунт</button>
         <button class="btn btn-ghost" onclick="logout()">Выйти</button>
       </div>
@@ -402,6 +484,7 @@ header {
 
   <div id="mobile-menu">
     <button class="menu-item" onclick="menuAction('changepwd')">🔑 Сменить пароль</button>
+    <button class="menu-item" onclick="menuAction('2fa')">🔐 Двухфакторная авторизация</button>
     <button class="menu-item" onclick="logout()">🚪 Выйти</button>
   </div>
 
@@ -625,6 +708,61 @@ header {
   </div>
 </div>
 
+<!-- 2FA Settings modal -->
+<div class="modal-overlay" id="fa-settings-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🔐 Двухфакторная авторизация</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.5">Дополнительная защита входа в панель. После ввода пароля на телефон или email придёт одноразовый код.</div>
+
+    <div class="fa-toggle-row">
+      <div>
+        <div class="fa-toggle-label">Включить 2FA</div>
+        <div class="fa-toggle-sub">При входе потребуется код</div>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="fa-enabled-toggle" onchange="on2FAToggle()" />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <div id="fa-settings-body" style="display:none">
+      <div style="margin-top:16px;font-size:13px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Метод отправки кода</div>
+      <div class="fa-method-row">
+        <button class="fa-method-btn active" id="fa-method-email" onclick="selectFAMethod('email')">📧 Email</button>
+        <button class="fa-method-btn" id="fa-method-sms" onclick="selectFAMethod('sms')">📱 SMS</button>
+      </div>
+
+      <div id="fa-email-info" class="fa-info-box">
+        Код будет отправлен на твой email.
+        Убедись, что email указан в профиле.
+      </div>
+
+      <div id="fa-sms-info" style="display:none">
+        <div class="fa-info-box">
+          <strong>Требуется API-ключ SMS.ru.</strong><br>
+          Установи переменную окружения <strong>SMSRU_API_KEY</strong> для работы SMS-рассылки.
+        </div>
+        <div class="fa-phone-row">
+          <input type="tel" id="fa-phone-input" placeholder="+79001234567" autocomplete="tel"
+            onfocus="this.style.borderColor='rgba(90,171,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Формат: +7XXXXXXXXXX</div>
+      </div>
+
+      <div style="margin-top:16px">
+        <button class="btn btn-ghost" onclick="send2FATest()" style="width:100%;justify-content:center;margin-bottom:8px">📨 Отправить тестовый код</button>
+      </div>
+    </div>
+
+    <div id="fa-settings-msg" style="font-size:13px;min-height:18px;margin:10px 0;color:var(--accent2)"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="close2FASettings()">Отмена</button>
+      <button class="btn btn-blue" onclick="save2FASettings()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add account modal (sergey_defa only) -->
 <div class="modal-overlay" id="addaccount-modal">
   <div class="modal">
@@ -685,6 +823,11 @@ async function apiDel(path) {
 }
 
 /* ===== AUTH ===== */
+/* ===== 2FA STATE ===== */
+let faToken = null;
+let faTimerInterval = null;
+let faExpires = 0;
+
 async function login() {
   const username = document.getElementById('username-input').value.trim();
   const pw = document.getElementById('password-input').value;
@@ -693,8 +836,71 @@ async function login() {
   if (!username) { errEl.style.display='block'; errEl.textContent='Введи логин'; return; }
   const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password:pw}) });
   const data = await res.json();
-  if (data.ok) { token=data.token; currentUsername=data.username||username; localStorage.setItem('flux_admin_token',token); localStorage.setItem('flux_admin_user',currentUsername); showApp(); }
-  else { errEl.style.display='block'; errEl.textContent='Неверный логин или пароль'; }
+  if (data.ok && !data.require_2fa) {
+    token=data.token; currentUsername=data.username||username;
+    localStorage.setItem('flux_admin_token',token);
+    localStorage.setItem('flux_admin_user',currentUsername);
+    showApp();
+  } else if (data.ok && data.require_2fa) {
+    faToken = data.fa_token;
+    faExpires = Date.now() + 300000;
+    const method = data.method === 'sms' ? 'SMS' : 'email';
+    const dest = data.dest || '';
+    document.getElementById('fa-desc').innerHTML =
+      `Код отправлен ${method === 'SMS' ? 'по SMS' : 'на email'}<br><strong>${dest}</strong><br>Введи 6-значный код ниже.`;
+    document.getElementById('fa-code-input').value = '';
+    document.getElementById('fa-error').style.display = 'none';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('fa-screen').style.display = 'flex';
+    startFATimer();
+    setTimeout(() => document.getElementById('fa-code-input').focus(), 100);
+  } else {
+    errEl.style.display='block';
+    errEl.textContent = data.error || 'Неверный логин или пароль';
+  }
+}
+
+function startFATimer() {
+  if (faTimerInterval) clearInterval(faTimerInterval);
+  faTimerInterval = setInterval(() => {
+    const left = Math.max(0, Math.round((faExpires - Date.now()) / 1000));
+    const m = Math.floor(left / 60), s = left % 60;
+    document.getElementById('fa-timer-val').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+    if (left === 0) {
+      clearInterval(faTimerInterval);
+      document.getElementById('fa-error').style.display = 'block';
+      document.getElementById('fa-error').textContent = 'Код истёк. Войди заново.';
+    }
+  }, 1000);
+}
+
+async function verify2FA() {
+  const code = document.getElementById('fa-code-input').value.trim();
+  const errEl = document.getElementById('fa-error');
+  errEl.style.display = 'none';
+  if (code.length !== 6) { errEl.style.display='block'; errEl.textContent='Введи 6-значный код'; return; }
+  const res = await fetch('/admin/verify-2fa', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({fa_token:faToken, code}) });
+  const data = await res.json();
+  if (data.ok) {
+    if (faTimerInterval) clearInterval(faTimerInterval);
+    token=data.token; currentUsername=data.username;
+    localStorage.setItem('flux_admin_token',token);
+    localStorage.setItem('flux_admin_user',currentUsername);
+    document.getElementById('fa-screen').style.display='none';
+    showApp();
+  } else {
+    errEl.style.display='block';
+    errEl.textContent = data.error || 'Неверный код';
+  }
+}
+
+function cancelFA() {
+  if (faTimerInterval) clearInterval(faTimerInterval);
+  faToken = null;
+  document.getElementById('fa-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('fa-code-input').value = '';
+  document.getElementById('fa-error').style.display = 'none';
 }
 document.getElementById('username-input').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('password-input').focus(); });
 document.getElementById('password-input').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
@@ -776,6 +982,7 @@ function menuAction(a) {
   if(a==='broadcast') openBroadcast();
   else if(a==='changepwd') openChangePwd();
   else if(a==='addaccount') openAddAccount();
+  else if(a==='2fa') open2FASettings();
   else manualRefresh();
 }
 function mobileToggleBot() { botActive?stopBot():startBot(); }
@@ -1086,6 +1293,75 @@ function closeChangePwd() {
   document.getElementById('changepwd-modal').classList.remove('open');
 }
 document.getElementById('changepwd-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeChangePwd(); });
+
+/* ===== 2FA SETTINGS ===== */
+let currentFAMethod = 'email';
+async function open2FASettings() {
+  document.getElementById('fa-settings-msg').textContent = '';
+  document.getElementById('fa-settings-modal').classList.add('open');
+  // Load current settings
+  try {
+    const d = await api('/2fa/settings');
+    if (d.ok) {
+      const s = d.settings;
+      document.getElementById('fa-enabled-toggle').checked = !!s.enabled;
+      currentFAMethod = s.method || 'email';
+      document.getElementById('fa-settings-body').style.display = s.enabled ? '' : 'none';
+      selectFAMethod(currentFAMethod, false);
+      document.getElementById('fa-phone-input').value = s.phone || '';
+    }
+  } catch(e) {}
+}
+function close2FASettings() {
+  document.getElementById('fa-settings-modal').classList.remove('open');
+}
+document.getElementById('fa-settings-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) close2FASettings(); });
+function on2FAToggle() {
+  const enabled = document.getElementById('fa-enabled-toggle').checked;
+  document.getElementById('fa-settings-body').style.display = enabled ? '' : 'none';
+}
+function selectFAMethod(m, updateVar=true) {
+  if(updateVar) currentFAMethod = m;
+  document.getElementById('fa-method-email').className = 'fa-method-btn' + (m==='email'?' active':'');
+  document.getElementById('fa-method-sms').className = 'fa-method-btn' + (m==='sms'?' active':'');
+  document.getElementById('fa-email-info').style.display = m==='email' ? '' : 'none';
+  document.getElementById('fa-sms-info').style.display = m==='sms' ? '' : 'none';
+}
+async function save2FASettings() {
+  const enabled = document.getElementById('fa-enabled-toggle').checked;
+  const method = currentFAMethod;
+  const phone = document.getElementById('fa-phone-input').value.trim();
+  const msgEl = document.getElementById('fa-settings-msg');
+  msgEl.style.color = 'var(--text2)';
+  msgEl.textContent = 'Сохраняю...';
+  const d = await api('/2fa/settings', 'POST', { enabled, method, phone });
+  if (d.ok) {
+    msgEl.style.color = 'var(--accent2)';
+    msgEl.textContent = '✓ Настройки сохранены';
+    setTimeout(() => close2FASettings(), 1200);
+  } else {
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = d.error || 'Ошибка сохранения';
+  }
+}
+async function send2FATest() {
+  const msgEl = document.getElementById('fa-settings-msg');
+  msgEl.style.color = 'var(--text2)';
+  msgEl.textContent = 'Отправляю тестовый код...';
+  try {
+    const d = await api('/2fa/send-test', 'POST', {});
+    if (d.ok) {
+      msgEl.style.color = 'var(--accent2)';
+      msgEl.textContent = `✓ Код отправлен на ${d.dest}`;
+    } else {
+      msgEl.style.color = 'var(--danger)';
+      msgEl.textContent = d.error || 'Ошибка отправки';
+    }
+  } catch(e) {
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = 'Ошибка отправки';
+  }
+}
 async function doChangePwd() {
   const np = document.getElementById('changepwd-new').value;
   const cp = document.getElementById('changepwd-confirm').value;

@@ -10,6 +10,7 @@ import base64
 import hashlib
 import logging
 import queue
+import random
 import secrets
 import smtplib
 import tempfile
@@ -126,6 +127,11 @@ INVITE_EMAILS: list[dict] = []      # [{email, added, sent, sent_at}]
 
 BOT_USERNAME = "flux_ai_chat_bot"
 BOT_LINK = f"https://t.me/{BOT_USERNAME}"
+
+TWO_FA_FILE = "admin_2fa.json"
+ADMIN_2FA: dict[str, dict] = {}     # {username: {enabled, method, phone}}
+FA_SESSIONS: dict[str, dict] = {}   # {fa_token: {username, code, expires}}
+SMSRU_API_KEY = os.environ.get("SMSRU_API_KEY", "")
 # ====================================
 
 SYSTEM_PROMPT_CHAT = f"""Ты — {BOT_NAME}, дружелюбный AI-ассистент в Telegram с лёгким чувством юмора.
@@ -269,6 +275,87 @@ def save_invite_emails():
             json.dump({"emails": INVITE_EMAILS}, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"Ошибка сохранения invite emails: {e}")
+
+
+def load_admin_2fa():
+    global ADMIN_2FA
+    try:
+        if os.path.exists(TWO_FA_FILE):
+            with open(TWO_FA_FILE, "r", encoding="utf-8") as f:
+                ADMIN_2FA = json.load(f)
+    except Exception as e:
+        logger.error(f"Ошибка загрузки 2FA: {e}")
+
+
+def save_admin_2fa():
+    try:
+        with open(TWO_FA_FILE, "w", encoding="utf-8") as f:
+            json.dump(ADMIN_2FA, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения 2FA: {e}")
+
+
+def send_2fa_email(to_email: str, username: str, code: str) -> bool:
+    """Отправляет 6-значный код 2FA на email."""
+    if not SMTP_USER or not SMTP_PASSWORD:
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Код входа в Flux Admin: {code}"
+        msg["From"] = f"Flux Admin <{SMTP_USER}>"
+        msg["To"] = to_email
+
+        text = f"Твой код подтверждения для входа в Flux Admin: {code}\nКод действует 5 минут."
+        html = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a">
+<div style="max-width:400px;margin:0 auto;background:rgba(15,24,48,0.97);padding:36px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 20px 60px rgba(0,0,0,.5)">
+  <div style="font-size:36px;margin-bottom:8px;text-align:center">⚡</div>
+  <h2 style="color:#5aabff;margin:0 0 4px;font-size:20px;text-align:center">Flux Admin</h2>
+  <p style="color:#7a8aaa;margin:0 0 28px;font-size:13px;text-align:center">Двухфакторная авторизация</p>
+  <p style="color:#b0bdd0;margin:0 0 8px;font-size:14px">Привет, <strong style="color:#e8eef8">{username}</strong>! Твой код для входа:</p>
+  <div style="background:rgba(90,171,255,0.1);border:2px solid rgba(90,171,255,0.4);border-radius:16px;padding:20px;text-align:center;margin:16px 0 20px">
+    <div style="font-size:42px;font-weight:800;letter-spacing:10px;color:#5aabff;font-variant-numeric:tabular-nums">{code}</div>
+  </div>
+  <p style="color:#4a5a7a;font-size:12px;text-align:center;margin:0">Код действует <strong style="color:#7a90b0">5 минут</strong>.<br>Если ты не входил — смени пароль.</p>
+</div>
+</body></html>"""
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        logger.info(f"2FA код отправлен на {to_email} для {username}")
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки 2FA email: {e}")
+        return False
+
+
+def send_2fa_sms(phone: str, code: str) -> bool:
+    """Отправляет 6-значный код 2FA через SMS.ru."""
+    if not SMSRU_API_KEY:
+        logger.error("SMSRU_API_KEY не задан")
+        return False
+    try:
+        resp = http_requests.get(
+            "https://sms.ru/sms/send",
+            params={
+                "api_id": SMSRU_API_KEY,
+                "to": phone,
+                "msg": f"Flux Admin код: {code}",
+                "json": "1",
+            },
+            timeout=10,
+        )
+        result = resp.json()
+        if result.get("status") == "OK":
+            logger.info(f"2FA SMS отправлена на {phone}")
+            return True
+        logger.error(f"SMS.ru ошибка: {result}")
+        return False
+    except Exception as e:
+        logger.error(f"Ошибка отправки 2FA SMS: {e}")
+        return False
 
 
 def send_invite_email(to_email: str) -> bool:
@@ -1160,10 +1247,138 @@ def admin_login():
     username = data.get("username", "").strip()
     password = data.get("password", "")
     expected = ADMIN_ACCOUNTS.get(username)
-    if expected and password == expected:
-        token = _make_token(username, password)
-        return jsonify({"ok": True, "token": token, "username": username})
-    return jsonify({"ok": False}), 401
+    if not (expected and password == expected):
+        return jsonify({"ok": False}), 401
+
+    # Проверяем, включена ли 2FA для этого пользователя
+    fa_settings = ADMIN_2FA.get(username, {})
+    if fa_settings.get("enabled"):
+        method = fa_settings.get("method", "email")
+        code = str(random.randint(100000, 999999))
+        fa_token = secrets.token_urlsafe(32)
+        FA_SESSIONS[fa_token] = {
+            "username": username,
+            "code": code,
+            "expires": time.time() + 300,  # 5 минут
+            "method": method,
+        }
+
+        sent = False
+        dest = ""
+        if method == "email":
+            email = ADMIN_EMAILS.get(username, "")
+            if email:
+                sent = send_2fa_email(email, username, code)
+                dest = email[:2] + "*" * (email.index("@") - 2) + email[email.index("@"):]
+            else:
+                # Email не задан — отказываем
+                return jsonify({"ok": False, "error": "Email не задан в профиле. Сначала укажи email."}), 400
+        elif method == "sms":
+            phone = fa_settings.get("phone", "")
+            if phone:
+                sent = send_2fa_sms(phone, code)
+                dest = "+" + "*" * (len(phone) - 4) + phone[-2:]
+            else:
+                return jsonify({"ok": False, "error": "Номер телефона не задан в настройках 2FA."}), 400
+
+        if not sent:
+            return jsonify({"ok": False, "error": "Не удалось отправить код. Проверь настройки."}), 500
+
+        return jsonify({
+            "ok": True,
+            "require_2fa": True,
+            "fa_token": fa_token,
+            "method": method,
+            "dest": dest,
+        })
+
+    # 2FA выключена — входим сразу
+    token = _make_token(username, password)
+    ADMIN_TOKENS[token] = username
+    return jsonify({"ok": True, "token": token, "username": username})
+
+
+@app.route("/admin/verify-2fa", methods=["POST"])
+def admin_verify_2fa():
+    data = request.get_json()
+    fa_token = data.get("fa_token", "").strip()
+    code = data.get("code", "").strip()
+
+    session = FA_SESSIONS.get(fa_token)
+    if not session:
+        return jsonify({"ok": False, "error": "Сессия устарела. Войди заново."}), 400
+    if time.time() > session["expires"]:
+        FA_SESSIONS.pop(fa_token, None)
+        return jsonify({"ok": False, "error": "Код истёк. Войди заново."}), 400
+    if code != session["code"]:
+        return jsonify({"ok": False, "error": "Неверный код."}), 401
+
+    FA_SESSIONS.pop(fa_token, None)
+    username = session["username"]
+    password = ADMIN_ACCOUNTS.get(username, "")
+    token = _make_token(username, password)
+    ADMIN_TOKENS[token] = username
+    return jsonify({"ok": True, "token": token, "username": username})
+
+
+@app.route("/admin/api/2fa/settings", methods=["GET"])
+def admin_get_2fa_settings():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    settings = ADMIN_2FA.get(username, {"enabled": False, "method": "email", "phone": ""})
+    return jsonify({"ok": True, "settings": settings})
+
+
+@app.route("/admin/api/2fa/settings", methods=["POST"])
+def admin_save_2fa_settings():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    enabled = bool(data.get("enabled", False))
+    method = data.get("method", "email")
+    phone = data.get("phone", "").strip()
+
+    if method not in ("email", "sms"):
+        return jsonify({"ok": False, "error": "Неверный метод"}), 400
+    if enabled and method == "email" and not ADMIN_EMAILS.get(username):
+        return jsonify({"ok": False, "error": "Сначала укажи email в профиле."}), 400
+    if enabled and method == "sms" and not phone:
+        return jsonify({"ok": False, "error": "Введи номер телефона."}), 400
+
+    ADMIN_2FA[username] = {"enabled": enabled, "method": method, "phone": phone}
+    save_admin_2fa()
+    logger.info(f"2FA для {username}: enabled={enabled}, method={method}")
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/2fa/send-test", methods=["POST"])
+def admin_2fa_send_test():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    settings = ADMIN_2FA.get(username, {})
+    method = settings.get("method", "email")
+    code = str(random.randint(100000, 999999))
+    sent = False
+    dest = ""
+    if method == "email":
+        email = ADMIN_EMAILS.get(username, "")
+        if email:
+            sent = send_2fa_email(email, username, code)
+            dest = email
+    elif method == "sms":
+        phone = settings.get("phone", "")
+        if phone:
+            sent = send_2fa_sms(phone, code)
+            dest = phone
+    if not sent:
+        return jsonify({"ok": False, "error": "Не удалось отправить тестовый код."}), 500
+    return jsonify({"ok": True, "dest": dest})
 
 
 @app.route("/admin/api/change-password", methods=["POST"])
@@ -1609,6 +1824,7 @@ def startup():
     load_chat_log()
     load_admin_emails()
     load_invite_emails()
+    load_admin_2fa()
 
     if REPLIT_URL:
         try:
