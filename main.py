@@ -2004,6 +2004,31 @@ def get_web_user_id():
 def web_chat_page():
     return render_template("web_chat.html")
 
+def send_web_reg_code(email: str, code: str, username: str) -> bool:
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"Ваш код подтверждения — {code}"
+        msg["From"] = SMTP_USER
+        msg["To"] = email
+        html = f"""
+<div style="font-family:-apple-system,sans-serif;max-width:420px;margin:0 auto;background:#0f1525;border-radius:16px;padding:32px;color:#e8eaf6">
+  <div style="font-size:40px;text-align:center;margin-bottom:12px">⚡</div>
+  <h2 style="text-align:center;margin:0 0 8px;color:#5aabff">Flux AI</h2>
+  <p style="text-align:center;color:#8892b0;margin:0 0 28px">Подтверждение регистрации</p>
+  <p style="margin:0 0 16px">Привет, <b>{username}</b>!</p>
+  <p style="margin:0 0 20px;color:#8892b0">Ваш код для подтверждения email:</p>
+  <div style="text-align:center;background:#1a2540;border-radius:12px;padding:20px;letter-spacing:10px;font-size:32px;font-weight:700;color:#5aabff;border:1px solid rgba(90,171,255,0.2)">{code}</div>
+  <p style="margin:20px 0 0;color:#8892b0;font-size:13px;text-align:center">Код действителен 10 минут. Если вы не регистрировались — проигнорируйте это письмо.</p>
+</div>"""
+        msg.attach(MIMEText(html, "html", "utf-8"))
+        with smtplib.SMTP_SSL("smtp.mail.ru", 465) as srv:
+            srv.login(SMTP_USER, SMTP_PASSWORD)
+            srv.sendmail(SMTP_USER, email, msg.as_string())
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки email регистрации: {e}")
+        return False
+
 @app.route("/app/register", methods=["POST"])
 def web_register():
     data = request.get_json(silent=True) or {}
@@ -2016,7 +2041,7 @@ def web_register():
         return jsonify({"ok": False, "error": "Имя минимум 2 символа"}), 400
     if len(password) < 6:
         return jsonify({"ok": False, "error": "Пароль минимум 6 символов"}), 400
-    if "@" not in email:
+    if "@" not in email or "." not in email.split("@")[-1]:
         return jsonify({"ok": False, "error": "Некорректный email"}), 400
     users = load_web_users()
     for u in users.values():
@@ -2024,18 +2049,69 @@ def web_register():
             return jsonify({"ok": False, "error": "Email уже зарегистрирован"}), 400
         if u["username"].lower() == username.lower():
             return jsonify({"ok": False, "error": "Имя пользователя занято"}), 400
-    uid = secrets.token_hex(16)
-    users[uid] = {
+    code = str(random.randint(100000, 999999))
+    token = secrets.token_hex(20)
+    WEB_PENDING_REG[token] = {
         "username": username,
         "email": email,
         "password_hash": web_hash_pwd(password),
+        "code": code,
+        "expires": time.time() + 600,
+        "resend_at": time.time() + 60
+    }
+    sent = send_web_reg_code(email, code, username)
+    if not sent:
+        return jsonify({"ok": False, "error": "Не удалось отправить письмо. Проверьте email."}), 500
+    return jsonify({"ok": True, "step": "verify", "token": token, "email": email})
+
+@app.route("/app/verify", methods=["POST"])
+def web_verify():
+    data = request.get_json(silent=True) or {}
+    token = data.get("token") or ""
+    code = (data.get("code") or "").strip()
+    pending = WEB_PENDING_REG.get(token)
+    if not pending:
+        return jsonify({"ok": False, "error": "Сессия устарела. Начните регистрацию заново."}), 400
+    if time.time() > pending["expires"]:
+        WEB_PENDING_REG.pop(token, None)
+        return jsonify({"ok": False, "error": "Код истёк. Начните регистрацию заново."}), 400
+    if code != pending["code"]:
+        return jsonify({"ok": False, "error": "Неверный код"}), 400
+    users = load_web_users()
+    for u in users.values():
+        if u["email"] == pending["email"]:
+            WEB_PENDING_REG.pop(token, None)
+            return jsonify({"ok": False, "error": "Email уже зарегистрирован"}), 400
+    uid = secrets.token_hex(16)
+    users[uid] = {
+        "username": pending["username"],
+        "email": pending["email"],
+        "password_hash": pending["password_hash"],
         "created_at": datetime.now().isoformat(),
         "chat_history": []
     }
     save_web_users(users)
+    WEB_PENDING_REG.pop(token, None)
     session["web_user_id"] = uid
-    session["web_username"] = username
-    return jsonify({"ok": True, "username": username})
+    session["web_username"] = pending["username"]
+    return jsonify({"ok": True, "username": pending["username"]})
+
+@app.route("/app/resend-code", methods=["POST"])
+def web_resend_code():
+    data = request.get_json(silent=True) or {}
+    token = data.get("token") or ""
+    pending = WEB_PENDING_REG.get(token)
+    if not pending:
+        return jsonify({"ok": False, "error": "Сессия не найдена"}), 400
+    if time.time() < pending.get("resend_at", 0):
+        left = int(pending["resend_at"] - time.time())
+        return jsonify({"ok": False, "error": f"Подождите {left} сек."}), 429
+    code = str(random.randint(100000, 999999))
+    pending["code"] = code
+    pending["expires"] = time.time() + 600
+    pending["resend_at"] = time.time() + 60
+    send_web_reg_code(pending["email"], code, pending["username"])
+    return jsonify({"ok": True})
 
 @app.route("/app/login", methods=["POST"])
 def web_login():

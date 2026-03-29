@@ -203,13 +203,24 @@ header {
       <button class="auth-btn" id="l-btn" onclick="doLogin()">Войти</button>
     </div>
 
-    <!-- REGISTER -->
+    <!-- REGISTER step 1 -->
     <div id="tab-register" class="auth-form" style="display:none">
       <input class="auth-input" id="r-name" type="text" placeholder="Имя пользователя" autocomplete="username">
       <input class="auth-input" id="r-email" type="email" placeholder="Email" autocomplete="email">
       <input class="auth-input" id="r-pwd" type="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password">
       <div class="auth-error" id="r-err"></div>
-      <button class="auth-btn" id="r-btn" onclick="doRegister()">Создать аккаунт</button>
+      <button class="auth-btn" id="r-btn" onclick="doRegister()">Получить код →</button>
+    </div>
+
+    <!-- REGISTER step 2 — verify -->
+    <div id="tab-verify" class="auth-form" style="display:none">
+      <div style="text-align:center;margin-bottom:4px;font-size:22px">📧</div>
+      <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:14px">Код отправлен на <b id="verify-email-label" style="color:var(--text)"></b></div>
+      <input class="auth-input" id="v-code" type="text" inputmode="numeric" maxlength="6" placeholder="6-значный код" autocomplete="one-time-code" style="text-align:center;letter-spacing:6px;font-size:20px;font-weight:700">
+      <div class="auth-error" id="v-err"></div>
+      <button class="auth-btn" id="v-btn" onclick="doVerify()">Подтвердить и войти</button>
+      <button id="v-resend-btn" onclick="doResendCode()" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:6px;text-align:center;width:100%;transition:color .2s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text2)'">Отправить код повторно</button>
+      <button onclick="backToRegister()" style="background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;padding:4px;text-align:center;width:100%">← Назад</button>
     </div>
 
     <div class="back-to-admin">
@@ -260,11 +271,42 @@ let isSending = false;
 const toastQ = [];
 let toastBusy = false;
 
+let regToken = '';
+let resendTimer = null;
+
 // ===== TABS =====
 function switchTab(tab) {
   document.querySelectorAll('.auth-tab').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='register')));
   document.getElementById('tab-login').style.display = tab==='login' ? 'flex' : 'none';
   document.getElementById('tab-register').style.display = tab==='register' ? 'flex' : 'none';
+  document.getElementById('tab-verify').style.display = 'none';
+}
+function showVerifyStep(email, token) {
+  regToken = token;
+  document.getElementById('tab-register').style.display = 'none';
+  document.getElementById('tab-verify').style.display = 'flex';
+  document.getElementById('verify-email-label').textContent = email;
+  document.getElementById('v-code').value = '';
+  document.getElementById('v-err').style.display = 'none';
+  document.getElementById('v-code').focus();
+  startResendTimer(60);
+}
+function backToRegister() {
+  document.getElementById('tab-verify').style.display = 'none';
+  document.getElementById('tab-register').style.display = 'flex';
+  if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+}
+function startResendTimer(sec) {
+  const btn = document.getElementById('v-resend-btn');
+  if (resendTimer) clearInterval(resendTimer);
+  let left = sec;
+  btn.disabled = true;
+  btn.textContent = `Повторно через ${left} сек.`;
+  resendTimer = setInterval(() => {
+    left--;
+    if (left <= 0) { clearInterval(resendTimer); resendTimer=null; btn.disabled=false; btn.textContent='Отправить код повторно'; }
+    else { btn.textContent = `Повторно через ${left} сек.`; }
+  }, 1000);
 }
 
 // ===== AUTH =====
@@ -293,14 +335,41 @@ async function doRegister() {
   const btn = document.getElementById('r-btn');
   errEl.style.display = 'none';
   if (!name || !email || !pwd) { showErr(errEl, 'Заполните все поля'); return; }
-  btn.disabled = true; btn.textContent = 'Создаём аккаунт…';
+  btn.disabled = true; btn.textContent = 'Отправляем код…';
   try {
     const r = await fetch('/app/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:name,email,password:pwd}) });
     const d = await r.json();
-    if (d.ok) { enterApp(d.username); toast('Аккаунт создан!', 'ok'); }
+    if (d.ok && d.step === 'verify') { showVerifyStep(d.email, d.token); }
     else { showErr(errEl, d.error || 'Ошибка'); }
   } catch(e) { showErr(errEl, 'Ошибка сети'); }
-  btn.disabled = false; btn.textContent = 'Создать аккаунт';
+  btn.disabled = false; btn.textContent = 'Получить код →';
+}
+
+async function doVerify() {
+  const code = document.getElementById('v-code').value.trim();
+  const errEl = document.getElementById('v-err');
+  const btn = document.getElementById('v-btn');
+  errEl.style.display = 'none';
+  if (!code) { showErr(errEl, 'Введите код'); return; }
+  btn.disabled = true; btn.textContent = 'Проверяем…';
+  try {
+    const r = await fetch('/app/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken, code}) });
+    const d = await r.json();
+    if (d.ok) { enterApp(d.username); toast('Добро пожаловать!', 'ok'); }
+    else { showErr(errEl, d.error || 'Ошибка'); }
+  } catch(e) { showErr(errEl, 'Ошибка сети'); }
+  btn.disabled = false; btn.textContent = 'Подтвердить и войти';
+}
+
+async function doResendCode() {
+  const errEl = document.getElementById('v-err');
+  errEl.style.display = 'none';
+  try {
+    const r = await fetch('/app/resend-code', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken}) });
+    const d = await r.json();
+    if (d.ok) { toast('Код отправлен повторно', 'ok'); startResendTimer(60); }
+    else { showErr(errEl, d.error || 'Ошибка'); }
+  } catch(e) { showErr(errEl, 'Ошибка сети'); }
 }
 
 async function doLogout() {
@@ -457,6 +526,7 @@ async function init() {
   // Enter on inputs
   document.getElementById('l-pwd').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   document.getElementById('r-pwd').addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
+  document.getElementById('v-code').addEventListener('keydown', e => { if(e.key==='Enter') doVerify(); });
 }
 init();
 </script>
