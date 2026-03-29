@@ -272,6 +272,7 @@ const toastQ = [];
 let toastBusy = false;
 
 let regToken = '';
+let verifyMode = 'reg'; // 'reg' | 'email'
 let resendTimer = null;
 
 // ===== TABS =====
@@ -281,20 +282,27 @@ function switchTab(tab) {
   document.getElementById('tab-register').style.display = tab==='register' ? 'flex' : 'none';
   document.getElementById('tab-verify').style.display = 'none';
 }
-function showVerifyStep(email, token) {
+function showVerifyStep(email, token, mode='reg') {
   regToken = token;
+  verifyMode = mode;
   document.getElementById('tab-register').style.display = 'none';
+  document.getElementById('tab-login').style.display = 'none';
   document.getElementById('tab-verify').style.display = 'flex';
   document.getElementById('verify-email-label').textContent = email;
   document.getElementById('v-code').value = '';
   document.getElementById('v-err').style.display = 'none';
+  document.getElementById('v-btn').textContent = mode === 'email' ? 'Подтвердить и войти' : 'Подтвердить и войти';
   document.getElementById('v-code').focus();
   startResendTimer(60);
 }
 function backToRegister() {
   document.getElementById('tab-verify').style.display = 'none';
-  document.getElementById('tab-register').style.display = 'flex';
   if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+  if (verifyMode === 'email') {
+    document.getElementById('tab-login').style.display = 'flex';
+  } else {
+    document.getElementById('tab-register').style.display = 'flex';
+  }
 }
 function startResendTimer(sec) {
   const btn = document.getElementById('v-resend-btn');
@@ -321,7 +329,8 @@ async function doLogin() {
   try {
     const r = await fetch('/app/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({login,password:pwd}) });
     const d = await r.json();
-    if (d.ok) { enterApp(d.username); }
+    if (d.ok && d.step === 'verify_email') { showVerifyStep(d.email, d.token, 'email'); }
+    else if (d.ok) { enterApp(d.username); }
     else { showErr(errEl, d.error || 'Ошибка'); }
   } catch(e) { showErr(errEl, 'Ошибка сети'); }
   btn.disabled = false; btn.textContent = 'Войти';
@@ -352,8 +361,9 @@ async function doVerify() {
   errEl.style.display = 'none';
   if (!code) { showErr(errEl, 'Введите код'); return; }
   btn.disabled = true; btn.textContent = 'Проверяем…';
+  const endpoint = verifyMode === 'email' ? '/app/verify-email' : '/app/verify';
   try {
-    const r = await fetch('/app/verify', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken, code}) });
+    const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken, code}) });
     const d = await r.json();
     if (d.ok) { enterApp(d.username); toast('Добро пожаловать!', 'ok'); }
     else { showErr(errEl, d.error || 'Ошибка'); }
@@ -364,8 +374,9 @@ async function doVerify() {
 async function doResendCode() {
   const errEl = document.getElementById('v-err');
   errEl.style.display = 'none';
+  const endpoint = verifyMode === 'email' ? '/app/resend-email-verify' : '/app/resend-code';
   try {
-    const r = await fetch('/app/resend-code', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken}) });
+    const r = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({token:regToken}) });
     const d = await r.json();
     if (d.ok) { toast('Код отправлен повторно', 'ok'); startResendTimer(60); }
     else { showErr(errEl, d.error || 'Ошибка'); }

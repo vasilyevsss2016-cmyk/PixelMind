@@ -1980,7 +1980,8 @@ def startup():
 # ============ ВЕБ-ЧАТ ============
 WEB_USERS_FILE = "web_users.json"
 WEB_CHAT_HISTORIES: dict[str, list] = {}  # in-memory per session
-WEB_PENDING_REG: dict[str, dict] = {}  # token → {username, phone, password_hash, code, expires}
+WEB_PENDING_REG: dict[str, dict] = {}   # token → {username, email, password_hash, code, expires}
+WEB_EMAIL_VERIFY: dict[str, dict] = {}  # token → {uid, email, username, code, expires, resend_at}
 SMSRU_API_KEY = os.environ.get("SMSRU_API_KEY", "")
 
 def load_web_users() -> dict:
@@ -2087,6 +2088,7 @@ def web_verify():
         "username": pending["username"],
         "email": pending["email"],
         "password_hash": pending["password_hash"],
+        "email_verified": True,
         "created_at": datetime.now().isoformat(),
         "chat_history": []
     }
@@ -2128,9 +2130,63 @@ def web_login():
             break
     if not found_user or found_user["password_hash"] != web_hash_pwd(password):
         return jsonify({"ok": False, "error": "Неверный логин или пароль"}), 401
+    # Проверяем верификацию email
+    if not found_user.get("email_verified", True):
+        code = str(random.randint(100000, 999999))
+        token = secrets.token_hex(20)
+        WEB_EMAIL_VERIFY[token] = {
+            "uid": found_uid,
+            "email": found_user["email"],
+            "username": found_user["username"],
+            "code": code,
+            "expires": time.time() + 600,
+            "resend_at": time.time() + 60
+        }
+        send_web_reg_code(found_user["email"], code, found_user["username"])
+        return jsonify({"ok": True, "step": "verify_email", "token": token, "email": found_user["email"]})
     session["web_user_id"] = found_uid
     session["web_username"] = found_user["username"]
     return jsonify({"ok": True, "username": found_user["username"]})
+
+@app.route("/app/verify-email", methods=["POST"])
+def web_verify_email():
+    data = request.get_json(silent=True) or {}
+    token = data.get("token") or ""
+    code = (data.get("code") or "").strip()
+    pending = WEB_EMAIL_VERIFY.get(token)
+    if not pending:
+        return jsonify({"ok": False, "error": "Сессия устарела. Войдите снова."}), 400
+    if time.time() > pending["expires"]:
+        WEB_EMAIL_VERIFY.pop(token, None)
+        return jsonify({"ok": False, "error": "Код истёк. Войдите снова."}), 400
+    if code != pending["code"]:
+        return jsonify({"ok": False, "error": "Неверный код"}), 400
+    users = load_web_users()
+    uid = pending["uid"]
+    if uid in users:
+        users[uid]["email_verified"] = True
+        save_web_users(users)
+    WEB_EMAIL_VERIFY.pop(token, None)
+    session["web_user_id"] = uid
+    session["web_username"] = pending["username"]
+    return jsonify({"ok": True, "username": pending["username"]})
+
+@app.route("/app/resend-email-verify", methods=["POST"])
+def web_resend_email_verify():
+    data = request.get_json(silent=True) or {}
+    token = data.get("token") or ""
+    pending = WEB_EMAIL_VERIFY.get(token)
+    if not pending:
+        return jsonify({"ok": False, "error": "Сессия не найдена"}), 400
+    if time.time() < pending.get("resend_at", 0):
+        left = int(pending["resend_at"] - time.time())
+        return jsonify({"ok": False, "error": f"Подождите {left} сек."}), 429
+    code = str(random.randint(100000, 999999))
+    pending["code"] = code
+    pending["expires"] = time.time() + 600
+    pending["resend_at"] = time.time() + 60
+    send_web_reg_code(pending["email"], code, pending["username"])
+    return jsonify({"ok": True})
 
 @app.route("/app/logout", methods=["POST"])
 def web_logout():
