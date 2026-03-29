@@ -55,6 +55,8 @@ body {
 }
 .login-box button:hover { transform:translateY(-1px) scale(1.03); box-shadow:0 6px 24px rgba(90,171,255,0.4); }
 .login-error { color:var(--danger); font-size:13px; margin-top:12px; display:none; }
+.forgot-btn { background:none !important; border:none !important; box-shadow:none !important; color:var(--accent); font-size:13px; cursor:pointer; margin-top:12px; opacity:.75; transition:opacity .2s,transform .2s; padding:0; transform:none !important; }
+.forgot-btn:hover { opacity:1; transform:none !important; box-shadow:none !important; }
 
 /* ===== 2FA CODE SCREEN ===== */
 #fa-screen { display:none; align-items:center; justify-content:center; height:100vh; padding:20px; }
@@ -441,7 +443,7 @@ header {
       <button type="submit">Войти</button>
     </form>
     <div class="login-error" id="login-error">Неверный логин или пароль</div>
-    <button type="button" onclick="openForgot()" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;margin-top:12px;opacity:.75;transition:opacity .2s;padding:0" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.75">Забыл пароль или логин?</button>
+    <button type="button" class="forgot-btn" onclick="openForgot()">Забыл пароль или логин?</button>
   </div>
 </div>
 
