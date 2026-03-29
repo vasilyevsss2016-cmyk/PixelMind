@@ -20,7 +20,7 @@ import urllib.parse
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from flask import Flask, request, jsonify, render_template, session, Response, stream_with_context
+from flask import Flask, request, jsonify, render_template, redirect, session, Response, stream_with_context
 import requests as http_requests
 
 try:
@@ -1226,7 +1226,7 @@ def webhook():
 
 @app.route("/")
 def index():
-    return "Flux AI Bot ⚡ Online"
+    return redirect("/admin")
 
 
 # ============ ADMIN AUTH ============
