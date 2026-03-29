@@ -54,3 +54,5 @@ externalPort = 8080
 
 [userenv.shared]
 ADMIN_ACCOUNTS = "{\"sergey_defa\":\"Ser123asd\",\"Blackjack\":\"Sergey\"}"
+SMTP_USER = "Defa_company@internet.ru"
+SMTP_PASSWORD = "mCSU8cQAtk36R0Kttg8I"
