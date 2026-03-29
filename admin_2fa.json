@@ -1,7 +1,14 @@
 {
   "sergey_defa": {
     "enabled": true,
+    "method": "totp",
+    "phone": "",
+    "totp_secret": "DBCGBIQLIUTGLG5T3WJGITRFVEQ5M2QA"
+  },
+  "Blackjack": {
+    "enabled": false,
     "method": "email",
-    "phone": ""
+    "phone": "",
+    "totp_secret": ""
   }
 }
