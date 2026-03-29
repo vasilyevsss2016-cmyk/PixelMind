@@ -514,16 +514,8 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
 
 # ============ WEBHOOK ============
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
+def process_message(message):
     global bot_active
-    data = request.get_json()
-    if not data:
-        return "ok"
-
-    message = data.get("message")
-    if not message:
-        return "ok"
 
     chat_id = message["chat"]["id"]
     message_id = message.get("message_id")
@@ -541,7 +533,7 @@ def webhook():
     }
 
     if not bot_active:
-        return "ok"
+        return
 
     text = message.get("text", "")
     voice = message.get("voice")
@@ -554,7 +546,7 @@ def webhook():
         logger.info(f"Команда от @{username}: {text}")
         log_message(chat_id, "user", text)
         handle_command(chat_id, text, message_id, username)
-        return "ok"
+        return
 
     # Автоматическое озвучивание по слову "озвучь"
     if text and re.match(r"(?i)^(озвучь|озвучи)\s+", text):
@@ -562,10 +554,10 @@ def webhook():
         log_message(chat_id, "user", text)
         if not tts_text:
             send_message(chat_id, "Напиши что озвучить, например: Озвучь привет как дела")
-            return "ok"
+            return
         if not EDGE_TTS_AVAILABLE:
             send_message(chat_id, "Озвучка временно недоступна 😔")
-            return "ok"
+            return
         send_chat_action(chat_id, "record_voice")
         audio = synthesize_speech(tts_text)
         if audio:
@@ -573,7 +565,7 @@ def webhook():
             log_message(chat_id, "assistant", f"🔊 [Озвучено]: {tts_text}")
         else:
             send_message(chat_id, "Не удалось озвучить текст 😔")
-        return "ok"
+        return
 
     if text and re.match(r"(?i)создай\s+файл\s+\S+", text):
         match = re.match(r"(?i)создай\s+файл\s+(\S+)\s*(.*)", text, re.DOTALL)
@@ -585,7 +577,7 @@ def webhook():
             ai_content = get_ai_reply(chat_id, f"Создай файл {filename}. {task}\nВыдай только код/содержимое файла без лишних пояснений.")
             log_message(chat_id, "assistant", f"[Файл: {filename}]")
             send_document(chat_id, filename, ai_content.encode("utf-8"), f"📄 {filename}")
-            return "ok"
+            return
 
     if voice:
         send_chat_action(chat_id, "typing")
@@ -607,7 +599,7 @@ def webhook():
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, "Не смог скачать аудио 😔")
-        return "ok"
+        return
 
     if video_note:
         send_chat_action(chat_id, "typing")
@@ -634,7 +626,7 @@ def webhook():
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, "Не смог обработать кружок 😔")
-        return "ok"
+        return
 
     if video:
         send_chat_action(chat_id, "typing")
@@ -661,7 +653,7 @@ def webhook():
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, "Не смог обработать видео 😔")
-        return "ok"
+        return
 
     if photo:
         send_chat_action(chat_id, "typing")
@@ -675,7 +667,7 @@ def webhook():
             reply_with_voice_or_text(chat_id, f"🖼 {description}")
         else:
             send_message(chat_id, "Не смог скачать фото 😔")
-        return "ok"
+        return
 
     if document:
         send_chat_action(chat_id, "typing")
@@ -685,7 +677,7 @@ def webhook():
 
         if not file_data:
             send_message(chat_id, "Не смог скачать файл 😔")
-            return "ok"
+            return
 
         log_message(chat_id, "user", f"📎 [Файл: {fname}]")
         if ext in ("txt", "py", "cpp", "cs", "js", "ts", "html", "css", "json", "xml", "md", "yaml", "yml", "sh", "bat", "c", "h", "java", "rs", "go", "rb", "php"):
@@ -708,7 +700,7 @@ def webhook():
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, f"📎 Получил файл: {fname}\nФормат .{ext} не поддерживается для анализа.")
-        return "ok"
+        return
 
     if text:
         logger.info(f"От @{username}: {text}")
@@ -725,6 +717,17 @@ def webhook():
         reply_with_voice_or_text(chat_id, reply)
         logger.info(f"Ответ: {reply}")
 
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    data = request.get_json()
+    if not data:
+        return "ok"
+    message = data.get("message")
+    if not message:
+        return "ok"
+    # Сразу отвечаем Telegram и обрабатываем в фоне
+    threading.Thread(target=process_message, args=(message,), daemon=True).start()
     return "ok"
 
 
@@ -877,24 +880,33 @@ def set_webhook():
     logger.info(f"Webhook: {r.json()}")
 
 
-if __name__ == "__main__":
+def startup():
     if not BOT_TOKEN:
-        print("❌ Не указан BOT_TOKEN — добавь его в Secrets")
-        exit(1)
+        logger.error("❌ Не указан BOT_TOKEN — добавь его в Secrets")
+        return
     if not OPENROUTER_API_KEY:
-        print("❌ Не указан OPENROUTER_API_KEY — добавь его в Secrets")
-        exit(1)
+        logger.error("❌ Не указан OPENROUTER_API_KEY — добавь его в Secrets")
+        return
 
     if REPLIT_URL:
-        set_webhook()
+        try:
+            set_webhook()
+        except Exception as e:
+            logger.error(f"Ошибка установки webhook: {e}")
     else:
-        print("⚠️ REPLIT_DEV_DOMAIN не найден — установи webhook вручную")
+        logger.warning("⚠️ REPLIT_DEV_DOMAIN не найден — установи webhook вручную")
 
     if REPLIT_URL:
         ka_thread = threading.Thread(target=keep_alive_loop, daemon=True)
         ka_thread.start()
         logger.info("Keep-alive запущен")
 
-    print(f"⚡ Flux AI Bot | Модель: {AI_MODEL}")
-    print(f"🌐 Админ-панель: https://{REPLIT_URL}/admin")
+    logger.info(f"⚡ Flux AI Bot | Модель: {AI_MODEL}")
+    logger.info(f"🌐 Админ-панель: https://{REPLIT_URL}/admin")
+
+
+# Запускается и при gunicorn, и при python main.py
+startup()
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=PORT, threaded=True)
