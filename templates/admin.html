@@ -1598,13 +1598,22 @@ document.getElementById('confirm-ok-btn').addEventListener('click',()=>{closeCon
 document.getElementById('confirm-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeConfirm();});
 
 /* ===== TOAST ===== */
+const _toastQueue=[];
+let _toastActive=false;
 function toast(msg,type='success'){
+  _toastQueue.push({msg,type});
+  if(!_toastActive) _nextToast();
+}
+function _nextToast(){
+  if(!_toastQueue.length){_toastActive=false;return;}
+  _toastActive=true;
+  const {msg,type}=_toastQueue.shift();
   const el=document.createElement('div');
   el.className=`toast ${type}`;el.textContent=msg;
   document.body.appendChild(el);
   setTimeout(()=>{
     el.classList.add('hiding');
-    setTimeout(()=>el.remove(),350);
+    setTimeout(()=>{el.remove();_nextToast();},350);
   },2200);
 }
 function escHtml(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
