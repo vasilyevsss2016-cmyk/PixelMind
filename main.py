@@ -611,41 +611,84 @@ def generate_image(prompt: str) -> bytes | None:
 
 
 def generate_video_bytes(prompt: str) -> bytes | None:
-    """Генерирует видео: картинка через Gemini + Ken Burns эффект через ffmpeg."""
-    import subprocess, tempfile, os
+    """Генерирует видео: 3 кадра Gemini + xfade-переходы через ffmpeg."""
+    import subprocess, tempfile, os, threading
 
-    # Шаг 1 — генерируем изображение
-    img_bytes = generate_image(prompt)
-    if not img_bytes:
-        logger.error("Видео: не удалось сгенерировать кадр")
+    frame_prompts = [
+        f"{prompt}, beginning of scene, wide shot",
+        f"{prompt}, middle of action, dynamic angle",
+        f"{prompt}, final moment, close-up dramatic",
+    ]
+
+    frames: list[bytes | None] = [None, None, None]
+
+    def gen(idx: int, fp: str):
+        frames[idx] = generate_image(fp)
+
+    threads = [threading.Thread(target=gen, args=(i, p), daemon=True)
+               for i, p in enumerate(frame_prompts)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=90)
+
+    valid = [(i, b) for i, b in enumerate(frames) if b]
+    if not valid:
+        logger.error("Видео: не удалось сгенерировать ни одного кадра")
         return None
 
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
-            img_path = os.path.join(tmpdir, "frame.png")
             out_path = os.path.join(tmpdir, "output.mp4")
+            paths = []
+            for orig_i, data in valid:
+                p = os.path.join(tmpdir, f"frame{orig_i}.png")
+                with open(p, "wb") as f:
+                    f.write(data)
+                paths.append(p)
 
-            with open(img_path, "wb") as f:
-                f.write(img_bytes)
+            scale_filter = "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2"
 
-            # Шаг 2 — плавный fade-in/out, 6 сек, ultrafast
-            cmd = [
-                "ffmpeg", "-y",
-                "-loop", "1", "-t", "6", "-i", img_path,
-                "-vf", (
-                    "scale=1280:720:force_original_aspect_ratio=decrease,"
-                    "pad=1280:720:(ow-iw)/2:(oh-ih)/2,"
-                    "fade=t=in:st=0:d=1,"
-                    "fade=t=out:st=5:d=1"
-                ),
-                "-c:v", "libx264", "-preset", "ultrafast",
-                "-r", "25", "-pix_fmt", "yuv420p",
-                "-movflags", "+faststart",
-                out_path,
-            ]
-            result = subprocess.run(cmd, capture_output=True, timeout=30)
+            if len(paths) == 1:
+                # Только один кадр — fade-in/out
+                cmd = [
+                    "ffmpeg", "-y", "-loop", "1", "-t", "5", "-i", paths[0],
+                    "-vf", f"{scale_filter},fade=t=in:st=0:d=0.5,fade=t=out:st=4.5:d=0.5",
+                    "-c:v", "libx264", "-preset", "ultrafast",
+                    "-r", "25", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out_path,
+                ]
+            elif len(paths) == 2:
+                # Два кадра — один xfade переход
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-loop", "1", "-t", "4", "-i", paths[0],
+                    "-loop", "1", "-t", "4", "-i", paths[1],
+                    "-filter_complex",
+                    f"[0:v]{scale_filter}[v0];[1:v]{scale_filter}[v1];"
+                    "[v0][v1]xfade=transition=fade:duration=1:offset=3[out]",
+                    "-map", "[out]",
+                    "-c:v", "libx264", "-preset", "ultrafast",
+                    "-r", "25", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out_path,
+                ]
+            else:
+                # Три кадра — два xfade перехода
+                cmd = [
+                    "ffmpeg", "-y",
+                    "-loop", "1", "-t", "5", "-i", paths[0],
+                    "-loop", "1", "-t", "5", "-i", paths[1],
+                    "-loop", "1", "-t", "5", "-i", paths[2],
+                    "-filter_complex",
+                    f"[0:v]{scale_filter}[v0];[1:v]{scale_filter}[v1];[2:v]{scale_filter}[v2];"
+                    "[v0][v1]xfade=transition=fade:duration=1:offset=4[fx1];"
+                    "[fx1][v2]xfade=transition=fade:duration=1:offset=8[out]",
+                    "-map", "[out]",
+                    "-c:v", "libx264", "-preset", "ultrafast",
+                    "-r", "25", "-pix_fmt", "yuv420p", "-movflags", "+faststart", out_path,
+                ]
+
+            result = subprocess.run(cmd, capture_output=True, timeout=60)
             if result.returncode != 0:
-                logger.error(f"ffmpeg error: {result.stderr.decode()[-300:]}")
+                logger.error(f"ffmpeg error: {result.stderr.decode()[-500:]}")
                 return None
 
             with open(out_path, "rb") as f:
