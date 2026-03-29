@@ -2290,7 +2290,25 @@ def web_me():
     u = users.get(uid)
     if not u:
         return jsonify({"ok": False}), 401
-    return jsonify({"ok": True, "username": u["username"], "email": u["email"]})
+    plan = u.get("plan", "free")
+    plan_expires = u.get("plan_expires")
+    sub_expired = False
+    if plan in ("core", "pro") and plan_expires:
+        try:
+            from datetime import timedelta
+            exp_dt = datetime.fromisoformat(plan_expires)
+            if datetime.now() > exp_dt:
+                sub_expired = True
+        except Exception:
+            pass
+    return jsonify({
+        "ok": True,
+        "username": u["username"],
+        "email": u.get("email", ""),
+        "plan": plan,
+        "plan_expires": plan_expires,
+        "subscription_expired": sub_expired
+    })
 
 def _ensure_chats(u: dict) -> dict:
     """Гарантирует наличие структуры мульти-чатов, мигрирует старый chat_history."""
@@ -2596,6 +2614,47 @@ def web_request_payment():
         "comment": f"Flux {u['username']}"
     })
 
+@app.route("/app/request-renewal", methods=["POST"])
+def web_request_renewal():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False}), 401
+    plan = u.get("plan", "free")
+    if plan not in ("core", "pro"):
+        return jsonify({"ok": False, "error": "Нет активной подписки для продления"}), 400
+    amount_rub = PLAN_PRICE[plan]
+    credits_to_add = PLAN_CREDITS[plan]
+    label = f"{plan.capitalize()} (продление на 1 год)"
+    pid = secrets.token_hex(10)
+    payments = load_web_payments()
+    payments[pid] = {
+        "uid": uid,
+        "username": u["username"],
+        "email": u.get("email", ""),
+        "type": "renewal",
+        "plan": plan,
+        "label": label,
+        "amount_rub": amount_rub,
+        "credits_to_add": credits_to_add,
+        "status": "pending",
+        "created_at": datetime.now().isoformat()
+    }
+    save_web_payments(payments)
+    return jsonify({
+        "ok": True,
+        "pid": pid,
+        "amount_rub": amount_rub,
+        "label": label,
+        "plan": plan,
+        "sbp_phone": SBP_PHONE,
+        "sbp_bank": SBP_BANK,
+        "comment": f"Flux {u['username']}"
+    })
+
 @app.route("/admin/api/web-users")
 def admin_api_web_users():
     if not check_admin_token():
@@ -2672,13 +2731,26 @@ def _do_approve_payment(pid):
     users = load_web_users()
     u = users.get(p["uid"])
     if u:
+        from datetime import timedelta
         cur = u.get("credits", 0)
         if cur != -1:
             u["credits"] = cur + p.get("credits_to_add", 0)
-        if p.get("type") in ("core", "pro"):
-            u["plan"] = p["type"]
-            from datetime import timedelta
+        ptype = p.get("type")
+        if ptype in ("core", "pro"):
+            u["plan"] = ptype
             u["plan_expires"] = (datetime.now() + timedelta(days=365)).isoformat()
+        elif ptype == "renewal":
+            # Extend existing plan by 1 year from now (or from current expiry if still valid)
+            plan = p.get("plan", u.get("plan", "free"))
+            u["plan"] = plan
+            old_expires = u.get("plan_expires")
+            try:
+                base = datetime.fromisoformat(old_expires) if old_expires else datetime.now()
+                if base < datetime.now():
+                    base = datetime.now()
+            except Exception:
+                base = datetime.now()
+            u["plan_expires"] = (base + timedelta(days=365)).isoformat()
         save_web_users(users)
     p["status"] = "approved"
     p["approved_at"] = datetime.now().isoformat()

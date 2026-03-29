@@ -539,6 +539,62 @@ header {
     </div>
   </div>
 
+  <!-- RENEWAL MODAL -->
+  <div class="modal-overlay" id="renewal-modal">
+    <div class="modal-box">
+      <!-- Step: notify -->
+      <div id="rnw-step-notify">
+        <div style="text-align:center;margin-bottom:16px">
+          <div style="font-size:48px;filter:drop-shadow(0 0 16px rgba(168,85,247,0.5))">🔄</div>
+        </div>
+        <div class="modal-title" style="text-align:center;margin-bottom:6px">Подписка истекла</div>
+        <div class="modal-sub" style="text-align:center">Ваша подписка <b id="rnw-plan-name" style="color:#a78bfa"></b> закончилась. Продлите её, чтобы продолжать пользоваться всеми функциями и получить новые кредиты.</div>
+
+        <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.25);border-radius:14px;padding:16px;margin:18px 0">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px">
+            <span style="color:var(--text2)">Тариф</span>
+            <span id="rnw-plan-label" style="font-weight:600"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px">
+            <span style="color:var(--text2)">Срок</span>
+            <span style="font-weight:600">1 год</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:14px">
+            <span style="color:var(--text2)">Стоимость</span>
+            <span id="rnw-price" style="font-weight:700;color:#a78bfa;font-size:16px"></span>
+          </div>
+        </div>
+
+        <button class="upg-btn upg-btn-blue" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 4px 18px rgba(168,85,247,0.35)" onclick="goToRenewalSBP()">🔄 Продлить подписку →</button>
+        <button class="upg-btn upg-btn-ghost" onclick="closeRenewal()">Позже</button>
+      </div>
+
+      <!-- Step: SBP -->
+      <div id="rnw-step-sbp" style="display:none">
+        <div class="modal-title">💳 Оплата продления через СБП</div>
+        <div class="modal-sub">Переведите точную сумму по реквизитам ниже</div>
+        <div class="sbp-box">
+          <div class="sbp-title">Реквизиты для перевода</div>
+          <div class="sbp-row"><span>Банк</span><div class="sbp-val">Т-Банк</div></div>
+          <div class="sbp-row"><span>Номер СБП</span><div class="sbp-val"><span>+7 981 969 43 98</span> <button class="copy-btn" onclick="copyText('+79819694398')" title="Копировать">📋</button></div></div>
+          <div class="sbp-row"><span>Сумма</span><div class="sbp-val" style="color:var(--accent2)"><span id="rnw-sbp-amount">—</span> ₽ <button class="copy-btn" onclick="copyText(document.getElementById('rnw-sbp-amount').textContent)" title="Копировать">📋</button></div></div>
+          <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="rnw-sbp-comment">Flux —</span> <button class="copy-btn" onclick="copyText(document.getElementById('rnw-sbp-comment').textContent)" title="Копировать">📋</button></div></div>
+          <div class="sbp-note">⚠️ Обязательно укажи комментарий — так мы найдём твой платёж. После перевода нажми «Я продлил» — подписка активируется после проверки администратором.</div>
+        </div>
+        <button class="upg-btn upg-btn-blue" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 4px 18px rgba(168,85,247,0.35)" id="rnw-paid-btn" onclick="confirmRenewal()">✅ Я продлил</button>
+        <button class="upg-btn upg-btn-ghost" onclick="document.getElementById('rnw-step-sbp').style.display='none';document.getElementById('rnw-step-notify').style.display='block'">← Назад</button>
+      </div>
+
+      <!-- Step: done -->
+      <div id="rnw-step-done" style="display:none;text-align:center;padding:12px 0">
+        <div style="font-size:48px;margin-bottom:12px">🎉</div>
+        <div class="modal-title" style="margin-bottom:8px">Заявка на продление принята!</div>
+        <div style="color:var(--text2);font-size:14px;margin-bottom:24px">Подписка продлится после подтверждения администратором. Обычно это занимает до нескольких часов.</div>
+        <button class="upg-btn upg-btn-blue" onclick="closeRenewal()">Хорошо</button>
+      </div>
+    </div>
+  </div>
+
   <div id="chat-area">
     <div class="empty-chat" id="empty-state">
       <div class="big-icon">⚡</div>
@@ -898,13 +954,20 @@ async function enterApp(username) {
   document.getElementById('user-avatar-letter').textContent = username.charAt(0).toUpperCase();
   loadHistory();
   loadChatList();
-  // Load credits
+  // Load credits + check subscription expiry
   try {
-    const r = await fetch('/app/credits');
-    const d = await r.json();
-    if (d.ok) {
-      updateCreditsBadge(d.credits);
-      _lastMsgCount = d.msg_count ?? null;
+    const [credR, meR] = await Promise.all([
+      fetch('/app/credits'),
+      fetch('/app/me')
+    ]);
+    const credD = await credR.json();
+    const meD = await meR.json();
+    if (credD.ok) {
+      updateCreditsBadge(credD.credits);
+      _lastMsgCount = credD.msg_count ?? null;
+    }
+    if (meD.ok && meD.subscription_expired && meD.plan && meD.plan !== 'free') {
+      setTimeout(() => showRenewalModal(meD.plan), 900);
     }
   } catch(e) {}
   startCreditsPolling();
@@ -1042,6 +1105,55 @@ function runToast() {
   el.textContent = msg;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.remove(); runToast(); }, 380); }, 2800);
+}
+
+// ===== RENEWAL =====
+let renewalPid = null;
+const PLAN_PRICES = { core: 550, pro: 1100 };
+const PLAN_CREDITS_DISPLAY = { core: '1 000 000', pro: '10 000 000' };
+const PLAN_NAMES_RU = { core: 'Core', pro: 'Pro' };
+
+function showRenewalModal(plan) {
+  const price = PLAN_PRICES[plan] || 0;
+  const name = PLAN_NAMES_RU[plan] || plan;
+  document.getElementById('rnw-plan-name').textContent = name;
+  document.getElementById('rnw-plan-label').textContent = `${name} — ${PLAN_CREDITS_DISPLAY[plan] || ''} кр./год`;
+  document.getElementById('rnw-price').textContent = price + '₽';
+  document.getElementById('rnw-step-notify').style.display = 'block';
+  document.getElementById('rnw-step-sbp').style.display = 'none';
+  document.getElementById('rnw-step-done').style.display = 'none';
+  document.getElementById('renewal-modal').classList.add('visible');
+}
+function closeRenewal() {
+  document.getElementById('renewal-modal').classList.remove('visible');
+}
+async function goToRenewalSBP() {
+  const btn = document.querySelector('#rnw-step-notify .upg-btn-blue');
+  if (btn) { btn.disabled = true; btn.textContent = 'Создаём заявку…'; }
+  try {
+    const r = await fetch('/app/request-renewal', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+    const d = await r.json();
+    if (!d.ok) {
+      toast(d.error || 'Ошибка', 'err');
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 Продлить подписку →'; }
+      return;
+    }
+    renewalPid = d.pid;
+    document.getElementById('rnw-sbp-amount').textContent = d.amount_rub;
+    document.getElementById('rnw-sbp-comment').textContent = d.comment;
+    document.getElementById('rnw-step-notify').style.display = 'none';
+    document.getElementById('rnw-step-sbp').style.display = 'block';
+  } catch(e) {
+    toast('Ошибка соединения', 'err');
+    if (btn) { btn.disabled = false; btn.textContent = '🔄 Продлить подписку →'; }
+  }
+}
+async function confirmRenewal() {
+  if (!renewalPid) return;
+  const btn = document.getElementById('rnw-paid-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Отправляем…'; }
+  document.getElementById('rnw-step-sbp').style.display = 'none';
+  document.getElementById('rnw-step-done').style.display = 'block';
 }
 
 // ===== MULTI-CHAT SIDEBAR =====
