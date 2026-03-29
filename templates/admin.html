@@ -131,6 +131,7 @@
       <button class="btn btn-red" id="stop-btn" onclick="stopBot()">⏹ Остановить</button>
       <button class="btn btn-green" id="start-btn" onclick="startBot()" style="display:none">▶ Запустить</button>
       <button class="btn btn-warn" onclick="openBroadcast()">📢 Рассылка</button>
+      <button class="btn btn-gray" id="refresh-btn" onclick="manualRefresh()">🔄 Обновить</button>
       <button class="btn btn-gray" onclick="logout()">Выйти</button>
     </div>
   </header>
@@ -379,6 +380,27 @@ function updateBotStatus(active) {
 
 async function stopBot() { await api('/bot/stop', 'POST'); toast('Бот остановлен', 'error'); }
 async function startBot() { await api('/bot/start', 'POST'); toast('Бот запущен', 'success'); }
+
+async function manualRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Обновляю...';
+  try {
+    await loadInitialData();
+    if (selectedChatId && allChats[selectedChatId]) {
+      const d = await api(`/chat/${selectedChatId}`);
+      if (d.ok) {
+        allChats[selectedChatId].messages = d.messages;
+        renderMessages();
+      }
+    }
+    renderChatList();
+    toast('Данные обновлены', 'success');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Обновить';
+  }
+}
 
 // ---- Chat list ----
 function filterChats() {
