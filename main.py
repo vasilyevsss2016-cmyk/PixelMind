@@ -114,8 +114,8 @@ def save_admin_accounts():
 # Email и сброс пароля
 SMTP_USER     = os.environ.get("SMTP_USER", "")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-SMTP_HOST     = "smtp.gmail.com"
-SMTP_PORT     = 587
+SMTP_HOST     = "smtp.mail.ru"
+SMTP_PORT     = 465
 
 ADMIN_EMAILS_FILE = "admin_emails.json"
 ADMIN_EMAILS: dict[str, str] = {}   # username → email
@@ -283,8 +283,7 @@ def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
         msg.attach(MIMEText(text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.starttls()
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
             server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_USER, to_email, msg.as_string())
         logger.info(f"Письмо восстановления отправлено на {to_email}")
