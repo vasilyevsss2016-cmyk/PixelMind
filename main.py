@@ -628,25 +628,22 @@ def generate_video_bytes(prompt: str) -> bytes | None:
             with open(img_path, "wb") as f:
                 f.write(img_bytes)
 
-            # Шаг 2 — Ken Burns: плавный зум + пан, 8 сек, 25 fps
+            # Шаг 2 — плавный fade-in/out, 6 сек, ultrafast
             cmd = [
                 "ffmpeg", "-y",
-                "-loop", "1", "-t", "8", "-i", img_path,
+                "-loop", "1", "-t", "6", "-i", img_path,
                 "-vf", (
-                    "zoompan=z='min(zoom+0.0015,1.5)'"
-                    ":d=200"
-                    ":x='iw/2-(iw/zoom/2)'"
-                    ":y='ih/2-(ih/zoom/2)'"
-                    ":s=1024x1024,"
-                    "scale=1024:576:force_original_aspect_ratio=decrease,"
-                    "pad=1024:576:(ow-iw)/2:(oh-ih)/2"
+                    "scale=1280:720:force_original_aspect_ratio=decrease,"
+                    "pad=1280:720:(ow-iw)/2:(oh-ih)/2,"
+                    "fade=t=in:st=0:d=1,"
+                    "fade=t=out:st=5:d=1"
                 ),
-                "-c:v", "libx264", "-r", "25",
-                "-pix_fmt", "yuv420p",
+                "-c:v", "libx264", "-preset", "ultrafast",
+                "-r", "25", "-pix_fmt", "yuv420p",
                 "-movflags", "+faststart",
                 out_path,
             ]
-            result = subprocess.run(cmd, capture_output=True, timeout=60)
+            result = subprocess.run(cmd, capture_output=True, timeout=30)
             if result.returncode != 0:
                 logger.error(f"ffmpeg error: {result.stderr.decode()[-300:]}")
                 return None
