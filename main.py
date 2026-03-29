@@ -499,6 +499,15 @@ def send_photo_url(chat_id: int, url: str, caption: str = ""):
     )
 
 
+def send_photo_bytes(chat_id: int, image_bytes: bytes, caption: str = ""):
+    http_requests.post(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+        data={"chat_id": chat_id, "caption": caption},
+        files={"photo": ("image.png", image_bytes, "image/png")},
+        timeout=30
+    )
+
+
 def send_voice(chat_id: int, audio_bytes: bytes):
     http_requests.post(
         f"https://api.telegram.org/bot{BOT_TOKEN}/sendVoice",
@@ -564,9 +573,41 @@ def reply_with_voice_or_text(chat_id: int, text: str):
     send_message(chat_id, text)
 
 
-def generate_image(prompt: str) -> str:
-    encoded = urllib.parse.quote(prompt)
-    return f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true&enhance=true&seed={int(time.time())}"
+IMAGE_GEN_MODEL = "google/gemini-2.5-flash-image"
+
+
+def generate_image(prompt: str) -> bytes | None:
+    """Генерирует изображение через OpenRouter (Gemini Image)."""
+    try:
+        resp = http_requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": IMAGE_GEN_MODEL,
+                "messages": [{"role": "user", "content": f"Generate an image: {prompt}"}],
+                "max_tokens": 4096,
+            },
+            timeout=60,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            images = (
+                data.get("choices", [{}])[0]
+                .get("message", {})
+                .get("images", [])
+            )
+            if images:
+                url = images[0].get("image_url", {}).get("url", "")
+                if url.startswith("data:image"):
+                    b64 = url.split(",", 1)[1]
+                    return base64.b64decode(b64)
+        logger.error(f"Image gen error: {resp.status_code} {resp.text[:200]}")
+    except Exception as e:
+        logger.error(f"Ошибка генерации изображения: {e}")
+    return None
 
 
 def generate_video_bytes(prompt: str) -> bytes | None:
@@ -708,9 +749,13 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
         if not args:
             send_message(chat_id, "Использование: /image [описание картинки]")
             return True
+        send_message(chat_id, "🎨 Генерирую изображение...")
         send_chat_action(chat_id, "upload_photo")
-        img_url = generate_image(args)
-        send_photo_url(chat_id, img_url, f"🎨 {args}")
+        img_bytes = generate_image(args)
+        if img_bytes:
+            send_photo_bytes(chat_id, img_bytes, f"🎨 {args}")
+        else:
+            send_message(chat_id, "Не удалось сгенерировать изображение 😔 Попробуй ещё раз.")
         return True
 
     if cmd == "vid":
@@ -862,10 +907,14 @@ def process_message(message):
         if img_match:
             prompt = img_match.group(1).strip()
             log_message(chat_id, "user", text)
+            send_message(chat_id, "🎨 Генерирую изображение...")
             send_chat_action(chat_id, "upload_photo")
-            img_url = generate_image(prompt)
-            send_photo_url(chat_id, img_url, f"🎨 {prompt}")
-            log_message(chat_id, "assistant", f"[Изображение]: {prompt}")
+            img_bytes = generate_image(prompt)
+            if img_bytes:
+                send_photo_bytes(chat_id, img_bytes, f"🎨 {prompt}")
+                log_message(chat_id, "assistant", f"[Изображение]: {prompt}")
+            else:
+                send_message(chat_id, "Не удалось сгенерировать изображение 😔 Попробуй ещё раз.")
             return
 
     if text:
