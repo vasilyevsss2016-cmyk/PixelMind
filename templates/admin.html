@@ -712,8 +712,8 @@ header {
 <div class="modal-overlay" id="fa-settings-modal">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h3>🔐 Двухфакторная авторизация</h3>
-    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.5">Дополнительная защита входа в панель. После ввода пароля на телефон или email придёт одноразовый код.</div>
+    <h3>🔐 Двухфакторная авторизация <span style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:7px;background:rgba(255,179,64,0.18);color:var(--warn);border:1px solid rgba(255,179,64,0.35);vertical-align:middle;letter-spacing:.3px">БЕТА</span></h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.5">Дополнительная защита входа в панель. После ввода пароля на email придёт одноразовый код.</div>
 
     <div class="fa-toggle-row">
       <div>
@@ -727,30 +727,12 @@ header {
     </div>
 
     <div id="fa-settings-body" style="display:none">
-      <div style="margin-top:16px;font-size:13px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Метод отправки кода</div>
-      <div class="fa-method-row">
-        <button class="fa-method-btn active" id="fa-method-email" onclick="selectFAMethod('email')">📧 Email</button>
-        <button class="fa-method-btn" id="fa-method-sms" onclick="selectFAMethod('sms')">📱 SMS</button>
-      </div>
-
-      <div id="fa-email-info" class="fa-info-box">
-        Код будет отправлен на твой email.
+      <div id="fa-email-info" class="fa-info-box" style="margin-top:16px">
+        Код будет отправлен на твой email.<br>
         Убедись, что email указан в профиле.
       </div>
 
-      <div id="fa-sms-info" style="display:none">
-        <div class="fa-info-box">
-          <strong>Требуется API-ключ SMS.ru.</strong><br>
-          Установи переменную окружения <strong>SMSRU_API_KEY</strong> для работы SMS-рассылки.
-        </div>
-        <div class="fa-phone-row">
-          <input type="tel" id="fa-phone-input" placeholder="+79001234567" autocomplete="tel"
-            onfocus="this.style.borderColor='rgba(90,171,255,.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
-        </div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">Формат: +7XXXXXXXXXX</div>
-      </div>
-
-      <div style="margin-top:16px">
+      <div style="margin-top:12px">
         <button class="btn btn-ghost" onclick="send2FATest()" style="width:100%;justify-content:center;margin-bottom:8px">📨 Отправить тестовый код</button>
       </div>
     </div>
@@ -1295,20 +1277,15 @@ function closeChangePwd() {
 document.getElementById('changepwd-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeChangePwd(); });
 
 /* ===== 2FA SETTINGS ===== */
-let currentFAMethod = 'email';
 async function open2FASettings() {
   document.getElementById('fa-settings-msg').textContent = '';
   document.getElementById('fa-settings-modal').classList.add('open');
-  // Load current settings
   try {
     const d = await api('/2fa/settings');
     if (d.ok) {
       const s = d.settings;
       document.getElementById('fa-enabled-toggle').checked = !!s.enabled;
-      currentFAMethod = s.method || 'email';
       document.getElementById('fa-settings-body').style.display = s.enabled ? '' : 'none';
-      selectFAMethod(currentFAMethod, false);
-      document.getElementById('fa-phone-input').value = s.phone || '';
     }
   } catch(e) {}
 }
@@ -1317,24 +1294,15 @@ function close2FASettings() {
 }
 document.getElementById('fa-settings-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) close2FASettings(); });
 function on2FAToggle() {
-  const enabled = document.getElementById('fa-enabled-toggle').checked;
-  document.getElementById('fa-settings-body').style.display = enabled ? '' : 'none';
-}
-function selectFAMethod(m, updateVar=true) {
-  if(updateVar) currentFAMethod = m;
-  document.getElementById('fa-method-email').className = 'fa-method-btn' + (m==='email'?' active':'');
-  document.getElementById('fa-method-sms').className = 'fa-method-btn' + (m==='sms'?' active':'');
-  document.getElementById('fa-email-info').style.display = m==='email' ? '' : 'none';
-  document.getElementById('fa-sms-info').style.display = m==='sms' ? '' : 'none';
+  document.getElementById('fa-settings-body').style.display =
+    document.getElementById('fa-enabled-toggle').checked ? '' : 'none';
 }
 async function save2FASettings() {
   const enabled = document.getElementById('fa-enabled-toggle').checked;
-  const method = currentFAMethod;
-  const phone = document.getElementById('fa-phone-input').value.trim();
   const msgEl = document.getElementById('fa-settings-msg');
   msgEl.style.color = 'var(--text2)';
   msgEl.textContent = 'Сохраняю...';
-  const d = await api('/2fa/settings', 'POST', { enabled, method, phone });
+  const d = await api('/2fa/settings', 'POST', { enabled, method: 'email', phone: '' });
   if (d.ok) {
     msgEl.style.color = 'var(--accent2)';
     msgEl.textContent = '✓ Настройки сохранены';
