@@ -2432,6 +2432,50 @@ def web_request_payment():
         "comment": f"Flux {u['username']}"
     })
 
+@app.route("/admin/api/web-users")
+def admin_api_web_users():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    lst = []
+    for uid, u in users.items():
+        lst.append({
+            "uid": uid,
+            "username": u.get("username", ""),
+            "email": u.get("email") or "",
+            "credits": u.get("credits", 0),
+            "plan": u.get("plan", "free"),
+            "email_verified": u.get("email_verified", False),
+            "created_at": u.get("created_at", ""),
+        })
+    lst.sort(key=lambda x: x["username"].lower())
+    return jsonify({"ok": True, "users": lst})
+
+@app.route("/admin/api/adjust-credits", methods=["POST"])
+def admin_api_adjust_credits():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    uid = data.get("uid", "").strip()
+    amount = data.get("amount", 0)
+    if not uid:
+        return jsonify({"ok": False, "error": "uid обязателен"}), 400
+    try:
+        amount = int(amount)
+    except (ValueError, TypeError):
+        return jsonify({"ok": False, "error": "Неверная сумма"}), 400
+    users = load_web_users()
+    if uid not in users:
+        return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
+    u = users[uid]
+    cur = u.get("credits", 0)
+    if cur == -1:
+        return jsonify({"ok": False, "error": "У пользователя безлимитные кредиты"}), 400
+    new_val = max(0, cur + amount)
+    u["credits"] = new_val
+    save_web_users(users)
+    return jsonify({"ok": True, "credits": new_val, "username": u.get("username", "")})
+
 def _get_payments_list():
     payments = load_web_payments()
     lst = []

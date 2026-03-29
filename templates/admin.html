@@ -628,6 +628,27 @@ header {
           <div class="invite-list-header">Заявки на оплату</div>
           <div id="payments-list"><div class="invite-empty">Нет заявок</div></div>
         </div>
+        <div class="invite-list-card" style="margin-top:18px">
+          <div class="invite-list-header" style="display:flex;justify-content:space-between;align-items:center">
+            <span>⚡ Кредиты веб-пользователей</span>
+            <button class="btn btn-ghost" style="font-size:12px;padding:4px 10px" onclick="loadWebUsersCredits()">🔄</button>
+          </div>
+          <div id="web-users-credits-list"><div class="invite-empty">Загрузка…</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Credits adjust modal -->
+    <div id="credits-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
+      <div style="background:var(--glass-bg,#1a2540);border:1px solid var(--glass-border);border-radius:18px;padding:28px;width:320px;max-width:90vw;backdrop-filter:blur(20px)">
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px" id="credits-modal-title">Изменить кредиты</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px" id="credits-modal-sub"></div>
+        <input id="credits-modal-input" type="number" min="1" placeholder="Количество кредитов" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);font-size:15px;outline:none;box-sizing:border-box">
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button class="btn" id="credits-modal-confirm" style="flex:1;background:var(--accent);color:#fff" onclick="confirmCreditsAdjust()">Применить</button>
+          <button class="btn btn-ghost" style="flex:1" onclick="closeCreditsModal()">Отмена</button>
+        </div>
+        <div id="credits-modal-err" style="color:var(--danger);font-size:13px;margin-top:8px;display:none"></div>
       </div>
     </div>
 
@@ -1087,7 +1108,7 @@ function switchTab(tab) {
   });
   if (isUsers) renderUserList();
   if (isInvite) loadInviteList();
-  if (isPayments) loadPayments();
+  if (isPayments) { loadPayments(); loadWebUsersCredits(); }
 }
 
 function mobileTab(tab) {
@@ -1109,7 +1130,7 @@ function mobileTab(tab) {
   });
   if (isUsers) renderUserList();
   if (isInvite) loadInviteList();
-  if (isPayments) loadPayments();
+  if (isPayments) { loadPayments(); loadWebUsersCredits(); }
 }
 
 function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
@@ -1781,6 +1802,79 @@ async function rejectPayment(pid) {
   if (d.ok) { showToast('Платёж отклонён'); loadPayments(); }
   else showToast(d.error || 'Ошибка', true);
 }
+
+/* ===== WEB USERS CREDITS ===== */
+let creditsModalUid = null;
+let creditsModalMode = null; // 'add' | 'deduct'
+
+async function loadWebUsersCredits() {
+  const el = document.getElementById('web-users-credits-list');
+  el.innerHTML = '<div class="invite-empty">Загрузка…</div>';
+  const d = await api('/web-users');
+  if (!d.ok || !d.users || !d.users.length) {
+    el.innerHTML = '<div class="invite-empty">Нет пользователей</div>'; return;
+  }
+  el.innerHTML = d.users.map(u => {
+    const cr = u.credits === -1 ? '∞' : u.credits;
+    const crColor = u.credits === -1 ? 'var(--accent)' : u.credits === 0 ? 'var(--danger)' : u.credits <= 10 ? '#f0b429' : 'var(--accent-green,#22c55e)';
+    const planBadge = u.plan !== 'free' ? `<span style="font-size:11px;background:rgba(90,171,255,.15);color:var(--accent);padding:1px 7px;border-radius:20px;margin-left:6px">${u.plan}</span>` : '';
+    return `<div class="user-item" style="display:flex;align-items:center;gap:10px;padding:12px 14px">
+      <div class="avatar av-default" style="flex-shrink:0">${(u.username||'?').charAt(0).toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600">${escHtml(u.username)}${planBadge}</div>
+        <div style="font-size:12px;color:var(--text2)">${escHtml(u.email||'без email')}</div>
+      </div>
+      <div style="font-weight:700;color:${crColor};min-width:40px;text-align:right;font-size:15px">${cr}</div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn" style="padding:5px 10px;font-size:13px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)" title="Добавить кредиты" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','add')">＋</button>
+        <button class="btn" style="padding:5px 10px;font-size:13px;background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)" title="Списать кредиты" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','deduct')">－</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openCreditsModal(uid, username, mode) {
+  creditsModalUid = uid;
+  creditsModalMode = mode;
+  const isAdd = mode === 'add';
+  document.getElementById('credits-modal-title').textContent = isAdd ? '➕ Добавить кредиты' : '➖ Списать кредиты';
+  document.getElementById('credits-modal-sub').textContent = `Пользователь: ${username}`;
+  document.getElementById('credits-modal-input').value = '';
+  document.getElementById('credits-modal-err').style.display = 'none';
+  document.getElementById('credits-modal-confirm').style.background = isAdd ? 'var(--accent-green,#22c55e)' : '#ef4444';
+  const modal = document.getElementById('credits-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('credits-modal-input').focus(), 50);
+}
+
+function closeCreditsModal() {
+  document.getElementById('credits-modal').style.display = 'none';
+  creditsModalUid = null; creditsModalMode = null;
+}
+
+async function confirmCreditsAdjust() {
+  const val = parseInt(document.getElementById('credits-modal-input').value);
+  const errEl = document.getElementById('credits-modal-err');
+  errEl.style.display = 'none';
+  if (!val || val < 1) { errEl.textContent = 'Введите положительное число'; errEl.style.display='block'; return; }
+  const amount = creditsModalMode === 'add' ? val : -val;
+  const btn = document.getElementById('credits-modal-confirm');
+  btn.disabled = true; btn.textContent = 'Применяем…';
+  const d = await api('/adjust-credits', 'POST', { uid: creditsModalUid, amount });
+  btn.disabled = false; btn.textContent = 'Применить';
+  if (d.ok) {
+    showToast(creditsModalMode === 'add' ? `+${val} кредитов добавлено ✅` : `−${val} кредитов списано`);
+    closeCreditsModal();
+    loadWebUsersCredits();
+  } else {
+    errEl.textContent = d.error || 'Ошибка';
+    errEl.style.display = 'block';
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('credits-modal').style.display === 'flex') closeCreditsModal();
+});
 
 function renderInviteList() {
   const total = inviteEmails.length;

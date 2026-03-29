@@ -4,18 +4,7 @@
     "email": "vasilyev.sergey.1975@gmail.com",
     "password_hash": "96f2e3667fbe5ba6ceff913c80f2d112088f1c50f6e34473ea485e0d695cb8f0",
     "created_at": "2026-03-29T14:54:20.105370",
-    "chat_history": [
-      {
-        "role": "user",
-        "content": "привет",
-        "ts": "2026-03-29T14:54:35.720552"
-      },
-      {
-        "role": "assistant",
-        "content": "Привет! 😊 Рад тебя видеть. Чем могу помочь?",
-        "ts": "2026-03-29T14:54:35.720564"
-      }
-    ],
+    "chat_history": [],
     "email_verified": true,
     "credits": -1,
     "plan": "admin",
@@ -31,5 +20,38 @@
     "credits": -1,
     "plan": "admin",
     "plan_expires": null
+  },
+  "33151beca10b531fc14e6be1129e66a0": {
+    "username": "Sergey",
+    "email": null,
+    "password_hash": "e1ff5d8cc8bee551e4300d0b48024bfbc3415208ab29140bea9f289a665e5ac3",
+    "email_verified": false,
+    "email_required_after": "2026-04-05T15:37:14.572577",
+    "created_at": "2026-03-29T15:37:14.572587",
+    "chat_history": [
+      {
+        "role": "user",
+        "content": "Djdjfjf",
+        "ts": "2026-03-29T15:37:25.569773"
+      },
+      {
+        "role": "assistant",
+        "content": "Привет! 😊 Похоже, это случайный набор букв. Может, хотел что-то спросить или написать? \n\nГотов помочь с любыми вопросами — объяснить что-то, обсудить идею или просто поболтать! ✨",
+        "ts": "2026-03-29T15:37:25.569787"
+      },
+      {
+        "role": "user",
+        "content": "Ncncdkdmd",
+        "ts": "2026-03-29T15:37:33.678954"
+      },
+      {
+        "role": "assistant",
+        "content": "Похоже, это опечатка или случайный набор символов 😊  \nЕсли хочешь что-то спросить, обсудить или объяснить — просто напиши!  \nЯ готов помочь с учителями, проектами, идеями или даже просто поболтать 😊",
+        "ts": "2026-03-29T15:37:33.678965"
+      }
+    ],
+    "credits": 20000053,
+    "plan": "pro",
+    "plan_expires": "2027-03-29T15:39:24.681576"
   }
 }

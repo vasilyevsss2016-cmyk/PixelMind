@@ -1,1 +1,15 @@
-{}
+{
+  "20334af3d2d73330c4bd": {
+    "uid": "33151beca10b531fc14e6be1129e66a0",
+    "username": "Sergey",
+    "email": null,
+    "type": "pro",
+    "label": "Pro (1 год)",
+    "amount_rub": 1100,
+    "credits_to_add": 10000000,
+    "status": "approved",
+    "created_at": "2026-03-29T15:38:02.794559",
+    "approved_at": "2026-03-29T15:39:24.681956",
+    "approved_by": "f3e13711"
+  }
+}
