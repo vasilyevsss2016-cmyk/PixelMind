@@ -1980,6 +1980,8 @@ def startup():
 # ============ ВЕБ-ЧАТ ============
 WEB_USERS_FILE = "web_users.json"
 WEB_CHAT_HISTORIES: dict[str, list] = {}  # in-memory per session
+WEB_PENDING_REG: dict[str, dict] = {}  # token → {username, phone, password_hash, code, expires}
+SMSRU_API_KEY = os.environ.get("SMSRU_API_KEY", "")
 
 def load_web_users() -> dict:
     try:
