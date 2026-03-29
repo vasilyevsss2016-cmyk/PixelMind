@@ -46,18 +46,50 @@ VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
 
 # Аккаунты админ-панели: логин → пароль
-ADMIN_ACCOUNTS = {
+# Defaults — используются только если admin_accounts.json не существует
+_DEFAULT_ADMIN_ACCOUNTS = {
     "sergey_defa": "Ser123asd",
     "Blackjack": "Sergey",
 }
+ADMIN_ACCOUNTS_FILE = "admin_accounts.json"
+ADMIN_ACCOUNTS: dict[str, str] = {}
 
 def _make_token(username: str, password: str) -> str:
     return hashlib.sha256(f"flux_admin_{username}_{password}_token".encode()).hexdigest()
 
-# Словарь: токен → логин
-ADMIN_TOKENS: dict[str, str] = {
-    _make_token(u, p): u for u, p in ADMIN_ACCOUNTS.items()
-}
+def _rebuild_tokens():
+    """Пересобирает ADMIN_TOKENS из текущего ADMIN_ACCOUNTS."""
+    ADMIN_TOKENS.clear()
+    for u, p in ADMIN_ACCOUNTS.items():
+        ADMIN_TOKENS[_make_token(u, p)] = u
+
+# Словарь: токен → логин (заполняется в load_admin_accounts)
+ADMIN_TOKENS: dict[str, str] = {}
+
+def load_admin_accounts():
+    """Загружает аккаунты из файла; при первом запуске создаёт файл с дефолтами."""
+    global ADMIN_ACCOUNTS
+    if os.path.exists(ADMIN_ACCOUNTS_FILE):
+        try:
+            with open(ADMIN_ACCOUNTS_FILE, "r", encoding="utf-8") as f:
+                ADMIN_ACCOUNTS.update(json.load(f))
+            logger.info(f"📂 Загружено {len(ADMIN_ACCOUNTS)} аккаунтов из {ADMIN_ACCOUNTS_FILE}")
+        except Exception as e:
+            logger.error(f"Ошибка загрузки аккаунтов: {e}")
+            ADMIN_ACCOUNTS.update(_DEFAULT_ADMIN_ACCOUNTS)
+    else:
+        ADMIN_ACCOUNTS.update(_DEFAULT_ADMIN_ACCOUNTS)
+        save_admin_accounts()
+        logger.info("📂 Создан admin_accounts.json с дефолтными аккаунтами")
+    _rebuild_tokens()
+
+def save_admin_accounts():
+    """Сохраняет текущие аккаунты в файл."""
+    try:
+        with open(ADMIN_ACCOUNTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(ADMIN_ACCOUNTS, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения аккаунтов: {e}")
 
 # Email и сброс пароля
 SMTP_USER     = os.environ.get("SMTP_USER", "")
@@ -961,11 +993,12 @@ def admin_change_password():
         return jsonify({"ok": False, "error": "Пароль слишком короткий (минимум 4 символа)"}), 400
     # Удаляем старый токен
     ADMIN_TOKENS.pop(token, None)
-    # Обновляем пароль и токен
+    # Обновляем пароль, токен и сохраняем на диск
     ADMIN_ACCOUNTS[username] = new_password
+    save_admin_accounts()
     new_token = _make_token(username, new_password)
     ADMIN_TOKENS[new_token] = username
-    logger.info(f"Пользователь {username} сменил пароль")
+    logger.info(f"Пользователь {username} сменил пароль (сохранено)")
     return jsonify({"ok": True, "token": new_token, "username": username})
 
 
@@ -1034,10 +1067,11 @@ def admin_reset_submit():
         if ADMIN_TOKENS[t] == username:
             ADMIN_TOKENS.pop(t)
     ADMIN_ACCOUNTS[username] = new_password
+    save_admin_accounts()
     new_token = _make_token(username, new_password)
     ADMIN_TOKENS[new_token] = username
     RESET_TOKENS.pop(token, None)
-    logger.info(f"Пользователь {username} восстановил пароль через email")
+    logger.info(f"Пользователь {username} восстановил пароль через email (сохранено)")
     return jsonify({"ok": True, "token": new_token, "username": username})
 
 
@@ -1269,6 +1303,7 @@ def startup():
         logger.error("❌ Не указан OPENROUTER_API_KEY — добавь его в Secrets")
         return
 
+    load_admin_accounts()
     load_users()
     load_chat_log()
     load_admin_emails()

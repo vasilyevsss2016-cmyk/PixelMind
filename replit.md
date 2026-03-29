@@ -9,6 +9,7 @@ Feature-rich Telegram AI chatbot with web admin panel. Built on Python/Flask wit
 - **templates/reset.html** — password reset page (sent via email link)
 - **users.json** — persistent storage: users, message_count, banned
 - **chat_log.json** — full chat history per user (int chat_id → list of messages)
+- **admin_accounts.json** — persistent admin accounts (login → password), auto-created on first run
 - **admin_emails.json** — admin account emails for password recovery
 
 ## Key Features
