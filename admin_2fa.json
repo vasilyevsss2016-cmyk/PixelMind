@@ -1,6 +1,6 @@
 {
   "sergey_defa": {
-    "enabled": true,
+    "enabled": false,
     "method": "email",
     "phone": ""
   }

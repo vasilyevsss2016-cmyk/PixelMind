@@ -813,8 +813,10 @@ async function login() {
   const username = document.getElementById('username-input').value.trim();
   const pw = document.getElementById('password-input').value;
   const errEl = document.getElementById('login-error');
+  const btn = document.querySelector('#login-screen button[type="submit"]');
   errEl.style.display = 'none';
   if (!username) { errEl.style.display='block'; errEl.textContent='Введи логин'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Вхожу…'; }
   const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password:pw}) });
   const data = await res.json();
   if (data.ok && !data.require_2fa) {
@@ -825,19 +827,20 @@ async function login() {
   } else if (data.ok && data.require_2fa) {
     faToken = data.fa_token;
     faExpires = Date.now() + 300000;
-    const method = data.method === 'sms' ? 'SMS' : 'email';
     const dest = data.dest || '';
     document.getElementById('fa-desc').innerHTML =
-      `Код отправлен ${method === 'SMS' ? 'по SMS' : 'на email'}<br><strong>${dest}</strong><br>Введи 6-значный код ниже.`;
+      `Код отправлен на email<br><strong>${dest}</strong><br>Введи 6-значный код ниже.`;
     document.getElementById('fa-code-input').value = '';
     document.getElementById('fa-error').style.display = 'none';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('fa-screen').style.display = 'flex';
+    if (btn) { btn.disabled = false; btn.textContent = 'Войти'; }
     startFATimer();
     setTimeout(() => document.getElementById('fa-code-input').focus(), 100);
   } else {
     errEl.style.display='block';
     errEl.textContent = data.error || 'Неверный логин или пароль';
+    if (btn) { btn.disabled = false; btn.textContent = 'Войти'; }
   }
 }
 
@@ -884,7 +887,6 @@ function cancelFA() {
   document.getElementById('fa-error').style.display = 'none';
 }
 document.getElementById('username-input').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('password-input').focus(); });
-document.getElementById('password-input').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
 async function checkAuth() {
   if (!token) return false;
   try { const r=await api('/status'); return r.ok; } catch { return false; }
