@@ -566,7 +566,43 @@ def reply_with_voice_or_text(chat_id: int, text: str):
 
 def generate_image(prompt: str) -> str:
     encoded = urllib.parse.quote(prompt)
-    return f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true&seed={int(time.time())}"
+    return f"https://image.pollinations.ai/prompt/{encoded}?width=1024&height=1024&nologo=true&enhance=true&seed={int(time.time())}"
+
+
+def generate_video_bytes(prompt: str) -> bytes | None:
+    encoded = urllib.parse.quote(prompt)
+    seed = int(time.time())
+    url = (
+        f"https://video.pollinations.ai/prompt/{encoded}"
+        f"?width=1280&height=720&duration=4&fps=24&nologo=true&seed={seed}"
+    )
+    try:
+        resp = http_requests.get(url, timeout=120, verify=False)
+        if resp.status_code == 200 and len(resp.content) > 1024:
+            return resp.content
+    except Exception as e:
+        logger.error(f"Ошибка генерации видео: {e}")
+    return None
+
+
+def send_video_file(chat_id: int, video_bytes: bytes, caption: str = ""):
+    http_requests.post(
+        f"https://api.telegram.org/bot{BOT_TOKEN}/sendVideo",
+        data={"chat_id": chat_id, "caption": caption, "supports_streaming": "true"},
+        files={"video": ("video.mp4", video_bytes, "video/mp4")},
+        timeout=60
+    )
+
+
+_IMAGE_RE = re.compile(
+    r"^(?:нарисуй(?:те)?|изобрази(?:те)?|создай\s+(?:картинку|изображение|рисунок|фото)|сгенерируй\s+(?:картинку|изображение|рисунок|фото)|draw|generate\s+(?:image|picture|photo))\s+(.+)$",
+    re.IGNORECASE | re.DOTALL
+)
+
+_VIDEO_RE = re.compile(
+    r"^(?:сними\s+видео|сделай\s+видео|создай\s+видео|сгенерируй\s+видео|generate\s+video|create\s+video|make\s+video)\s+(.+)$",
+    re.IGNORECASE | re.DOTALL
+)
 
 
 # ============ KEEP-ALIVE ============
@@ -598,8 +634,11 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
             "/business — бизнес-режим\n"
             "/chat — обычный режим\n"
             "/reset — очистить историю\n\n"
-            "🎨 Изображения:\n"
-            "/image [запрос] — сгенерировать картинку\n\n"
+            "🎨 Изображения и видео:\n"
+            "/image [запрос] — сгенерировать картинку\n"
+            "/vid [запрос] — сгенерировать видео (~30 сек)\n"
+            "Нарисуй кота — картинка без команды\n"
+            "Сделай видео с закатом — видео без команды\n\n"
             "🎤 Медиа (просто отправь):\n"
             "Голосовое — расшифрую и отвечу\n"
             "Кружок — расшифрую и отвечу\n"
@@ -672,6 +711,19 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
         send_chat_action(chat_id, "upload_photo")
         img_url = generate_image(args)
         send_photo_url(chat_id, img_url, f"🎨 {args}")
+        return True
+
+    if cmd == "vid":
+        if not args:
+            send_message(chat_id, "Использование: /vid [описание видео]\nНапример: /vid кот играет в мяч")
+            return True
+        send_message(chat_id, "🎬 Генерирую видео, подожди ~30 секунд...")
+        send_chat_action(chat_id, "upload_video")
+        video_bytes = generate_video_bytes(args)
+        if video_bytes:
+            send_video_file(chat_id, video_bytes, f"🎬 {args}")
+        else:
+            send_message(chat_id, "Не удалось сгенерировать видео 😔\nПопробуй ещё раз или измени запрос.")
         return True
 
     if cmd in ("typing", "voice", "video", "photo", "circle", "sticker", "file"):
@@ -804,6 +856,32 @@ def process_message(message):
         else:
             send_message(chat_id, "Не удалось озвучить текст 😔")
         return
+
+    if text:
+        img_match = _IMAGE_RE.match(text.strip())
+        if img_match:
+            prompt = img_match.group(1).strip()
+            log_message(chat_id, "user", text)
+            send_chat_action(chat_id, "upload_photo")
+            img_url = generate_image(prompt)
+            send_photo_url(chat_id, img_url, f"🎨 {prompt}")
+            log_message(chat_id, "assistant", f"[Изображение]: {prompt}")
+            return
+
+    if text:
+        vid_match = _VIDEO_RE.match(text.strip())
+        if vid_match:
+            prompt = vid_match.group(1).strip()
+            log_message(chat_id, "user", text)
+            send_message(chat_id, "🎬 Генерирую видео, подожди ~30 секунд...")
+            send_chat_action(chat_id, "upload_video")
+            video_bytes = generate_video_bytes(prompt)
+            if video_bytes:
+                send_video_file(chat_id, video_bytes, f"🎬 {prompt}")
+                log_message(chat_id, "assistant", f"[Видео]: {prompt}")
+            else:
+                send_message(chat_id, "Не удалось сгенерировать видео 😔\nПопробуй ещё раз или измени запрос.")
+            return
 
     if text and re.match(r"(?i)создай\s+файл\s+\S+", text):
         match = re.match(r"(?i)создай\s+файл\s+(\S+)\s*(.*)", text, re.DOTALL)
