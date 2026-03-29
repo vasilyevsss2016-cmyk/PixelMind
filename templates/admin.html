@@ -485,7 +485,7 @@ header {
       <div class="desktop-btns">
         <button class="btn btn-red" id="stop-btn" onclick="stopBot()">⏹ Стоп</button>
         <button class="btn btn-green" id="start-btn" onclick="startBot()" style="display:none">▶ Старт</button>
-        <button class="btn btn-warn" onclick="openBroadcast()">📢 Рассылка</button>
+        <button class="btn btn-warn" id="broadcast-header-btn" onclick="openBroadcast()">📢 Рассылка</button>
         <button class="btn btn-ghost" onclick="manualRefresh()">🔄 Обновить</button>
         <button class="btn btn-ghost" onclick="openChangePwd()">🔑 Пароль</button>
         <button class="btn btn-ghost" onclick="open2FASettings()">🔐 2FA</button>
@@ -639,7 +639,7 @@ header {
       <span class="nav-icon">📨</span><span>Invite</span>
     </button>
     <div class="nav-divider"></div>
-    <button class="nav-btn" onclick="openBroadcast()">
+    <button class="nav-btn" id="nav-broadcast-btn" onclick="openBroadcast()">
       <span class="nav-icon">📢</span><span>Рассылка</span>
     </button>
     <button class="nav-btn" onclick="manualRefresh()">
@@ -981,10 +981,15 @@ async function checkAuth() {
 async function showApp() {
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  // Кнопки добавления аккаунта — только для sergey_defa
+  // Элементы только для sergey_defa
   const isSuperAdmin = currentUsername === 'sergey_defa';
-  document.getElementById('add-account-btn').style.display = isSuperAdmin ? '' : 'none';
-  document.getElementById('nav-add-account').style.display = isSuperAdmin ? '' : 'none';
+  const saDisplay = isSuperAdmin ? '' : 'none';
+  document.getElementById('add-account-btn').style.display = saDisplay;
+  document.getElementById('nav-add-account').style.display = saDisplay;
+  document.getElementById('tab-invite').style.display = saDisplay;
+  document.getElementById('nav-invite').style.display = saDisplay;
+  document.getElementById('broadcast-header-btn').style.display = saDisplay;
+  document.getElementById('nav-broadcast-btn').style.display = saDisplay;
   await loadInitialData();
   connectSSE();
   setInterval(loadStats, 30000);
