@@ -1245,6 +1245,11 @@ def admin_panel():
     return render_template("admin.html")
 
 
+@app.route("/admin-classic")
+def admin_classic_panel():
+    return render_template("admin_classic.html")
+
+
 @app.route("/admin/login", methods=["POST"])
 def admin_login():
     data = request.get_json()
