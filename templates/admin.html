@@ -728,8 +728,7 @@ header {
 
     <div id="fa-settings-body" style="display:none">
       <div id="fa-email-info" class="fa-info-box" style="margin-top:16px">
-        Код будет отправлен на твой email.<br>
-        Убедись, что email указан в профиле.
+        Код будет отправлен на: <strong id="fa-email-display" style="color:var(--accent)">…</strong>
       </div>
 
       <div style="margin-top:12px">
@@ -1281,11 +1280,21 @@ async function open2FASettings() {
   document.getElementById('fa-settings-msg').textContent = '';
   document.getElementById('fa-settings-modal').classList.add('open');
   try {
-    const d = await api('/2fa/settings');
-    if (d.ok) {
-      const s = d.settings;
-      document.getElementById('fa-enabled-toggle').checked = !!s.enabled;
-      document.getElementById('fa-settings-body').style.display = s.enabled ? '' : 'none';
+    const [d2fa, dEmail] = await Promise.all([api('/2fa/settings'), api('/has-email')]);
+    if (d2fa.ok) {
+      document.getElementById('fa-enabled-toggle').checked = !!d2fa.settings.enabled;
+      document.getElementById('fa-settings-body').style.display = d2fa.settings.enabled ? '' : 'none';
+    }
+    if (dEmail.ok) {
+      const email = dEmail.email || '';
+      const emailEl = document.getElementById('fa-email-display');
+      if (email) {
+        emailEl.textContent = email;
+        emailEl.style.color = 'var(--accent)';
+      } else {
+        emailEl.textContent = 'не задан — укажи email в профиле';
+        emailEl.style.color = 'var(--danger)';
+      }
     }
   } catch(e) {}
 }
