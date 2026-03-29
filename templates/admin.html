@@ -323,6 +323,7 @@ header {
       <button type="submit">Войти</button>
     </form>
     <div class="login-error" id="login-error">Неверный логин или пароль</div>
+    <button type="button" onclick="openForgot()" style="background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;margin-top:12px;opacity:.75;transition:opacity .2s;padding:0" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.75">Забыл пароль или логин?</button>
   </div>
 </div>
 
@@ -492,6 +493,40 @@ header {
   </div>
 </div>
 
+<!-- Forgot password modal -->
+<div class="modal-overlay" id="forgot-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🔑 Восстановление доступа</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">Укажи email, привязанный к аккаунту — пришлём ссылку для сброса пароля и напомним логин.</div>
+    <input type="email" id="forgot-email" placeholder="твой@email.ru" autocomplete="email"
+      style="width:100%;padding:13px 16px;margin-bottom:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:var(--text);font-size:15px;outline:none;transition:border .2s,background .2s;font-family:inherit"
+      onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+    <div id="forgot-msg" style="font-size:13px;min-height:18px;margin-bottom:12px;color:var(--danger)"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeForgot()">Отмена</button>
+      <button class="btn btn-blue" id="forgot-send-btn" onclick="doForgot()">Отправить</button>
+    </div>
+  </div>
+</div>
+
+<!-- Set email modal (prompt after login) -->
+<div class="modal-overlay" id="setemail-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>📧 Привяжи email</h3>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">Для восстановления пароля или логина потребуется email. Укажи его один раз — и сможешь сбросить пароль в любой момент.</div>
+    <input type="email" id="setemail-input" placeholder="твой@email.ru" autocomplete="email"
+      style="width:100%;padding:13px 16px;margin-bottom:6px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:14px;color:var(--text);font-size:15px;outline:none;transition:border .2s,background .2s;font-family:inherit"
+      onfocus="this.style.borderColor='rgba(90,171,255,.45)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+    <div id="setemail-error" style="font-size:13px;color:var(--danger);min-height:18px;margin-bottom:12px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSetEmail()">Позже</button>
+      <button class="btn btn-blue" onclick="doSetEmail()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
 <!-- Confirm dialog -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
@@ -552,6 +587,8 @@ async function showApp() {
   await loadInitialData();
   connectSSE();
   setInterval(loadStats, 30000);
+  // Проверяем, привязан ли email — если нет, просим привязать
+  checkAndPromptEmail();
 }
 function logout() { if(eventSource) eventSource.close(); localStorage.removeItem('flux_admin_token'); location.reload(); }
 
@@ -930,6 +967,88 @@ async function doChangePwd() {
     toast('Пароль успешно изменён', 'success');
   } else {
     errEl.textContent = d.error || 'Ошибка при смене пароля';
+  }
+}
+
+/* ===== FORGOT PASSWORD ===== */
+function openForgot() {
+  document.getElementById('forgot-email').value = '';
+  document.getElementById('forgot-msg').textContent = '';
+  document.getElementById('forgot-msg').style.color = 'var(--danger)';
+  document.getElementById('forgot-send-btn').disabled = false;
+  document.getElementById('forgot-send-btn').textContent = 'Отправить';
+  document.getElementById('forgot-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('forgot-email').focus(), 100);
+}
+function closeForgot() { document.getElementById('forgot-modal').classList.remove('open'); }
+document.getElementById('forgot-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeForgot(); });
+document.getElementById('forgot-email').addEventListener('keydown', e=>{ if(e.key==='Enter') doForgot(); });
+
+async function doForgot() {
+  const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+  const msg = document.getElementById('forgot-msg');
+  const btn = document.getElementById('forgot-send-btn');
+  msg.style.color = 'var(--danger)';
+  if (!email || !email.includes('@')) { msg.textContent = 'Введи корректный email'; return; }
+  btn.disabled = true;
+  btn.textContent = 'Отправляем…';
+  try {
+    const r = await fetch('/admin/forgot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const d = await r.json();
+    if (d.no_email) {
+      msg.textContent = 'Этот email не привязан ни к одному аккаунту';
+      btn.disabled = false; btn.textContent = 'Отправить';
+    } else if (d.sent) {
+      msg.style.color = '#34d399';
+      msg.textContent = '✅ Письмо отправлено! Проверь почту.';
+      btn.disabled = true; btn.textContent = 'Отправлено';
+    } else {
+      msg.textContent = 'Ошибка отправки — SMTP не настроен';
+      btn.disabled = false; btn.textContent = 'Отправить';
+    }
+  } catch {
+    msg.textContent = 'Ошибка соединения';
+    btn.disabled = false; btn.textContent = 'Отправить';
+  }
+}
+
+/* ===== SET EMAIL ===== */
+async function checkAndPromptEmail() {
+  try {
+    const r = await fetch('/admin/api/has-email', { headers: { 'X-Admin-Token': token } });
+    const d = await r.json();
+    if (d.ok && !d.has_email) {
+      setTimeout(openSetEmail, 800); // небольшая задержка после загрузки
+    }
+  } catch {}
+}
+function openSetEmail() {
+  document.getElementById('setemail-input').value = '';
+  document.getElementById('setemail-error').textContent = '';
+  document.getElementById('setemail-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('setemail-input').focus(), 100);
+}
+function closeSetEmail() { document.getElementById('setemail-modal').classList.remove('open'); }
+document.getElementById('setemail-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeSetEmail(); });
+document.getElementById('setemail-input').addEventListener('keydown', e=>{ if(e.key==='Enter') doSetEmail(); });
+
+async function doSetEmail() {
+  const email = document.getElementById('setemail-input').value.trim().toLowerCase();
+  const errEl = document.getElementById('setemail-error');
+  errEl.textContent = '';
+  if (!email || !email.includes('@') || !email.split('@')[1]?.includes('.')) {
+    errEl.textContent = 'Введи корректный email'; return;
+  }
+  const d = await api('/set-email', 'POST', { email });
+  if (d.ok) {
+    closeSetEmail();
+    toast('Email успешно привязан', 'success');
+  } else {
+    errEl.textContent = d.error || 'Ошибка при сохранении';
   }
 }
 

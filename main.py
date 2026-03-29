@@ -11,11 +11,14 @@ import hashlib
 import logging
 import queue
 import secrets
+import smtplib
 import tempfile
 import threading
 import time
 import urllib.parse
 from datetime import datetime
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from flask import Flask, request, jsonify, render_template, session, Response, stream_with_context
 import requests as http_requests
 
@@ -55,6 +58,16 @@ def _make_token(username: str, password: str) -> str:
 ADMIN_TOKENS: dict[str, str] = {
     _make_token(u, p): u for u, p in ADMIN_ACCOUNTS.items()
 }
+
+# Email и сброс пароля
+SMTP_USER     = os.environ.get("SMTP_USER", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_HOST     = "smtp.gmail.com"
+SMTP_PORT     = 587
+
+ADMIN_EMAILS_FILE = "admin_emails.json"
+ADMIN_EMAILS: dict[str, str] = {}   # username → email
+RESET_TOKENS: dict[str, dict] = {}  # token → {username, expires}
 # ====================================
 
 SYSTEM_PROMPT_CHAT = f"""Ты — {BOT_NAME}, дружелюбный AI-ассистент в Telegram с лёгким чувством юмора.
@@ -159,6 +172,74 @@ def save_chat_log():
                 json.dump({str(k): v for k, v in full_chat_log.items()}, f, ensure_ascii=False, indent=2)
     except Exception as e:
         logger.error(f"Ошибка сохранения истории чатов: {e}")
+
+
+def load_admin_emails():
+    global ADMIN_EMAILS
+    try:
+        if os.path.exists(ADMIN_EMAILS_FILE):
+            with open(ADMIN_EMAILS_FILE, "r", encoding="utf-8") as f:
+                ADMIN_EMAILS = json.load(f)
+            logger.info(f"📂 Загружено email для {len(ADMIN_EMAILS)} аккаунтов")
+    except Exception as e:
+        logger.error(f"Ошибка загрузки email: {e}")
+
+
+def save_admin_emails():
+    try:
+        with open(ADMIN_EMAILS_FILE, "w", encoding="utf-8") as f:
+            json.dump(ADMIN_EMAILS, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения email: {e}")
+
+
+def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
+    if not SMTP_USER or not SMTP_PASSWORD:
+        logger.error("SMTP не настроен — нет SMTP_USER или SMTP_PASSWORD")
+        return False
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Восстановление доступа — Flux Admin"
+        msg["From"] = f"Flux Admin <{SMTP_USER}>"
+        msg["To"] = to_email
+
+        text = (
+            f"Привет, {username}!\n\n"
+            f"Ты запросил восстановление доступа к Flux Admin.\n"
+            f"Твой логин: {username}\n\n"
+            f"Для сброса пароля перейди по ссылке:\n{reset_url}\n\n"
+            f"Ссылка действует 30 минут.\n"
+            f"Если ты не запрашивал восстановление — просто проигнорируй это письмо."
+        )
+        html = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a;color:#e8eef8">
+<div style="max-width:480px;margin:0 auto;background:rgba(15,24,48,0.95);padding:36px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 20px 60px rgba(0,0,0,.5)">
+  <div style="font-size:40px;margin-bottom:10px">⚡</div>
+  <h2 style="color:#5aabff;margin:0 0 6px;font-size:22px">Flux Admin</h2>
+  <p style="color:#7a8aaa;margin:0 0 24px;font-size:14px">Восстановление доступа</p>
+  <p>Привет, <strong style="color:#e8eef8">{username}</strong>!</p>
+  <p style="color:#b0bdd0">Ты запросил восстановление доступа к панели администратора.</p>
+  <div style="background:rgba(90,171,255,0.08);border:1px solid rgba(90,171,255,0.2);border-radius:12px;padding:16px;margin:20px 0">
+    <div style="color:#7a8aaa;font-size:12px;margin-bottom:6px">Твой логин</div>
+    <div style="font-size:20px;font-weight:700;color:#5aabff">{username}</div>
+  </div>
+  <a href="{reset_url}" style="display:block;text-align:center;padding:14px 24px;background:linear-gradient(135deg,#5aabff,#3b82f6);color:#fff;text-decoration:none;border-radius:14px;font-weight:600;font-size:16px;margin:24px 0;box-shadow:0 4px 20px rgba(90,171,255,0.3)">Сбросить пароль</a>
+  <p style="color:#4a5a7a;font-size:12px;text-align:center;margin:0">Ссылка действует 30 минут.<br>Если не запрашивал — проигнорируй это письмо.</p>
+</div>
+</body></html>"""
+
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        logger.info(f"Письмо восстановления отправлено на {to_email}")
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки email: {e}")
+        return False
 
 # SSE
 sse_clients: list[queue.Queue] = []
@@ -888,6 +969,78 @@ def admin_change_password():
     return jsonify({"ok": True, "token": new_token, "username": username})
 
 
+@app.route("/admin/api/set-email", methods=["POST"])
+def admin_set_email():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"ok": False, "error": "Некорректный email"}), 400
+    ADMIN_EMAILS[username] = email
+    save_admin_emails()
+    logger.info(f"Пользователь {username} установил email {email}")
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/has-email")
+def admin_has_email():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    email = ADMIN_EMAILS.get(username, "")
+    return jsonify({"ok": True, "has_email": bool(email), "email": email})
+
+
+@app.route("/admin/forgot", methods=["POST"])
+def admin_forgot():
+    data = request.get_json()
+    email = data.get("email", "").strip().lower()
+    username = next((u for u, e in ADMIN_EMAILS.items() if e == email), None)
+    if not username:
+        return jsonify({"ok": True, "sent": False, "no_email": True})
+    reset_token = secrets.token_urlsafe(32)
+    RESET_TOKENS[reset_token] = {"username": username, "expires": time.time() + 1800}
+    base_url = f"https://{REPLIT_URL}" if REPLIT_URL else request.host_url.rstrip("/")
+    reset_url = f"{base_url}/admin/reset?token={reset_token}"
+    sent = send_reset_email(email, username, reset_url)
+    return jsonify({"ok": True, "sent": sent})
+
+
+@app.route("/admin/reset")
+def admin_reset_page():
+    token = request.args.get("token", "")
+    info = RESET_TOKENS.get(token)
+    valid = bool(info and time.time() < info["expires"])
+    uname = info["username"] if valid else ""
+    return render_template("reset.html", token=token, valid=valid, username=uname)
+
+
+@app.route("/admin/reset", methods=["POST"])
+def admin_reset_submit():
+    data = request.get_json()
+    token = data.get("token", "")
+    new_password = data.get("new_password", "").strip()
+    info = RESET_TOKENS.get(token)
+    if not info or time.time() > info["expires"]:
+        return jsonify({"ok": False, "error": "Ссылка недействительна или истекла"}), 400
+    if len(new_password) < 4:
+        return jsonify({"ok": False, "error": "Пароль слишком короткий (минимум 4 символа)"}), 400
+    username = info["username"]
+    for t in list(ADMIN_TOKENS.keys()):
+        if ADMIN_TOKENS[t] == username:
+            ADMIN_TOKENS.pop(t)
+    ADMIN_ACCOUNTS[username] = new_password
+    new_token = _make_token(username, new_password)
+    ADMIN_TOKENS[new_token] = username
+    RESET_TOKENS.pop(token, None)
+    logger.info(f"Пользователь {username} восстановил пароль через email")
+    return jsonify({"ok": True, "token": new_token, "username": username})
+
+
 # ============ ADMIN API ============
 
 @app.route("/admin/api/status")
@@ -1118,6 +1271,7 @@ def startup():
 
     load_users()
     load_chat_log()
+    load_admin_emails()
 
     if REPLIT_URL:
         try:
