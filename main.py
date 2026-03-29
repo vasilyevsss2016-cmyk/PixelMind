@@ -5,16 +5,18 @@ Flux — AI чат-бот для Telegram + веб-панель админист
 import os
 import re
 import io
+import json
 import base64
 import hashlib
 import logging
+import queue
 import secrets
 import tempfile
 import threading
 import time
 import urllib.parse
 from datetime import datetime
-from flask import Flask, request, jsonify, render_template, session
+from flask import Flask, request, jsonify, render_template, session, Response, stream_with_context
 import requests as http_requests
 
 try:
@@ -90,6 +92,23 @@ full_chat_log: dict[int, list] = {}
 message_count: int = 0
 bot_active: bool = True
 
+# SSE
+sse_clients: list[queue.Queue] = []
+sse_lock = threading.Lock()
+
+
+def push_sse(event_type: str, data: dict):
+    payload = json.dumps({"type": event_type, "data": data})
+    with sse_lock:
+        dead = []
+        for q in sse_clients:
+            try:
+                q.put_nowait(payload)
+            except queue.Full:
+                dead.append(q)
+        for q in dead:
+            sse_clients.remove(q)
+
 
 # ============ УТИЛИТЫ БОТА ============
 
@@ -101,10 +120,18 @@ def get_system_prompt(chat_id: int) -> str:
 def log_message(chat_id: int, role: str, content: str):
     if chat_id not in full_chat_log:
         full_chat_log[chat_id] = []
-    full_chat_log[chat_id].append({
+    entry = {
         "role": role,
         "content": content,
         "time": datetime.now().strftime("%d.%m %H:%M")
+    }
+    full_chat_log[chat_id].append(entry)
+    info = user_info.get(chat_id, {})
+    push_sse("message", {
+        "chat_id": chat_id,
+        "name": info.get("name", str(chat_id)),
+        "username": info.get("username", ""),
+        **entry
     })
 
 
@@ -854,6 +881,7 @@ def api_bot_stop():
     if not check_admin_token():
         return jsonify({"ok": False}), 403
     bot_active = False
+    push_sse("status", {"bot_active": False})
     logger.info("Бот остановлен через admin panel")
     return jsonify({"ok": True})
 
@@ -864,8 +892,45 @@ def api_bot_start():
     if not check_admin_token():
         return jsonify({"ok": False}), 403
     bot_active = True
+    push_sse("status", {"bot_active": True})
     logger.info("Бот запущен через admin panel")
     return jsonify({"ok": True})
+
+
+@app.route("/admin/api/stream")
+def api_stream():
+    token = request.args.get("token", "")
+    if token != ADMIN_TOKEN:
+        return jsonify({"ok": False}), 403
+
+    q: queue.Queue = queue.Queue(maxsize=200)
+    with sse_lock:
+        sse_clients.append(q)
+
+    @stream_with_context
+    def generate():
+        try:
+            yield f"data: {json.dumps({'type': 'connected'})}\n\n"
+            while True:
+                try:
+                    payload = q.get(timeout=25)
+                    yield f"data: {payload}\n\n"
+                except queue.Empty:
+                    yield ": heartbeat\n\n"
+        finally:
+            with sse_lock:
+                if q in sse_clients:
+                    sse_clients.remove(q)
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        }
+    )
 
 
 # ============ WEBHOOK SETUP ============

@@ -7,23 +7,13 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
-    --bg: #0f1117;
-    --sidebar: #161b22;
-    --panel: #1c2128;
-    --border: #30363d;
-    --accent: #58a6ff;
-    --accent2: #3fb950;
-    --danger: #f85149;
-    --warn: #d29922;
-    --text: #e6edf3;
-    --text2: #8b949e;
-    --msg-user: #1f3a5f;
-    --msg-ai: #1a2730;
-    --input-bg: #21262d;
+    --bg: #0f1117; --sidebar: #161b22; --panel: #1c2128;
+    --border: #30363d; --accent: #58a6ff; --accent2: #3fb950;
+    --danger: #f85149; --warn: #d29922; --text: #e6edf3; --text2: #8b949e;
+    --msg-user: #1f3a5f; --msg-ai: #1a2730; --input-bg: #21262d;
   }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 
-  /* LOGIN */
   #login-screen { display: flex; align-items: center; justify-content: center; height: 100vh; }
   .login-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 40px; width: 360px; text-align: center; }
   .login-box h1 { font-size: 28px; margin-bottom: 6px; color: var(--accent); }
@@ -34,7 +24,6 @@
   .login-box button:hover { opacity: .85; }
   .login-error { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
 
-  /* APP */
   #app { display: none; flex-direction: column; height: 100vh; }
   header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: var(--sidebar); border-bottom: 1px solid var(--border); flex-shrink: 0; }
   header .logo { font-size: 20px; font-weight: 700; color: var(--accent); }
@@ -42,11 +31,13 @@
   .status-badge { padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
   .status-badge.running { background: rgba(63,185,80,.15); color: var(--accent2); border: 1px solid rgba(63,185,80,.3); }
   .status-badge.stopped { background: rgba(248,81,73,.15); color: var(--danger); border: 1px solid rgba(248,81,73,.3); }
+  .sse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text2); display: inline-block; margin-right: 4px; transition: background .3s; }
+  .sse-dot.live { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
   .btn { padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: opacity .2s; }
   .btn:hover { opacity: .8; }
   .btn-green { background: var(--accent2); color: #fff; }
   .btn-red { background: var(--danger); color: #fff; }
-  .btn-blue { background: var(--accent); color: #fff; }
   .btn-gray { background: var(--border); color: var(--text); }
   .btn-warn { background: var(--warn); color: #fff; }
 
@@ -56,35 +47,31 @@
 
   .main { display: flex; flex: 1; overflow: hidden; }
 
-  /* SIDEBAR */
   .sidebar { width: 270px; background: var(--sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
   .sidebar-header { padding: 12px 14px; border-bottom: 1px solid var(--border); }
   .sidebar-header h3 { font-size: 12px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
   .search-input { width: 100%; padding: 7px 11px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 13px; outline: none; }
   .search-input:focus { border-color: var(--accent); }
   .chat-list { flex: 1; overflow-y: auto; }
-  .chat-item { padding: 11px 14px; cursor: pointer; border-bottom: 1px solid rgba(48,54,61,.4); transition: background .15s; display: flex; align-items: center; gap: 10px; }
+  .chat-item { padding: 11px 14px; cursor: pointer; border-bottom: 1px solid rgba(48,54,61,.4); transition: background .15s; display: flex; align-items: center; gap: 10px; position: relative; }
   .chat-item:hover { background: rgba(88,166,255,.06); }
   .chat-item.active { background: rgba(88,166,255,.13); border-left: 3px solid var(--accent); }
+  .chat-item.new-msg { background: rgba(63,185,80,.07); }
   .chat-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #58a6ff, #3fb950); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; color: #fff; flex-shrink: 0; }
   .chat-info { flex: 1; min-width: 0; }
   .chat-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .chat-preview { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   .chat-meta { font-size: 11px; color: var(--text2); text-align: right; flex-shrink: 0; }
+  .unread-badge { position: absolute; top: 8px; right: 10px; background: var(--accent2); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 6px; }
   .no-chats { padding: 20px; text-align: center; color: var(--text2); font-size: 13px; }
 
-  /* CHAT PANEL — persistent structure */
   .chat-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-
   #chat-header { padding: 13px 18px; border-bottom: 1px solid var(--border); background: var(--panel); flex-shrink: 0; display: none; }
   #chat-header .chat-panel-title { font-size: 16px; font-weight: 700; }
   #chat-header .chat-panel-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
-
   #empty-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; color: var(--text2); }
   #empty-placeholder .icon { font-size: 52px; }
-
-  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; display: none; }
-
+  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: none; flex-direction: column; gap: 10px; }
   #send-bar { padding: 12px 14px; border-top: 1px solid var(--border); background: var(--panel); display: none; gap: 10px; align-items: flex-end; flex-shrink: 0; }
   #msg-input { flex: 1; padding: 10px 14px; background: var(--input-bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; resize: none; outline: none; min-height: 42px; max-height: 120px; font-family: inherit; line-height: 1.4; }
   #msg-input:focus { border-color: var(--accent); }
@@ -92,7 +79,6 @@
   #send-btn:hover { opacity: .85; }
   #send-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-  /* MESSAGES */
   .msg { display: flex; flex-direction: column; max-width: 75%; }
   .msg.user { align-self: flex-end; align-items: flex-end; }
   .msg.assistant { align-self: flex-start; align-items: flex-start; }
@@ -105,7 +91,6 @@
   .msg-time { font-size: 10px; color: var(--text2); margin-top: 2px; padding: 0 3px; }
   .msgs-empty { flex: 1; text-align: center; color: var(--text2); font-size: 14px; padding-top: 40px; }
 
-  /* MODAL */
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 480px; max-width: 95vw; }
@@ -114,7 +99,6 @@
   .modal textarea:focus { border-color: var(--accent); }
   .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
 
-  /* TOAST */
   .toast { position: fixed; bottom: 24px; right: 24px; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 200; animation: slideUp .3s ease; }
   .toast.success { background: var(--accent2); color: #fff; }
   .toast.error { background: var(--danger); color: #fff; }
@@ -127,7 +111,6 @@
 </head>
 <body>
 
-<!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
     <h1>⚡ Flux</h1>
@@ -138,10 +121,11 @@
   </div>
 </div>
 
-<!-- APP -->
 <div id="app">
   <header>
-    <div class="logo">⚡ Flux Admin</div>
+    <div class="logo">
+      <span class="sse-dot" id="sse-dot"></span>⚡ Flux Admin
+    </div>
     <div class="header-right">
       <div class="status-badge running" id="bot-status-badge">🟢 Бот работает</div>
       <button class="btn btn-red" id="stop-btn" onclick="stopBot()">⏹ Остановить</button>
@@ -168,7 +152,6 @@
       </div>
     </div>
 
-    <!-- Persistent chat panel — never recreated -->
     <div class="chat-panel">
       <div id="chat-header">
         <div class="chat-panel-title" id="chat-title"></div>
@@ -187,7 +170,6 @@
   </div>
 </div>
 
-<!-- BROADCAST MODAL -->
 <div class="modal-overlay" id="broadcast-modal">
   <div class="modal">
     <h3>📢 Рассылка всем пользователям</h3>
@@ -201,15 +183,13 @@
 
 <script>
 let token = localStorage.getItem('flux_admin_token') || '';
-let allChats = [];
+let allChats = {};     // chat_id -> {name, username, messages, unread}
 let selectedChatId = null;
-let currentMsgCount = 0;
+let eventSource = null;
+let botActive = true;
 
 async function api(path, method = 'GET', body = null) {
-  const opts = {
-    method,
-    headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token }
-  };
+  const opts = { method, headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token } };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch('/admin/api' + path, opts);
   return r.json();
@@ -218,8 +198,7 @@ async function api(path, method = 'GET', body = null) {
 async function login() {
   const pw = document.getElementById('password-input').value;
   const res = await fetch('/admin/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password: pw })
   });
   const data = await res.json();
@@ -231,35 +210,144 @@ async function login() {
     document.getElementById('login-error').style.display = 'block';
   }
 }
-
-document.getElementById('password-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') login();
-});
+document.getElementById('password-input').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
 
 async function checkAuth() {
   if (!token) return false;
   try { const r = await api('/status'); return r.ok; } catch { return false; }
 }
 
-function showApp() {
+async function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  loadChats();
-  loadStats();
-  loadStatus();
-  setInterval(() => {
-    loadChats();
-    loadStats();
-    loadStatus();
-  }, 8000);
-  setInterval(() => {
-    if (selectedChatId) refreshMessages();
-  }, 4000);
+  await loadInitialData();
+  connectSSE();
+  setInterval(loadStats, 30000);
 }
 
 function logout() {
+  if (eventSource) eventSource.close();
   localStorage.removeItem('flux_admin_token');
   location.reload();
+}
+
+// ---- SSE ----
+function connectSSE() {
+  if (eventSource) eventSource.close();
+  const dot = document.getElementById('sse-dot');
+  dot.className = 'sse-dot';
+
+  eventSource = new EventSource(`/admin/api/stream?token=${encodeURIComponent(token)}`);
+
+  eventSource.onopen = () => {
+    dot.className = 'sse-dot live';
+  };
+
+  eventSource.onmessage = (e) => {
+    try {
+      const ev = JSON.parse(e.data);
+      if (ev.type === 'connected') {
+        dot.className = 'sse-dot live';
+      } else if (ev.type === 'message') {
+        handleSSEMessage(ev.data);
+      } else if (ev.type === 'status') {
+        updateBotStatus(ev.data.bot_active);
+      }
+    } catch {}
+  };
+
+  eventSource.onerror = () => {
+    dot.className = 'sse-dot';
+    // Auto-reconnect after 3s
+    setTimeout(connectSSE, 3000);
+  };
+}
+
+function handleSSEMessage(data) {
+  const chatId = data.chat_id;
+
+  // Update or create chat entry
+  if (!allChats[chatId]) {
+    allChats[chatId] = {
+      chat_id: chatId,
+      name: data.name || String(chatId),
+      username: data.username || '',
+      messages: [],
+      unread: 0
+    };
+  }
+  const chat = allChats[chatId];
+  chat.name = data.name || chat.name;
+  chat.username = data.username || chat.username;
+  chat.messages.push({ role: data.role, content: data.content, time: data.time });
+
+  // Unread badge if not selected
+  if (chatId !== selectedChatId) {
+    chat.unread = (chat.unread || 0) + 1;
+  }
+
+  // Update stats counter
+  const el = document.getElementById('stat-msgs');
+  if (el && el.textContent !== '—') el.textContent = parseInt(el.textContent || 0) + 1;
+  const elU = document.getElementById('stat-users');
+  if (elU) elU.textContent = Object.keys(allChats).length;
+  const elC = document.getElementById('stat-chats');
+  if (elC) elC.textContent = Object.keys(allChats).filter(id => allChats[id].messages.length > 0).length;
+
+  renderChatList();
+
+  // Append message if this chat is open
+  if (chatId === selectedChatId) {
+    appendMessage(data);
+  }
+}
+
+function appendMessage(m) {
+  const area = document.getElementById('messages-area');
+  if (!area) return;
+
+  const wasAtBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 80;
+
+  // Remove empty state
+  const empty = area.querySelector('.msgs-empty');
+  if (empty) empty.remove();
+
+  const chat = allChats[selectedChatId] || {};
+  const cls = m.role === 'user' ? 'user' : m.role === 'admin' ? 'admin' : 'assistant';
+  const label = m.role === 'user'
+    ? `👤 ${escHtml(chat.name || 'Пользователь')}`
+    : m.role === 'admin' ? '🔑 Администратор' : '⚡ Flux';
+
+  const div = document.createElement('div');
+  div.className = `msg ${cls}`;
+  div.innerHTML = `
+    <div class="msg-label">${label}</div>
+    <div class="msg-bubble">${escHtml(m.content)}</div>
+    ${m.time ? `<div class="msg-time">${m.time}</div>` : ''}
+  `;
+  area.appendChild(div);
+
+  if (wasAtBottom) area.scrollTop = area.scrollHeight;
+}
+
+// ---- Initial load ----
+async function loadInitialData() {
+  const [statusData, statsData, chatsData] = await Promise.all([
+    api('/status'), api('/stats'), api('/chats')
+  ]);
+
+  if (statusData.ok) updateBotStatus(statusData.bot_active);
+  if (statsData.ok) {
+    document.getElementById('stat-users').textContent = statsData.users;
+    document.getElementById('stat-msgs').textContent = statsData.messages;
+    document.getElementById('stat-chats').textContent = statsData.chats;
+  }
+  if (chatsData.ok) {
+    for (const c of chatsData.chats) {
+      allChats[c.chat_id] = { ...c, messages: [], unread: 0 };
+    }
+    renderChatList();
+  }
 }
 
 async function loadStats() {
@@ -270,13 +358,13 @@ async function loadStats() {
   document.getElementById('stat-chats').textContent = d.chats;
 }
 
-async function loadStatus() {
-  const d = await api('/status');
-  if (!d.ok) { logout(); return; }
+// ---- Bot status ----
+function updateBotStatus(active) {
+  botActive = active;
   const badge = document.getElementById('bot-status-badge');
   const stopBtn = document.getElementById('stop-btn');
   const startBtn = document.getElementById('start-btn');
-  if (d.bot_active) {
+  if (active) {
     badge.textContent = '🟢 Бот работает';
     badge.className = 'status-badge running';
     stopBtn.style.display = '';
@@ -289,108 +377,93 @@ async function loadStatus() {
   }
 }
 
-async function stopBot() {
-  await api('/bot/stop', 'POST');
-  toast('Бот остановлен', 'error');
-  loadStatus();
-}
+async function stopBot() { await api('/bot/stop', 'POST'); toast('Бот остановлен', 'error'); }
+async function startBot() { await api('/bot/start', 'POST'); toast('Бот запущен', 'success'); }
 
-async function startBot() {
-  await api('/bot/start', 'POST');
-  toast('Бот запущен', 'success');
-  loadStatus();
-}
-
-async function loadChats() {
-  const d = await api('/chats');
-  if (!d.ok) return;
-  allChats = d.chats;
-  filterChats();
-}
-
+// ---- Chat list ----
 function filterChats() {
-  const q = document.getElementById('search-input').value.toLowerCase();
-  const filtered = q
-    ? allChats.filter(c =>
-        (c.name||'').toLowerCase().includes(q) ||
-        (c.username||'').toLowerCase().includes(q) ||
-        String(c.chat_id).includes(q))
-    : allChats;
-  renderChatList(filtered);
+  renderChatList();
 }
 
-function renderChatList(chats) {
+function renderChatList() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const chats = Object.values(allChats).filter(c =>
+    !q ||
+    (c.name||'').toLowerCase().includes(q) ||
+    (c.username||'').toLowerCase().includes(q) ||
+    String(c.chat_id).includes(q)
+  ).sort((a, b) => (b.messages.length || 0) - (a.messages.length || 0));
+
   const el = document.getElementById('chat-list');
   if (!chats.length) { el.innerHTML = '<div class="no-chats">Нет пользователей</div>'; return; }
+
   el.innerHTML = chats.map(c => {
-    const initials = (c.name || '?').charAt(0).toUpperCase();
     const active = c.chat_id === selectedChatId ? 'active' : '';
-    const preview = c.last_message ? escHtml(c.last_message).substring(0, 38) : 'Нет сообщений';
-    return `<div class="chat-item ${active}" onclick="selectChat(${c.chat_id}, ${JSON.stringify(c.name)}, ${JSON.stringify(c.username || '')})">
+    const msgs = c.messages;
+    const lastMsg = msgs.length ? escHtml(msgs[msgs.length - 1].content).substring(0, 38) : (c.last_message ? escHtml(c.last_message).substring(0, 38) : 'Нет сообщений');
+    const unread = c.unread > 0 ? `<span class="unread-badge">${c.unread}</span>` : '';
+    const initials = (c.name || '?').charAt(0).toUpperCase();
+    return `<div class="chat-item ${active}" onclick="selectChat(${c.chat_id})">
       <div class="chat-avatar">${initials}</div>
       <div class="chat-info">
         <div class="chat-name">${escHtml(c.name || 'Пользователь')}</div>
-        <div class="chat-preview">${preview}</div>
+        <div class="chat-preview">${lastMsg}</div>
       </div>
-      <div class="chat-meta">${c.msg_count || 0}<br>сообщ.</div>
+      <div class="chat-meta">${msgs.length || ''}</div>
+      ${unread}
     </div>`;
   }).join('');
 }
 
-async function selectChat(chatId, name, username) {
+async function selectChat(chatId) {
   selectedChatId = chatId;
-  currentMsgCount = 0;
+  if (allChats[chatId]) allChats[chatId].unread = 0;
+  renderChatList();
 
-  // Update header — don't touch the textarea
+  const c = allChats[chatId] || {};
   document.getElementById('chat-header').style.display = 'block';
-  document.getElementById('chat-title').textContent = name || 'Пользователь';
-  document.getElementById('chat-sub').textContent =
-    (username ? `@${username} · ` : '') + `ID: ${chatId}`;
-  document.getElementById('msg-input').placeholder = `Написать ${name || 'пользователю'}...`;
-
-  // Show persistent elements
+  document.getElementById('chat-title').textContent = c.name || 'Пользователь';
+  document.getElementById('chat-sub').textContent = (c.username ? `@${c.username} · ` : '') + `ID: ${chatId}`;
+  document.getElementById('msg-input').placeholder = `Написать ${c.name || 'пользователю'}...`;
   document.getElementById('empty-placeholder').style.display = 'none';
   document.getElementById('messages-area').style.display = 'flex';
   document.getElementById('send-bar').style.display = 'flex';
 
-  filterChats();
-  await refreshMessages(true);
+  // Load full history if we don't have it yet
+  if (!c.messages || c.messages.length === 0) {
+    const d = await api(`/chat/${chatId}`);
+    if (d.ok && allChats[chatId]) {
+      allChats[chatId].messages = d.messages;
+      allChats[chatId].name = d.name || c.name;
+      allChats[chatId].username = d.username || c.username;
+    }
+  }
+
+  renderMessages();
 }
 
-async function refreshMessages(scrollToBottom = false) {
-  if (!selectedChatId) return;
-  const d = await api(`/chat/${selectedChatId}`);
-  if (!d.ok) return;
-
-  const msgs = d.messages;
-  // Only re-render if message count changed
-  if (!scrollToBottom && msgs.length === currentMsgCount) return;
-  currentMsgCount = msgs.length;
-
+function renderMessages() {
   const area = document.getElementById('messages-area');
-  const wasAtBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 60;
+  if (!area || !selectedChatId) return;
+  const chat = allChats[selectedChatId];
+  const msgs = chat ? chat.messages : [];
 
   if (!msgs.length) {
     area.innerHTML = '<div class="msgs-empty">Нет сообщений</div>';
     return;
   }
 
+  const name = (chat && chat.name) || 'Пользователь';
   area.innerHTML = msgs.map(m => {
     const cls = m.role === 'user' ? 'user' : m.role === 'admin' ? 'admin' : 'assistant';
-    const label = m.role === 'user'
-      ? `👤 ${escHtml(d.name || 'Пользователь')}`
-      : m.role === 'admin' ? '🔑 Администратор' : '⚡ Flux';
-    const time = m.time ? `<div class="msg-time">${m.time}</div>` : '';
+    const label = m.role === 'user' ? `👤 ${escHtml(name)}` : m.role === 'admin' ? '🔑 Администратор' : '⚡ Flux';
     return `<div class="msg ${cls}">
       <div class="msg-label">${label}</div>
       <div class="msg-bubble">${escHtml(m.content)}</div>
-      ${time}
+      ${m.time ? `<div class="msg-time">${m.time}</div>` : ''}
     </div>`;
   }).join('');
-
-  if (scrollToBottom || wasAtBottom) {
-    area.scrollTop = area.scrollHeight;
-  }
+  area.scrollTop = area.scrollHeight;
 }
 
 function handleKey(e) {
@@ -407,7 +480,6 @@ async function sendMsg() {
   document.getElementById('send-btn').disabled = true;
   await api('/send', 'POST', { chat_id: selectedChatId, text });
   document.getElementById('send-btn').disabled = false;
-  await refreshMessages(true);
   toast('Отправлено', 'success');
   inp.focus();
 }
@@ -434,12 +506,9 @@ function toast(msg, type = 'success') {
 }
 
 function escHtml(str) {
-  return String(str)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Auto-resize textarea
 document.getElementById('msg-input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
