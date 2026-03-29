@@ -1,17 +1,20 @@
 """
-Flux — AI чат-бот для Telegram.
+Flux — AI чат-бот для Telegram + веб-панель администратора.
 """
 
 import os
 import re
 import io
 import base64
+import hashlib
 import logging
+import secrets
 import tempfile
 import threading
 import time
 import urllib.parse
-from flask import Flask, request
+from datetime import datetime
+from flask import Flask, request, jsonify, render_template, session
 import requests as http_requests
 
 try:
@@ -31,11 +34,13 @@ except ImportError:
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 BOT_NAME = "Flux"
 AI_MODEL = "stepfun/step-3.5-flash:free"
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
 ADMIN_USERNAME = "sergey_defa"
+ADMIN_TOKEN = hashlib.sha256(f"flux_{ADMIN_PASSWORD}_secret".encode()).hexdigest()
 # ====================================
 
 SYSTEM_PROMPT_CHAT = f"""Ты — {BOT_NAME}, дружелюбный AI-ассистент в Telegram с лёгким чувством юмора.
@@ -72,20 +77,34 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+app.secret_key = ADMIN_TOKEN
 
+# ============ ГЛОБАЛЬНОЕ СОСТОЯНИЕ ============
 chat_histories: dict[int, list[dict]] = {}
 chat_modes: dict[int, str] = {}
 voice_reply_enabled: dict[int, bool] = {}
 known_chats: set = set()
-MAX_HISTORY = 30
-message_count = 0
+user_info: dict[int, dict] = {}
+full_chat_log: dict[int, list] = {}
+message_count: int = 0
+bot_active: bool = True
 
 
-# ============ УТИЛИТЫ ============
+# ============ УТИЛИТЫ БОТА ============
 
 def get_system_prompt(chat_id: int) -> str:
     mode = chat_modes.get(chat_id, "chat")
     return SYSTEM_PROMPT_BUSINESS if mode == "business" else SYSTEM_PROMPT_CHAT
+
+
+def log_message(chat_id: int, role: str, content: str):
+    if chat_id not in full_chat_log:
+        full_chat_log[chat_id] = []
+    full_chat_log[chat_id].append({
+        "role": role,
+        "content": content,
+        "time": datetime.now().strftime("%d.%m %H:%M")
+    })
 
 
 def get_ai_reply(chat_id: int, user_message: str) -> str:
@@ -98,8 +117,8 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
     history = chat_histories[chat_id]
     history.append({"role": "user", "content": user_message})
 
-    if len(history) > MAX_HISTORY:
-        history = history[-MAX_HISTORY:]
+    if len(history) > 30:
+        history = history[-30:]
         chat_histories[chat_id] = history
 
     messages = [{"role": "system", "content": get_system_prompt(chat_id)}] + history
@@ -291,8 +310,7 @@ def keep_alive_loop():
     time.sleep(30)
     while True:
         try:
-            url = f"https://{REPLIT_URL}/"
-            http_requests.get(url, timeout=10)
+            http_requests.get(f"https://{REPLIT_URL}/", timeout=10)
             logger.info("Keep-alive ping отправлен")
         except Exception as e:
             logger.warning(f"Keep-alive ошибка: {e}")
@@ -302,12 +320,14 @@ def keep_alive_loop():
 # ============ ОБРАБОТКА КОМАНД ============
 
 def handle_command(chat_id: int, text: str, message_id: int, username: str) -> bool:
-    cmd = text.strip().split()[0].lower().lstrip("/")
-    args = text.strip()[len(cmd) + 1:].strip()
+    parts = text.strip().split()
+    cmd = parts[0].lower().lstrip("/").split("@")[0]
+    args = " ".join(parts[1:]).strip()
 
     if cmd == "start":
         chat_histories[chat_id] = []
-        send_message(chat_id, (
+        is_admin = username == ADMIN_USERNAME
+        welcome = (
             f"Привет! ⚡ Я {BOT_NAME} — AI-бот для общения.\n\n"
             "💬 Общение:\n"
             "/business — бизнес-режим\n"
@@ -333,29 +353,11 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
             "/photo [сек] — отправляет фото\n"
             "/circle [сек] — записывает кружок\n"
             "/sticker [сек] — выбирает стикер\n"
-            "/file [сек] — отправляет файл\n\n"
-            f"🔑 Ты администратор. @{username}\n"
-            "Напиши /adminhelp для списка команд."
-            if username == ADMIN_USERNAME else
-            f"Привет! ⚡ Я {BOT_NAME} — AI-бот для общения.\n\n"
-            "💬 Общение:\n"
-            "/business — бизнес-режим\n"
-            "/chat — обычный режим\n"
-            "/reset — очистить историю\n\n"
-            "🎨 Изображения:\n"
-            "/image [запрос] — сгенерировать картинку\n\n"
-            "🎤 Медиа (просто отправь):\n"
-            "Голосовое — расшифрую и отвечу\n"
-            "Кружок — расшифрую и отвечу\n"
-            "Видео — расшифрую речь\n"
-            "Фото — опишу что на нём\n"
-            "Файлы (txt, py, cpp, cs, mp3...) — прочитаю и проанализирую\n\n"
-            "📁 Файлы и озвучка:\n"
-            "/tts [текст] — озвучить текст голосом\n"
-            "/voice_on — отвечать голосом\n"
-            "/voice_off — выключить голосовые ответы\n"
-            "Создай файл script.py [...] — создам и пришлю файл"
-        ))
+            "/file [сек] — отправляет файл"
+        )
+        if is_admin:
+            welcome += f"\n\n🔑 Ты администратор. @{username}\nНапиши /adminhelp для списка команд."
+        send_message(chat_id, welcome)
         return True
 
     if cmd == "reset":
@@ -443,7 +445,8 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
         send_message(chat_id, (
             "🔑 Команды администратора:\n\n"
             "/stats — статистика бота\n"
-            "/broadcast [текст] — рассылка всем пользователям"
+            "/broadcast [текст] — рассылка всем пользователям\n\n"
+            "🌐 Веб-панель доступна по ссылке бота (/ → /admin)"
         ))
         return True
 
@@ -479,15 +482,11 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
     return False
 
 
-# ============ МАРШРУТЫ ============
-
-@app.route("/")
-def index():
-    return "Flux AI Bot ⚡ Online"
-
+# ============ WEBHOOK ============
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
+    global bot_active
     data = request.get_json()
     if not data:
         return "ok"
@@ -500,8 +499,19 @@ def webhook():
     message_id = message.get("message_id")
     user = message.get("from", {})
     username = user.get("username", "")
+    first_name = user.get("first_name", "")
+    last_name = user.get("last_name", "")
 
     known_chats.add(chat_id)
+    user_info[chat_id] = {
+        "username": username,
+        "first_name": first_name,
+        "last_name": last_name,
+        "name": f"{first_name} {last_name}".strip() or username or str(chat_id)
+    }
+
+    if not bot_active:
+        return "ok"
 
     text = message.get("text", "")
     voice = message.get("voice")
@@ -510,30 +520,31 @@ def webhook():
     photo = message.get("photo")
     document = message.get("document")
 
-    # ---- Текстовые команды ----
     if text and text.startswith("/"):
         logger.info(f"Команда от @{username}: {text}")
+        log_message(chat_id, "user", text)
         handle_command(chat_id, text, message_id, username)
         return "ok"
 
-    # ---- Создать файл ----
     if text and re.match(r"(?i)создай\s+файл\s+\S+", text):
         match = re.match(r"(?i)создай\s+файл\s+(\S+)\s*(.*)", text, re.DOTALL)
         if match:
             filename = match.group(1)
             task = match.group(2).strip() or f"Напиши содержимое файла {filename}"
+            log_message(chat_id, "user", text)
             send_chat_action(chat_id, "upload_document")
             ai_content = get_ai_reply(chat_id, f"Создай файл {filename}. {task}\nВыдай только код/содержимое файла без лишних пояснений.")
+            log_message(chat_id, "assistant", f"[Файл: {filename}]")
             send_document(chat_id, filename, ai_content.encode("utf-8"), f"📄 {filename}")
             return "ok"
 
-    # ---- Голосовое сообщение ----
     if voice:
         send_chat_action(chat_id, "typing")
         file_data = tg_download_file(voice["file_id"])
         if file_data:
             transcript = transcribe_audio(file_data)
             logger.info(f"Голосовое от @{username}: {transcript}")
+            log_message(chat_id, "user", f"🎤 {transcript}")
             send_message(chat_id, f"🎤 Ты сказал: {transcript}")
             stop_event = threading.Event()
             typing_thread = threading.Thread(target=send_typing, args=(chat_id, stop_event), daemon=True)
@@ -543,12 +554,12 @@ def webhook():
             finally:
                 stop_event.set()
                 typing_thread.join(timeout=5)
+            log_message(chat_id, "assistant", reply)
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, "Не смог скачать аудио 😔")
         return "ok"
 
-    # ---- Видео-кружок ----
     if video_note:
         send_chat_action(chat_id, "typing")
         file_data = tg_download_file(video_note["file_id"])
@@ -567,14 +578,15 @@ def webhook():
                 transcript = "[Не удалось расшифровать кружок]"
             finally:
                 os.unlink(mp4_path)
+            log_message(chat_id, "user", f"🎥 {transcript}")
             send_message(chat_id, f"🎥 Ты сказал: {transcript}")
             reply = get_ai_reply(chat_id, transcript)
+            log_message(chat_id, "assistant", reply)
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, "Не смог обработать кружок 😔")
         return "ok"
 
-    # ---- Видео ----
     if video:
         send_chat_action(chat_id, "typing")
         file_data = tg_download_file(video["file_id"])
@@ -593,27 +605,29 @@ def webhook():
                 transcript = "[Не удалось расшифровать видео]"
             finally:
                 os.unlink(mp4_path)
+            log_message(chat_id, "user", f"🎬 {transcript}")
             send_message(chat_id, f"🎬 Речь в видео: {transcript}")
             reply = get_ai_reply(chat_id, transcript)
+            log_message(chat_id, "assistant", reply)
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, "Не смог обработать видео 😔")
         return "ok"
 
-    # ---- Фото ----
     if photo:
         send_chat_action(chat_id, "typing")
         best = max(photo, key=lambda p: p.get("file_size", 0))
         file_data = tg_download_file(best["file_id"])
         if file_data:
             caption = message.get("caption", "Опиши что на этом фото подробно.")
+            log_message(chat_id, "user", f"📷 [Фото] {caption}")
             description = describe_image_with_ai(chat_id, file_data, caption)
+            log_message(chat_id, "assistant", description)
             reply_with_voice_or_text(chat_id, f"🖼 {description}")
         else:
             send_message(chat_id, "Не смог скачать фото 😔")
         return "ok"
 
-    # ---- Документ/файл ----
     if document:
         send_chat_action(chat_id, "typing")
         fname = document.get("file_name", "")
@@ -624,6 +638,7 @@ def webhook():
             send_message(chat_id, "Не смог скачать файл 😔")
             return "ok"
 
+        log_message(chat_id, "user", f"📎 [Файл: {fname}]")
         if ext in ("txt", "py", "cpp", "cs", "js", "ts", "html", "css", "json", "xml", "md", "yaml", "yml", "sh", "bat", "c", "h", "java", "rs", "go", "rb", "php"):
             try:
                 content = file_data.decode("utf-8", errors="replace")
@@ -631,21 +646,24 @@ def webhook():
                     content = content[:4000] + "\n...[обрезано]"
                 prompt = f"Файл: {fname}\n\nСодержимое:\n{content}\n\nПроанализируй этот файл и расскажи что он делает."
                 reply = get_ai_reply(chat_id, prompt)
+                log_message(chat_id, "assistant", reply)
                 reply_with_voice_or_text(chat_id, reply)
             except Exception as e:
                 send_message(chat_id, f"Ошибка при чтении файла: {e}")
         elif ext in ("mp3", "wav", "ogg", "m4a"):
             transcript = transcribe_audio(file_data)
+            log_message(chat_id, "user", f"🎵 {transcript}")
             send_message(chat_id, f"🎵 Транскрипция аудио: {transcript}")
             reply = get_ai_reply(chat_id, transcript)
+            log_message(chat_id, "assistant", reply)
             reply_with_voice_or_text(chat_id, reply)
         else:
             send_message(chat_id, f"📎 Получил файл: {fname}\nФормат .{ext} не поддерживается для анализа.")
         return "ok"
 
-    # ---- Обычное текстовое сообщение ----
     if text:
         logger.info(f"От @{username}: {text}")
+        log_message(chat_id, "user", text)
         stop_event = threading.Event()
         typing_thread = threading.Thread(target=send_typing, args=(chat_id, stop_event), daemon=True)
         typing_thread.start()
@@ -654,11 +672,151 @@ def webhook():
         finally:
             stop_event.set()
             typing_thread.join(timeout=5)
+        log_message(chat_id, "assistant", reply)
         reply_with_voice_or_text(chat_id, reply)
         logger.info(f"Ответ: {reply}")
 
     return "ok"
 
+
+# ============ ОСНОВНЫЕ МАРШРУТЫ ============
+
+@app.route("/")
+def index():
+    return "Flux AI Bot ⚡ Online"
+
+
+# ============ ADMIN AUTH ============
+
+def check_admin_token():
+    token = request.headers.get("X-Admin-Token", "")
+    return token == ADMIN_TOKEN
+
+
+@app.route("/admin")
+def admin_panel():
+    return render_template("admin.html")
+
+
+@app.route("/admin/login", methods=["POST"])
+def admin_login():
+    data = request.get_json()
+    pw = data.get("password", "")
+    if pw == ADMIN_PASSWORD:
+        return jsonify({"ok": True, "token": ADMIN_TOKEN})
+    return jsonify({"ok": False}), 401
+
+
+# ============ ADMIN API ============
+
+@app.route("/admin/api/status")
+def api_status():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, "bot_active": bot_active})
+
+
+@app.route("/admin/api/stats")
+def api_stats():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    return jsonify({
+        "ok": True,
+        "users": len(known_chats),
+        "messages": message_count,
+        "chats": len(chat_histories)
+    })
+
+
+@app.route("/admin/api/chats")
+def api_chats():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    chats = []
+    for cid in known_chats:
+        info = user_info.get(cid, {})
+        log = full_chat_log.get(cid, [])
+        last = log[-1]["content"] if log else ""
+        chats.append({
+            "chat_id": cid,
+            "name": info.get("name", str(cid)),
+            "username": info.get("username", ""),
+            "last_message": last,
+            "msg_count": len(log)
+        })
+    chats.sort(key=lambda x: x["msg_count"], reverse=True)
+    return jsonify({"ok": True, "chats": chats})
+
+
+@app.route("/admin/api/chat/<int:chat_id>")
+def api_chat(chat_id):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    info = user_info.get(chat_id, {})
+    log = full_chat_log.get(chat_id, [])
+    return jsonify({
+        "ok": True,
+        "chat_id": chat_id,
+        "name": info.get("name", str(chat_id)),
+        "username": info.get("username", ""),
+        "messages": log
+    })
+
+
+@app.route("/admin/api/send", methods=["POST"])
+def api_send():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    chat_id = data.get("chat_id")
+    text = data.get("text", "").strip()
+    if not chat_id or not text:
+        return jsonify({"ok": False, "error": "chat_id and text required"}), 400
+    send_message(int(chat_id), text)
+    log_message(int(chat_id), "admin", text)
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/broadcast", methods=["POST"])
+def api_broadcast():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json()
+    text = data.get("text", "").strip()
+    if not text:
+        return jsonify({"ok": False}), 400
+    sent = 0
+    for cid in list(known_chats):
+        try:
+            send_message(cid, f"📢 {text}")
+            log_message(cid, "admin", f"📢 {text}")
+            sent += 1
+        except Exception:
+            pass
+    return jsonify({"ok": True, "sent": sent})
+
+
+@app.route("/admin/api/bot/stop", methods=["POST"])
+def api_bot_stop():
+    global bot_active
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    bot_active = False
+    logger.info("Бот остановлен через admin panel")
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/bot/start", methods=["POST"])
+def api_bot_start():
+    global bot_active
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    bot_active = True
+    logger.info("Бот запущен через admin panel")
+    return jsonify({"ok": True})
+
+
+# ============ WEBHOOK SETUP ============
 
 def set_webhook():
     webhook_url = f"https://{REPLIT_URL}/webhook"
@@ -686,4 +844,5 @@ if __name__ == "__main__":
         logger.info("Keep-alive запущен")
 
     print(f"⚡ Flux AI Bot | Модель: {AI_MODEL}")
+    print(f"🌐 Админ-панель: https://{REPLIT_URL}/admin")
     app.run(host="0.0.0.0", port=PORT)
