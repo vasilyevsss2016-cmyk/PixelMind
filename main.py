@@ -37,13 +37,24 @@ except ImportError:
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
 BOT_NAME = "Flux"
 AI_MODEL = "stepfun/step-3.5-flash:free"
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
-ADMIN_USERNAME = "sergey_defa"
-ADMIN_TOKEN = hashlib.sha256(f"flux_{ADMIN_PASSWORD}_secret".encode()).hexdigest()
+
+# Аккаунты админ-панели: логин → пароль
+ADMIN_ACCOUNTS = {
+    "sergey_defa": "Ser123asd",
+    "Blackjack": "Sergey",
+}
+
+def _make_token(username: str, password: str) -> str:
+    return hashlib.sha256(f"flux_admin_{username}_{password}_token".encode()).hexdigest()
+
+# Словарь: токен → логин
+ADMIN_TOKENS: dict[str, str] = {
+    _make_token(u, p): u for u, p in ADMIN_ACCOUNTS.items()
+}
 # ====================================
 
 SYSTEM_PROMPT_CHAT = f"""Ты — {BOT_NAME}, дружелюбный AI-ассистент в Telegram с лёгким чувством юмора.
@@ -81,7 +92,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.secret_key = ADMIN_TOKEN
+app.secret_key = hashlib.sha256(b"flux_admin_panel_secret_key").hexdigest()
 
 # ============ ГЛОБАЛЬНОЕ СОСТОЯНИЕ ============
 USERS_FILE = "users.json"
@@ -837,7 +848,7 @@ def index():
 
 def check_admin_token():
     token = request.headers.get("X-Admin-Token", "")
-    return token == ADMIN_TOKEN
+    return token in ADMIN_TOKENS
 
 
 @app.route("/admin")
@@ -848,9 +859,12 @@ def admin_panel():
 @app.route("/admin/login", methods=["POST"])
 def admin_login():
     data = request.get_json()
-    pw = data.get("password", "")
-    if pw == ADMIN_PASSWORD:
-        return jsonify({"ok": True, "token": ADMIN_TOKEN})
+    username = data.get("username", "").strip()
+    password = data.get("password", "")
+    expected = ADMIN_ACCOUNTS.get(username)
+    if expected and password == expected:
+        token = _make_token(username, password)
+        return jsonify({"ok": True, "token": token, "username": username})
     return jsonify({"ok": False}), 401
 
 
@@ -1029,7 +1043,7 @@ def api_bot_start():
 @app.route("/admin/api/stream")
 def api_stream():
     token = request.args.get("token", "")
-    if token != ADMIN_TOKEN:
+    if token not in ADMIN_TOKENS:
         return jsonify({"ok": False}), 403
 
     q: queue.Queue = queue.Queue(maxsize=200)

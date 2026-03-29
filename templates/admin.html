@@ -317,9 +317,12 @@ header {
     <div class="login-logo">⚡</div>
     <h1>Flux Admin</h1>
     <p>Панель управления ботом</p>
-    <input type="password" id="password-input" placeholder="Введи пароль" autocomplete="current-password" />
-    <button onclick="login()">Войти</button>
-    <div class="login-error" id="login-error">Неверный пароль</div>
+    <form onsubmit="event.preventDefault();login()">
+      <input type="text" id="username-input" placeholder="Логин" autocomplete="username" />
+      <input type="password" id="password-input" placeholder="Пароль" autocomplete="current-password" />
+      <button type="submit">Войти</button>
+    </form>
+    <div class="login-error" id="login-error">Неверный логин или пароль</div>
   </div>
 </div>
 
@@ -504,12 +507,17 @@ async function apiDel(path) {
 
 /* ===== AUTH ===== */
 async function login() {
+  const username = document.getElementById('username-input').value.trim();
   const pw = document.getElementById('password-input').value;
-  const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) });
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!username) { errEl.style.display='block'; errEl.textContent='Введи логин'; return; }
+  const res = await fetch('/admin/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username, password:pw}) });
   const data = await res.json();
   if (data.ok) { token=data.token; localStorage.setItem('flux_admin_token',token); showApp(); }
-  else { const e=document.getElementById('login-error'); e.style.display='block'; e.textContent='Неверный пароль'; }
+  else { errEl.style.display='block'; errEl.textContent='Неверный логин или пароль'; }
 }
+document.getElementById('username-input').addEventListener('keydown', e=>{ if(e.key==='Enter') document.getElementById('password-input').focus(); });
 document.getElementById('password-input').addEventListener('keydown', e=>{ if(e.key==='Enter') login(); });
 async function checkAuth() {
   if (!token) return false;
