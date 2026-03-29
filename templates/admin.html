@@ -988,8 +988,6 @@ async function showApp() {
   document.getElementById('nav-add-account').style.display = saDisplay;
   document.getElementById('tab-invite').style.display = saDisplay;
   document.getElementById('nav-invite').style.display = saDisplay;
-  document.getElementById('broadcast-header-btn').style.display = saDisplay;
-  document.getElementById('nav-broadcast-btn').style.display = saDisplay;
   await loadInitialData();
   connectSSE();
   setInterval(loadStats, 30000);
