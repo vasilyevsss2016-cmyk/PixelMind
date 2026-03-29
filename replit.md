@@ -6,7 +6,7 @@ Feature-rich Telegram AI chatbot with web admin panel. Built on Python/Flask wit
 ## Architecture
 - **main.py** — core bot logic, Flask API, Telegram webhook handler
 - **templates/admin.html** — full single-page admin panel (Liquid Glass design)
-- **users.json** — persistent storage: users, message_count, muted, banned
+- **users.json** — persistent storage: users, message_count, banned
 
 ## Key Features
 - AI chat via OpenRouter (stepfun/step-3.5-flash:free)

@@ -10,14 +10,12 @@
   --bg1:#0a0e1a; --bg2:#0f1525;
   --glass:rgba(255,255,255,0.06);
   --glass-hover:rgba(255,255,255,0.10);
-  --glass-active:rgba(255,255,255,0.14);
   --glass-border:rgba(255,255,255,0.12);
   --glass-shine:rgba(255,255,255,0.18);
   --accent:#5aabff; --accent2:#34d058;
   --danger:#ff453a; --warn:#ffb340;
-  --mute-color:#ff9f0a; --ban-color:#ff453a;
+  --ban-color:#ff453a;
   --text:#e8eef8; --text2:#7a8aaa; --text3:#4a5a7a;
-  --msg-user:rgba(41,98,178,0.45); --msg-ai:rgba(20,40,70,0.6);
   --header-h:54px; --stats-h:48px; --bottom-nav-h:64px;
 }
 html,body { height:100%; overflow:hidden; }
@@ -27,31 +25,17 @@ body {
   color:var(--text); min-height:100vh;
 }
 
-/* ===== LIQUID GLASS MIXIN ===== */
-.glass {
-  background: var(--glass);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 2px 32px rgba(0,0,0,.35), inset 0 1px 0 var(--glass-shine);
-}
-.glass-dark {
-  background: rgba(8,14,28,0.7);
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
-  border: 1px solid var(--glass-border);
-  box-shadow: 0 4px 40px rgba(0,0,0,.5), inset 0 1px 0 var(--glass-shine);
-}
+/* ===== LIQUID GLASS ===== */
+.glass { background:var(--glass); backdrop-filter:blur(24px) saturate(180%); -webkit-backdrop-filter:blur(24px) saturate(180%); border:1px solid var(--glass-border); box-shadow:0 2px 32px rgba(0,0,0,.35),inset 0 1px 0 var(--glass-shine); }
 
 /* ===== LOGIN ===== */
 #login-screen { display:flex; align-items:center; justify-content:center; height:100vh; padding:20px; }
 .login-box {
   width:100%; max-width:380px; padding:44px 36px; border-radius:28px; text-align:center;
-  background: rgba(15,24,48,0.75);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1px solid rgba(255,255,255,0.14);
-  box-shadow: 0 24px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,0.2);
+  background:rgba(15,24,48,0.75);
+  backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%);
+  border:1px solid rgba(255,255,255,0.14);
+  box-shadow:0 24px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,0.2);
 }
 .login-logo { font-size:52px; margin-bottom:6px; filter:drop-shadow(0 0 20px rgba(90,171,255,0.6)); }
 .login-box h1 { font-size:26px; font-weight:700; color:var(--accent); margin-bottom:6px; letter-spacing:-.5px; }
@@ -59,19 +43,17 @@ body {
 .login-box input {
   width:100%; padding:14px 18px; margin-bottom:14px;
   background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
-  border-radius:14px; color:var(--text); font-size:16px; outline:none;
-  transition:border .2s, background .2s;
+  border-radius:14px; color:var(--text); font-size:16px; outline:none; transition:border .2s,background .2s;
 }
 .login-box input:focus { border-color:rgba(90,171,255,.6); background:rgba(255,255,255,0.1); }
 .login-box button {
   width:100%; padding:14px;
-  background: linear-gradient(135deg, rgba(90,171,255,0.9), rgba(59,130,246,0.9));
+  background:linear-gradient(135deg,rgba(90,171,255,0.9),rgba(59,130,246,0.9));
   backdrop-filter:blur(10px); border:1px solid rgba(90,171,255,0.4);
-  box-shadow: 0 4px 20px rgba(90,171,255,0.3), inset 0 1px 0 rgba(255,255,255,0.25);
-  border-radius:14px; color:#fff; font-size:16px; font-weight:600; cursor:pointer;
-  transition:all .2s;
+  box-shadow:0 4px 20px rgba(90,171,255,0.3),inset 0 1px 0 rgba(255,255,255,0.25);
+  border-radius:14px; color:#fff; font-size:16px; font-weight:600; cursor:pointer; transition:all .2s;
 }
-.login-box button:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(90,171,255,0.4), inset 0 1px 0 rgba(255,255,255,0.3); }
+.login-box button:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(90,171,255,0.4); }
 .login-error { color:var(--danger); font-size:13px; margin-top:12px; display:none; }
 
 /* ===== APP ===== */
@@ -79,19 +61,15 @@ body {
 
 /* ===== HEADER ===== */
 header {
-  height:var(--header-h); display:flex; align-items:center;
-  justify-content:space-between; padding:0 16px; flex-shrink:0;
-  background:rgba(8,14,28,0.72);
-  backdrop-filter:blur(32px) saturate(200%);
-  -webkit-backdrop-filter:blur(32px) saturate(200%);
+  height:var(--header-h); display:flex; align-items:center; justify-content:space-between; padding:0 16px; flex-shrink:0;
+  background:rgba(8,14,28,0.72); backdrop-filter:blur(32px) saturate(200%); -webkit-backdrop-filter:blur(32px) saturate(200%);
   border-bottom:1px solid var(--glass-border);
-  box-shadow:0 1px 0 var(--glass-shine), 0 4px 24px rgba(0,0,0,.3);
-  position:relative; z-index:20;
+  box-shadow:0 1px 0 var(--glass-shine),0 4px 24px rgba(0,0,0,.3); position:relative; z-index:20;
 }
 .logo { font-size:18px; font-weight:700; color:var(--accent); display:flex; align-items:center; gap:8px; letter-spacing:-.3px; }
-.sse-dot { width:8px; height:8px; border-radius:50%; background:var(--text3); transition:background .3s, box-shadow .3s; }
+.sse-dot { width:8px; height:8px; border-radius:50%; background:var(--text3); transition:background .3s,box-shadow .3s; }
 .sse-dot.live { background:var(--accent2); box-shadow:0 0 8px var(--accent2); animation:pulse 2s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.5} }
 .header-right { display:flex; align-items:center; gap:8px; }
 .status-badge { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; backdrop-filter:blur(10px); }
 .status-badge.running { background:rgba(52,208,88,0.15); color:var(--accent2); border:1px solid rgba(52,208,88,0.3); }
@@ -100,12 +78,8 @@ header {
 #menu-btn { display:none; background:none; border:none; color:var(--text); font-size:22px; cursor:pointer; padding:6px 8px; border-radius:10px; transition:background .2s; }
 #menu-btn:hover { background:var(--glass-hover); }
 
-/* Buttons */
-.btn {
-  display:inline-flex; align-items:center; gap:5px; padding:7px 14px;
-  border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; border:none;
-  backdrop-filter:blur(12px); transition:all .18s; white-space:nowrap;
-}
+/* ===== BUTTONS ===== */
+.btn { display:inline-flex; align-items:center; gap:5px; padding:7px 14px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; border:none; backdrop-filter:blur(12px); transition:all .18s; white-space:nowrap; }
 .btn:hover { transform:translateY(-1px); }
 .btn:active { transform:translateY(0); }
 .btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
@@ -114,159 +88,94 @@ header {
 .btn-red { background:rgba(255,69,58,0.2); color:var(--danger); border:1px solid rgba(255,69,58,0.35); box-shadow:0 2px 12px rgba(255,69,58,.15); }
 .btn-warn { background:rgba(255,179,64,0.2); color:var(--warn); border:1px solid rgba(255,179,64,0.35); box-shadow:0 2px 12px rgba(255,179,64,.15); }
 .btn-ghost { background:var(--glass); color:var(--text2); border:1px solid var(--glass-border); }
-.btn-mute { background:rgba(255,159,10,0.18); color:var(--mute-color); border:1px solid rgba(255,159,10,0.35); }
 .btn-ban { background:rgba(255,69,58,0.18); color:var(--ban-color); border:1px solid rgba(255,69,58,0.35); }
+.btn-unban { background:rgba(52,208,88,0.18); color:var(--accent2); border:1px solid rgba(52,208,88,0.35); }
+.btn-lg { padding:13px 20px; font-size:15px; border-radius:14px; justify-content:center; }
 
-/* Mobile menu */
+/* ===== MOBILE MENU ===== */
 #mobile-menu {
   display:none; position:fixed; top:calc(var(--header-h)+6px); right:12px;
-  border-radius:16px; padding:8px; z-index:300; min-width:200px;
-  flex-direction:column; gap:2px;
-  background:rgba(12,20,40,0.88);
-  backdrop-filter:blur(40px) saturate(200%);
-  -webkit-backdrop-filter:blur(40px) saturate(200%);
-  border:1px solid rgba(255,255,255,0.15);
-  box-shadow:0 12px 48px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,0.15);
+  border-radius:16px; padding:8px; z-index:300; min-width:200px; flex-direction:column; gap:2px;
+  background:rgba(12,20,40,0.88); backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%);
+  border:1px solid rgba(255,255,255,0.15); box-shadow:0 12px 48px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,0.15);
 }
 #mobile-menu.open { display:flex; }
 .menu-item { display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px; cursor:pointer; font-size:14px; font-weight:500; border:none; background:none; color:var(--text); width:100%; text-align:left; transition:background .15s; }
-.menu-item:hover, .menu-item:active { background:var(--glass-hover); }
+.menu-item:hover,.menu-item:active { background:var(--glass-hover); }
 .menu-sep { height:1px; background:var(--glass-border); margin:4px 0; }
 
 /* ===== STATS ===== */
 .stats-bar {
-  height:var(--stats-h); display:flex; align-items:center; gap:10px;
-  padding:0 16px; flex-shrink:0; overflow-x:auto; scrollbar-width:none;
-  -webkit-overflow-scrolling:touch;
-  background:rgba(8,14,28,0.55);
-  border-bottom:1px solid var(--glass-border);
-  backdrop-filter:blur(20px);
+  height:var(--stats-h); display:flex; align-items:center; gap:10px; padding:0 16px; flex-shrink:0; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  background:rgba(8,14,28,0.55); border-bottom:1px solid var(--glass-border); backdrop-filter:blur(20px);
 }
 .stats-bar::-webkit-scrollbar { display:none; }
-.stat {
-  display:flex; align-items:center; gap:7px; padding:6px 14px;
-  border-radius:10px; font-size:12px; color:var(--text2); flex-shrink:0;
-  background:rgba(255,255,255,0.05);
-  border:1px solid rgba(255,255,255,0.08);
-}
+.stat { display:flex; align-items:center; gap:7px; padding:6px 14px; border-radius:10px; font-size:12px; color:var(--text2); flex-shrink:0; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); }
 .stat-val { font-weight:700; font-size:15px; }
-.sv-blue { color:var(--accent); }
-.sv-green { color:var(--accent2); }
-.sv-warn { color:var(--warn); }
-.sv-red { color:var(--danger); }
+.sv-blue { color:var(--accent); } .sv-green { color:var(--accent2); } .sv-red { color:var(--danger); }
 
-/* ===== TABS ===== */
-.tabs-bar {
-  display:flex; gap:2px; padding:8px 12px; flex-shrink:0;
-  background:rgba(8,14,28,0.5);
-  border-bottom:1px solid var(--glass-border);
-  backdrop-filter:blur(16px);
-}
-.tab-btn {
-  flex:1; padding:8px 6px; border:none; border-radius:10px;
-  font-size:12px; font-weight:600; cursor:pointer; transition:all .18s;
-  background:transparent; color:var(--text2);
-}
-.tab-btn.active {
-  background:rgba(255,255,255,0.1);
-  color:var(--text);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,0.15);
-  border:1px solid rgba(255,255,255,0.1);
-}
+/* ===== DESKTOP TABS ===== */
+.tabs-bar { display:flex; gap:2px; padding:8px 12px; flex-shrink:0; background:rgba(8,14,28,0.5); border-bottom:1px solid var(--glass-border); backdrop-filter:blur(16px); }
+.tab-btn { flex:1; padding:8px 6px; border:none; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; transition:all .18s; background:transparent; color:var(--text2); }
+.tab-btn.active { background:rgba(255,255,255,0.1); color:var(--text); box-shadow:inset 0 1px 0 rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.1); }
 .tab-btn:hover:not(.active) { background:rgba(255,255,255,0.05); color:var(--text); }
 
-/* ===== MAIN ===== */
+/* ===== MAIN LAYOUT ===== */
 .main { display:flex; flex:1; overflow:hidden; }
 
 /* ===== SIDEBAR ===== */
-.sidebar {
-  width:280px; display:flex; flex-direction:column; flex-shrink:0;
-  background:rgba(8,14,28,0.55);
-  border-right:1px solid var(--glass-border);
-  backdrop-filter:blur(20px);
-}
+.sidebar { width:280px; display:flex; flex-direction:column; flex-shrink:0; background:rgba(8,14,28,0.55); border-right:1px solid var(--glass-border); backdrop-filter:blur(20px); }
 .sidebar-header { padding:10px 12px; border-bottom:1px solid var(--glass-border); }
 .sidebar-header h3 { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px; }
 .search-wrap { position:relative; }
-.search-input {
-  width:100%; padding:8px 12px 8px 34px;
-  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
-  border-radius:10px; color:var(--text); font-size:13px; outline:none;
-  transition:border .2s, background .2s;
-}
+.search-input { width:100%; padding:8px 12px 8px 34px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); border-radius:10px; color:var(--text); font-size:13px; outline:none; transition:border .2s,background .2s; }
 .search-input:focus { border-color:rgba(90,171,255,.4); background:rgba(255,255,255,0.09); }
 .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:14px; }
-.chat-list { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-.chat-item {
-  padding:11px 13px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.04);
-  transition:background .15s; display:flex; align-items:center; gap:10px; position:relative;
-}
+.list-scroll { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+/* Chat list items */
+.chat-item { padding:11px 13px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.04); transition:background .15s; display:flex; align-items:center; gap:10px; position:relative; }
 .chat-item:hover { background:rgba(255,255,255,0.05); }
 .chat-item:active { background:rgba(255,255,255,0.08); }
 .chat-item.active { background:rgba(90,171,255,0.12); border-left:2px solid var(--accent); }
-.chat-avatar {
-  width:38px; height:38px; border-radius:50%;
-  background:linear-gradient(135deg,rgba(90,171,255,0.8),rgba(52,208,88,0.8));
-  display:flex; align-items:center; justify-content:center;
-  font-weight:700; font-size:15px; color:#fff; flex-shrink:0;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);
-}
-.chat-avatar.muted { background:linear-gradient(135deg,rgba(255,159,10,0.7),rgba(200,100,0,0.7)); }
-.chat-avatar.banned { background:linear-gradient(135deg,rgba(255,69,58,0.7),rgba(180,0,0,0.7)); }
+.avatar { width:38px; height:38px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; color:#fff; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,.3); }
+.av-default { background:linear-gradient(135deg,rgba(90,171,255,0.8),rgba(52,208,88,0.8)); }
+.av-banned { background:linear-gradient(135deg,rgba(255,69,58,0.7),rgba(180,0,0,0.7)); }
 .chat-info { flex:1; min-width:0; }
 .chat-name { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .chat-preview { font-size:12px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-.chat-status { font-size:10px; margin-top:2px; }
-.chat-status.muted { color:var(--mute-color); }
-.chat-status.banned { color:var(--ban-color); }
+.chat-ban-badge { font-size:10px; color:var(--ban-color); margin-top:2px; }
 .chat-meta { font-size:11px; color:var(--text3); flex-shrink:0; }
 .unread-badge { position:absolute; top:9px; right:11px; background:var(--accent2); color:#fff; border-radius:10px; font-size:10px; font-weight:700; padding:2px 6px; box-shadow:0 2px 6px rgba(52,208,88,.4); }
-.no-chats { padding:28px; text-align:center; color:var(--text3); font-size:13px; }
+.no-items { padding:28px; text-align:center; color:var(--text3); font-size:13px; }
+
+/* User list items */
+.user-item { padding:12px 14px; cursor:pointer; border-bottom:1px solid rgba(255,255,255,0.04); transition:background .15s; display:flex; align-items:center; gap:11px; }
+.user-item:hover { background:rgba(255,255,255,0.05); }
+.user-item:active { background:rgba(255,255,255,0.08); }
+.user-item.active { background:rgba(90,171,255,0.1); border-left:2px solid var(--accent); }
+.user-info { flex:1; min-width:0; }
+.user-name { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.user-sub { font-size:12px; color:var(--text2); margin-top:2px; }
 
 /* ===== CHAT PANEL ===== */
 .chat-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
-#chat-header {
-  padding:10px 14px; flex-shrink:0; display:none; align-items:center; gap:10px;
-  background:rgba(8,14,28,0.65);
-  backdrop-filter:blur(24px);
-  border-bottom:1px solid var(--glass-border);
-  box-shadow:0 1px 0 var(--glass-shine);
-}
+#chat-header { padding:10px 14px; flex-shrink:0; display:none; align-items:center; gap:10px; background:rgba(8,14,28,0.65); backdrop-filter:blur(24px); border-bottom:1px solid var(--glass-border); box-shadow:0 1px 0 var(--glass-shine); }
 #back-btn { display:none; background:none; border:none; color:var(--accent); font-size:26px; cursor:pointer; padding:0 4px; line-height:1; flex-shrink:0; }
 .chat-header-info { flex:1; min-width:0; }
 .chat-panel-title { font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .chat-panel-sub { font-size:12px; color:var(--text2); margin-top:1px; }
 .chat-header-actions { display:flex; gap:6px; flex-shrink:0; }
-.action-chip {
-  padding:5px 10px; border-radius:8px; font-size:12px; font-weight:600;
-  cursor:pointer; border:none; transition:all .18s; backdrop-filter:blur(10px);
-}
+.action-chip { padding:5px 10px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:none; transition:all .18s; backdrop-filter:blur(10px); }
 #empty-placeholder { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; color:var(--text3); }
 #empty-placeholder .icon { font-size:56px; filter:drop-shadow(0 4px 16px rgba(90,171,255,0.2)); }
 #empty-placeholder p { font-size:14px; }
 #messages-area { flex:1; overflow-y:auto; padding:16px; display:none; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch; }
-#send-bar {
-  padding:10px 12px; flex-shrink:0; display:none; gap:8px; align-items:flex-end;
-  background:rgba(8,14,28,0.65);
-  backdrop-filter:blur(24px);
-  border-top:1px solid var(--glass-border);
-  box-shadow:0 -1px 0 var(--glass-shine);
-}
-#msg-input {
-  flex:1; padding:10px 14px;
-  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
-  border-radius:12px; color:var(--text); font-size:15px; resize:none; outline:none;
-  min-height:42px; max-height:110px; font-family:inherit; line-height:1.4;
-  transition:border .2s, background .2s;
-}
+#send-bar { padding:10px 12px; flex-shrink:0; display:none; gap:8px; align-items:flex-end; background:rgba(8,14,28,0.65); backdrop-filter:blur(24px); border-top:1px solid var(--glass-border); box-shadow:0 -1px 0 var(--glass-shine); }
+#msg-input { flex:1; padding:10px 14px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:12px; color:var(--text); font-size:15px; resize:none; outline:none; min-height:42px; max-height:110px; font-family:inherit; line-height:1.4; transition:border .2s,background .2s; }
 #msg-input:focus { border-color:rgba(90,171,255,.45); background:rgba(255,255,255,0.1); }
-#send-btn {
-  padding:10px 18px; border-radius:12px; font-size:18px; font-weight:700;
-  cursor:pointer; border:none; white-space:nowrap; transition:all .18s;
-  background:linear-gradient(135deg,rgba(90,171,255,0.85),rgba(59,130,246,0.85));
-  color:#fff; box-shadow:0 4px 16px rgba(90,171,255,.25), inset 0 1px 0 rgba(255,255,255,0.2);
-}
-#send-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(90,171,255,.35); }
+#send-btn { padding:10px 18px; border-radius:12px; font-size:18px; font-weight:700; cursor:pointer; border:none; white-space:nowrap; transition:all .18s; background:linear-gradient(135deg,rgba(90,171,255,0.85),rgba(59,130,246,0.85)); color:#fff; box-shadow:0 4px 16px rgba(90,171,255,.25),inset 0 1px 0 rgba(255,255,255,0.2); }
+#send-btn:hover { transform:translateY(-1px); }
 #send-btn:disabled { opacity:.4; cursor:not-allowed; transform:none; }
 
 /* ===== MESSAGES ===== */
@@ -276,121 +185,76 @@ header {
 .msg.admin { align-self:flex-end; align-items:flex-end; }
 .msg-label { font-size:11px; color:var(--text2); margin-bottom:3px; padding:0 4px; }
 .msg-row { display:flex; align-items:flex-start; gap:5px; }
-.msg.user .msg-row, .msg.admin .msg-row { flex-direction:row-reverse; }
-.msg-bubble {
-  padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.55;
-  white-space:pre-wrap; word-break:break-word;
-  backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-}
-.msg.user .msg-bubble {
-  background:rgba(41,98,178,0.5); border:1px solid rgba(90,171,255,0.25);
-  box-shadow:0 2px 12px rgba(41,98,178,.25), inset 0 1px 0 rgba(255,255,255,.08);
-  border-bottom-right-radius:4px;
-}
-.msg.assistant .msg-bubble {
-  background:rgba(15,30,60,0.7); border:1px solid rgba(255,255,255,0.08);
-  box-shadow:0 2px 12px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.05);
-  border-bottom-left-radius:4px;
-}
-.msg.admin .msg-bubble {
-  background:rgba(255,179,64,0.12); border:1px solid rgba(255,179,64,0.3);
-  box-shadow:0 2px 12px rgba(255,179,64,.1);
-  border-bottom-right-radius:4px;
-}
+.msg.user .msg-row,.msg.admin .msg-row { flex-direction:row-reverse; }
+.msg-bubble { padding:10px 14px; border-radius:14px; font-size:14px; line-height:1.55; white-space:pre-wrap; word-break:break-word; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); }
+.msg.user .msg-bubble { background:rgba(41,98,178,0.5); border:1px solid rgba(90,171,255,0.25); box-shadow:0 2px 12px rgba(41,98,178,.25),inset 0 1px 0 rgba(255,255,255,.08); border-bottom-right-radius:4px; }
+.msg.assistant .msg-bubble { background:rgba(15,30,60,0.7); border:1px solid rgba(255,255,255,0.08); box-shadow:0 2px 12px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.05); border-bottom-left-radius:4px; }
+.msg.admin .msg-bubble { background:rgba(255,179,64,0.12); border:1px solid rgba(255,179,64,0.3); border-bottom-right-radius:4px; }
 .msg-time { font-size:10px; color:var(--text3); margin-top:3px; padding:0 4px; }
-.del-btn {
-  background:none; border:none; color:var(--danger); font-size:13px; cursor:pointer;
-  opacity:0; transition:opacity .15s; padding:5px; border-radius:6px; flex-shrink:0; align-self:center; line-height:1;
-}
+.del-btn { background:none; border:none; color:var(--danger); font-size:13px; cursor:pointer; opacity:0; transition:opacity .15s; padding:5px; border-radius:6px; flex-shrink:0; align-self:center; line-height:1; }
 .del-btn:hover { background:rgba(255,69,58,0.15); opacity:1 !important; }
 .msg:hover .del-btn { opacity:.4; }
 .msgs-empty { text-align:center; color:var(--text3); font-size:14px; padding-top:40px; }
 
-/* ===== MUTED/BANNED PANELS ===== */
-.user-list-panel { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; display:flex; flex-direction:column; }
-.panel-header { padding:14px 16px; border-bottom:1px solid var(--glass-border); }
-.panel-header h3 { font-size:13px; font-weight:700; margin-bottom:2px; }
-.panel-header p { font-size:12px; color:var(--text2); }
-.user-card {
-  display:flex; align-items:center; gap:12px; padding:13px 16px;
-  border-bottom:1px solid rgba(255,255,255,0.04);
-  transition:background .15s;
+/* ===== USER PROFILE PANEL ===== */
+#profile-panel {
+  flex:1; display:none; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:rgba(8,14,28,0.4);
 }
-.user-card:hover { background:rgba(255,255,255,0.03); }
-.user-card-avatar {
-  width:40px; height:40px; border-radius:50%; display:flex; align-items:center;
-  justify-content:center; font-weight:700; font-size:16px; color:#fff; flex-shrink:0;
+#profile-empty { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; color:var(--text3); }
+#profile-empty .icon { font-size:52px; filter:drop-shadow(0 4px 16px rgba(90,171,255,0.15)); }
+.profile-content { padding:28px 24px; max-width:560px; width:100%; margin:0 auto; }
+.profile-card {
+  padding:28px; border-radius:22px; margin-bottom:20px;
+  background:rgba(12,22,46,0.7); backdrop-filter:blur(32px) saturate(180%); -webkit-backdrop-filter:blur(32px) saturate(180%);
+  border:1px solid rgba(255,255,255,0.1); box-shadow:0 8px 40px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,0.1);
 }
-.user-card-avatar.muted { background:linear-gradient(135deg,rgba(255,159,10,0.7),rgba(200,100,0,0.7)); box-shadow:0 2px 10px rgba(255,159,10,.3); }
-.user-card-avatar.banned { background:linear-gradient(135deg,rgba(255,69,58,0.7),rgba(180,0,0,0.7)); box-shadow:0 2px 10px rgba(255,69,58,.3); }
-.user-card-info { flex:1; min-width:0; }
-.user-card-name { font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.user-card-sub { font-size:12px; color:var(--text2); margin-top:2px; }
-.user-card-actions { display:flex; gap:6px; flex-shrink:0; }
+.profile-avatar-wrap { display:flex; justify-content:center; margin-bottom:20px; }
+.profile-avatar { width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:700; color:#fff; box-shadow:0 6px 24px rgba(0,0,0,.4); }
+.profile-avatar.av-default { background:linear-gradient(135deg,rgba(90,171,255,0.85),rgba(52,208,88,0.85)); }
+.profile-avatar.av-banned { background:linear-gradient(135deg,rgba(255,69,58,0.75),rgba(180,0,0,0.75)); box-shadow:0 6px 24px rgba(255,69,58,.3); }
+.profile-name { font-size:22px; font-weight:700; text-align:center; margin-bottom:4px; }
+.profile-username { font-size:14px; color:var(--accent); text-align:center; margin-bottom:20px; }
+.profile-banned-badge { display:none; background:rgba(255,69,58,0.15); border:1px solid rgba(255,69,58,0.35); color:var(--danger); font-size:13px; font-weight:600; padding:7px 18px; border-radius:20px; text-align:center; margin-bottom:16px; }
+.profile-banned-badge.visible { display:block; }
+.profile-stats { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:24px; }
+.profile-stat { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px; text-align:center; }
+.profile-stat-val { font-size:24px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+.profile-stat-lbl { font-size:12px; color:var(--text2); }
+.profile-row { display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:14px; }
+.profile-row:last-of-type { border-bottom:none; }
+.profile-row-label { color:var(--text2); font-size:13px; min-width:90px; }
+.profile-row-val { color:var(--text); font-weight:500; }
+.profile-actions { display:flex; flex-direction:column; gap:10px; margin-top:24px; }
+.profile-actions .btn { width:100%; justify-content:center; }
 
 /* ===== MODALS ===== */
-.modal-overlay {
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,.65); z-index:400;
-  align-items:flex-end; justify-content:center;
-  backdrop-filter:blur(4px);
-}
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:400; align-items:flex-end; justify-content:center; backdrop-filter:blur(4px); }
 .modal-overlay.open { display:flex; }
-.modal {
-  width:100%; max-width:560px; padding:22px 20px 30px;
-  border-radius:24px 24px 0 0;
-  background:rgba(12,20,44,0.9);
-  backdrop-filter:blur(48px) saturate(200%);
-  -webkit-backdrop-filter:blur(48px) saturate(200%);
-  border:1px solid rgba(255,255,255,0.15);
-  border-bottom:none;
-  box-shadow:0 -8px 60px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,0.18);
-}
+.modal { width:100%; max-width:560px; padding:22px 20px 30px; border-radius:24px 24px 0 0; background:rgba(12,20,44,0.9); backdrop-filter:blur(48px) saturate(200%); -webkit-backdrop-filter:blur(48px) saturate(200%); border:1px solid rgba(255,255,255,0.15); border-bottom:none; box-shadow:0 -8px 60px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,0.18); }
 .modal-handle { width:36px; height:4px; background:rgba(255,255,255,0.2); border-radius:2px; margin:0 auto 18px; }
 .modal h3 { font-size:18px; font-weight:700; margin-bottom:16px; }
-.modal textarea {
-  width:100%; height:130px; padding:12px 14px;
-  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
-  border-radius:14px; color:var(--text); font-size:15px; resize:none; outline:none;
-  font-family:inherit; margin-bottom:14px; transition:border .2s;
-}
+.modal textarea { width:100%; height:130px; padding:12px 14px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:14px; color:var(--text); font-size:15px; resize:none; outline:none; font-family:inherit; margin-bottom:14px; transition:border .2s; }
 .modal textarea:focus { border-color:rgba(90,171,255,.45); }
 .modal-footer { display:flex; gap:10px; }
 .modal-footer .btn { flex:1; justify-content:center; padding:13px; font-size:15px; border-radius:12px; }
 
-/* Confirm */
-.confirm-overlay {
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,.7); z-index:500;
-  align-items:center; justify-content:center; padding:20px;
-  backdrop-filter:blur(6px);
-}
+/* ===== CONFIRM ===== */
+.confirm-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:500; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(6px); }
 .confirm-overlay.open { display:flex; }
-.confirm-box {
-  width:100%; max-width:320px; padding:28px 24px; border-radius:22px; text-align:center;
-  background:rgba(12,20,44,0.92);
-  backdrop-filter:blur(48px) saturate(200%);
-  -webkit-backdrop-filter:blur(48px) saturate(200%);
-  border:1px solid rgba(255,255,255,0.16);
-  box-shadow:0 20px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,0.18);
-}
-.confirm-icon { font-size:42px; margin-bottom:14px; filter:drop-shadow(0 4px 12px rgba(255,69,58,0.4)); }
+.confirm-box { width:100%; max-width:320px; padding:28px 24px; border-radius:22px; text-align:center; background:rgba(12,20,44,0.92); backdrop-filter:blur(48px) saturate(200%); -webkit-backdrop-filter:blur(48px) saturate(200%); border:1px solid rgba(255,255,255,0.16); box-shadow:0 20px 80px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,0.18); }
+.confirm-icon { font-size:42px; margin-bottom:14px; }
 .confirm-box h4 { font-size:17px; font-weight:700; margin-bottom:8px; }
 .confirm-box p { font-size:14px; color:var(--text2); margin-bottom:22px; line-height:1.5; }
 .confirm-actions { display:flex; gap:10px; }
 .confirm-actions .btn { flex:1; justify-content:center; padding:12px; font-size:14px; }
 
 /* ===== TOAST ===== */
-.toast {
-  position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
-  padding:11px 22px; border-radius:12px; font-size:14px; font-weight:500;
-  z-index:600; animation:slideUp .25s ease; white-space:nowrap; pointer-events:none;
-  backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15);
-}
+.toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); padding:11px 22px; border-radius:12px; font-size:14px; font-weight:500; z-index:600; animation:slideUp .25s ease; white-space:nowrap; pointer-events:none; backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15); }
 .toast.success { background:rgba(52,208,88,0.85); color:#fff; box-shadow:0 4px 20px rgba(52,208,88,.4); }
 .toast.error { background:rgba(255,69,58,0.85); color:#fff; box-shadow:0 4px 20px rgba(255,69,58,.4); }
 .toast.warn { background:rgba(255,179,64,0.85); color:#fff; box-shadow:0 4px 20px rgba(255,179,64,.4); }
-@keyframes slideUp { from{transform:translateX(-50%) translateY(10px);opacity:0} to{transform:translateX(-50%) translateY(0);opacity:1} }
+@keyframes slideUp { from{transform:translateX(-50%) translateY(10px);opacity:0}to{transform:translateX(-50%) translateY(0);opacity:1} }
 
 /* ===== BOTTOM NAV ===== */
 #bottom-nav { display:none; }
@@ -409,8 +273,9 @@ header {
   .tabs-bar { display:none; }
   .main { position:relative; overflow:hidden; }
   .sidebar { position:absolute; inset:0; width:100%; z-index:10; border-right:none; }
-  .chat-panel { position:absolute; inset:0; width:100%; z-index:11; transform:translateX(100%); transition:transform .25s ease; background:var(--bg1); }
-  .main.chat-open .chat-panel { transform:translateX(0); }
+  .chat-panel,.panel-right { position:absolute; inset:0; width:100%; z-index:11; transform:translateX(100%); transition:transform .25s ease; background:var(--bg1); }
+  .main.panel-open .chat-panel,
+  .main.panel-open .panel-right { transform:translateX(0); }
   #back-btn { display:block; }
   .msg { max-width:90%; }
   .del-btn { opacity:.5; }
@@ -421,28 +286,27 @@ header {
   #bottom-nav {
     display:flex; align-items:center; justify-content:space-around;
     height:var(--bottom-nav-h); flex-shrink:0;
-    background:rgba(8,14,28,0.8);
-    backdrop-filter:blur(32px) saturate(200%);
-    -webkit-backdrop-filter:blur(32px) saturate(200%);
-    border-top:1px solid var(--glass-border);
-    box-shadow:0 -1px 0 var(--glass-shine);
-    padding-bottom:env(safe-area-inset-bottom);
-    position:relative; z-index:20;
+    background:rgba(8,14,28,0.8); backdrop-filter:blur(32px) saturate(200%); -webkit-backdrop-filter:blur(32px) saturate(200%);
+    border-top:1px solid var(--glass-border); box-shadow:0 -1px 0 var(--glass-shine);
+    padding-bottom:env(safe-area-inset-bottom); position:relative; z-index:20;
   }
   .nav-btn { display:flex; flex-direction:column; align-items:center; gap:3px; background:none; border:none; color:var(--text2); cursor:pointer; font-size:10px; padding:6px 10px; border-radius:10px; min-width:56px; transition:color .2s; }
   .nav-btn .nav-icon { font-size:22px; line-height:1; }
   .nav-btn:active { background:rgba(255,255,255,.07); }
+  .nav-btn.active { color:var(--accent); }
   .nav-btn.bot-on { color:var(--accent2); }
   .nav-btn.bot-off { color:var(--danger); }
   .stat { padding:4px 10px; font-size:11px; }
   .stat-val { font-size:13px; }
   .toast { bottom:calc(var(--bottom-nav-h) + 12px + env(safe-area-inset-bottom)); }
-  .user-list-panel { display:none; }
+  .profile-content { padding:16px; }
+  .profile-card { padding:20px; }
 }
 @media (min-width:641px) {
   .modal-overlay { align-items:center; }
   .modal { border-radius:22px; padding:28px; max-width:480px; width:95vw; border-bottom:1px solid rgba(255,255,255,0.15); }
   .modal-handle { display:none; }
+  #profile-panel { border-left:1px solid var(--glass-border); }
 }
 </style>
 </head>
@@ -468,7 +332,7 @@ header {
         <button class="btn btn-red" id="stop-btn" onclick="stopBot()">⏹ Стоп</button>
         <button class="btn btn-green" id="start-btn" onclick="startBot()" style="display:none">▶ Старт</button>
         <button class="btn btn-warn" onclick="openBroadcast()">📢 Рассылка</button>
-        <button class="btn btn-ghost" id="refresh-btn" onclick="manualRefresh()">🔄 Обновить</button>
+        <button class="btn btn-ghost" onclick="manualRefresh()">🔄 Обновить</button>
         <button class="btn btn-ghost" onclick="logout()">Выйти</button>
       </div>
       <button id="menu-btn" onclick="toggleMenu()">⋮</button>
@@ -486,64 +350,57 @@ header {
   <div class="stats-bar">
     <div class="stat">👥 <span class="stat-val sv-blue" id="stat-users">—</span>&nbsp;польз.</div>
     <div class="stat">💬 <span class="stat-val sv-green" id="stat-msgs">—</span>&nbsp;сообщ.</div>
-    <div class="stat">🔇 <span class="stat-val sv-warn" id="stat-muted">—</span>&nbsp;mute</div>
-    <div class="stat">🚫 <span class="stat-val sv-red" id="stat-banned">—</span>&nbsp;ban</div>
+    <div class="stat">🚫 <span class="stat-val sv-red" id="stat-banned">—</span>&nbsp;бан</div>
   </div>
 
   <!-- Desktop tabs -->
-  <div class="tabs-bar" id="tabs-bar">
+  <div class="tabs-bar">
     <button class="tab-btn active" onclick="switchTab('chats')" id="tab-chats">💬 Чаты</button>
-    <button class="tab-btn" onclick="switchTab('muted')" id="tab-muted">🔇 Mute</button>
-    <button class="tab-btn" onclick="switchTab('banned')" id="tab-banned">🚫 Ban</button>
+    <button class="tab-btn" onclick="switchTab('users')" id="tab-users">👥 Пользователи</button>
   </div>
 
   <div class="main" id="main-area">
-    <!-- CHATS TAB -->
+
+    <!-- Chats sidebar -->
     <div class="sidebar" id="sidebar-chats">
+      <div class="sidebar-header">
+        <h3>Чаты</h3>
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" type="search" placeholder="Поиск..." id="chat-search" oninput="renderChatList()" />
+        </div>
+      </div>
+      <div class="list-scroll" id="chat-list"><div class="no-items">Нет пользователей</div></div>
+    </div>
+
+    <!-- Users sidebar -->
+    <div class="sidebar" id="sidebar-users" style="display:none">
       <div class="sidebar-header">
         <h3>Пользователи</h3>
         <div class="search-wrap">
           <span class="search-icon">🔍</span>
-          <input class="search-input" type="search" placeholder="Поиск..." id="search-input" oninput="filterChats()" />
+          <input class="search-input" type="search" placeholder="Поиск..." id="user-search" oninput="renderUserList()" />
         </div>
       </div>
-      <div class="chat-list" id="chat-list"><div class="no-chats">Нет пользователей</div></div>
+      <div class="list-scroll" id="user-list"><div class="no-items">Нет пользователей</div></div>
     </div>
 
-    <!-- MUTED TAB (desktop) -->
-    <div class="sidebar user-list-panel" id="sidebar-muted" style="display:none">
-      <div class="panel-header">
-        <h3>🔇 Замьюченные</h3>
-        <p>Бот читает, но не отвечает</p>
-      </div>
-      <div id="muted-list"><div class="no-chats">Нет замьюченных</div></div>
-    </div>
-
-    <!-- BANNED TAB (desktop) -->
-    <div class="sidebar user-list-panel" id="sidebar-banned" style="display:none">
-      <div class="panel-header">
-        <h3>🚫 Забаненные</h3>
-        <p>Бот полностью игнорирует</p>
-      </div>
-      <div id="banned-list"><div class="no-chats">Нет забаненных</div></div>
-    </div>
-
-    <div class="chat-panel">
+    <!-- Chat panel (Чаты tab) -->
+    <div class="chat-panel" id="chat-panel">
       <div id="chat-header">
-        <button id="back-btn" onclick="closeChatMobile()">‹</button>
+        <button id="back-btn" onclick="closeMobilePanel()">‹</button>
         <div class="chat-header-info">
           <div class="chat-panel-title" id="chat-title"></div>
           <div class="chat-panel-sub" id="chat-sub"></div>
         </div>
         <div class="chat-header-actions">
-          <button class="btn action-chip btn-mute" id="mute-btn" onclick="toggleMute()" title="Mute/Unmute">🔇 <span>Mute</span></button>
-          <button class="btn action-chip btn-ban" id="ban-btn" onclick="toggleBan()" title="Ban/Unban">🚫 <span>Ban</span></button>
+          <button class="btn action-chip btn-ghost" onclick="openProfileFromChat()" title="О пользователе">👤</button>
           <button class="btn action-chip btn-red" onclick="confirmClear()" title="Очистить">🗑</button>
         </div>
       </div>
       <div id="empty-placeholder">
         <div class="icon">💬</div>
-        <p>Выбери пользователя слева</p>
+        <p>Выбери чат слева</p>
       </div>
       <div id="messages-area"></div>
       <div id="send-bar">
@@ -551,17 +408,44 @@ header {
         <button id="send-btn" onclick="sendMsg()">→</button>
       </div>
     </div>
+
+    <!-- Profile panel (Пользователи tab) -->
+    <div id="profile-panel" class="panel-right">
+      <div id="profile-empty">
+        <div class="icon">👤</div>
+        <p>Выбери пользователя</p>
+      </div>
+      <div class="profile-content" id="profile-content" style="display:none">
+        <div class="profile-card">
+          <div class="profile-avatar-wrap">
+            <div class="profile-avatar av-default" id="prof-avatar"></div>
+          </div>
+          <div class="profile-name" id="prof-name"></div>
+          <div class="profile-username" id="prof-username"></div>
+          <div class="profile-banned-badge" id="prof-banned-badge">🚫 Пользователь забанен</div>
+          <div class="profile-stats">
+            <div class="profile-stat"><div class="profile-stat-val" id="prof-msgs">0</div><div class="profile-stat-lbl">Сообщений</div></div>
+            <div class="profile-stat"><div class="profile-stat-val sv-blue" id="prof-id">—</div><div class="profile-stat-lbl">Telegram ID</div></div>
+          </div>
+          <div class="profile-row"><span class="profile-row-label">Имя:</span><span class="profile-row-val" id="prof-row-name">—</span></div>
+          <div class="profile-row"><span class="profile-row-label">Username:</span><span class="profile-row-val" id="prof-row-user">—</span></div>
+          <div class="profile-row"><span class="profile-row-label">ID:</span><span class="profile-row-val" id="prof-row-id">—</span></div>
+          <div class="profile-actions">
+            <button class="btn btn-blue btn-lg" onclick="openChatFromProfile()">💬 Открыть чат</button>
+            <button class="btn btn-ban btn-lg" id="prof-ban-btn" onclick="toggleBanFromProfile()">🚫 Заблокировать</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
+  <!-- Mobile bottom nav -->
   <div id="bottom-nav">
-    <button class="nav-btn" onclick="mobileTab('chats')" id="nav-chats">
+    <button class="nav-btn active" onclick="mobileTab('chats')" id="nav-chats">
       <span class="nav-icon">💬</span><span>Чаты</span>
     </button>
-    <button class="nav-btn" onclick="mobileTab('muted')" id="nav-muted">
-      <span class="nav-icon">🔇</span><span>Mute</span>
-    </button>
-    <button class="nav-btn" onclick="mobileTab('banned')" id="nav-banned">
-      <span class="nav-icon">🚫</span><span>Ban</span>
+    <button class="nav-btn" onclick="mobileTab('users')" id="nav-users">
+      <span class="nav-icon">👥</span><span>Польз.</span>
     </button>
     <button class="nav-btn bot-on" id="nav-bot" onclick="mobileToggleBot()">
       <span class="nav-icon" id="nav-bot-icon">🟢</span>
@@ -583,24 +467,12 @@ header {
   </div>
 </div>
 
-<!-- Muted/banned modal (mobile) -->
-<div class="modal-overlay" id="modlist-modal">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <h3 id="modlist-title">Замьюченные</h3>
-    <div id="modlist-content" style="max-height:55vh;overflow-y:auto;margin-bottom:14px"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModList()" style="flex:1;justify-content:center;padding:13px">Закрыть</button>
-    </div>
-  </div>
-</div>
-
 <!-- Confirm dialog -->
 <div class="confirm-overlay" id="confirm-overlay">
   <div class="confirm-box">
     <div class="confirm-icon" id="confirm-icon">⚠️</div>
     <h4 id="confirm-title">Подтверди</h4>
-    <p id="confirm-text">Это действие нельзя отменить</p>
+    <p id="confirm-text"></p>
     <div class="confirm-actions">
       <button class="btn btn-ghost" onclick="closeConfirm()">Отмена</button>
       <button class="btn btn-red" id="confirm-ok-btn">Подтвердить</button>
@@ -612,9 +484,10 @@ header {
 let token = localStorage.getItem('flux_admin_token') || '';
 let allChats = {};
 let selectedChatId = null;
-let eventSource = null;
-let botActive = true;
+let selectedProfileId = null;
 let currentTab = 'chats';
+let botActive = true;
+let eventSource = null;
 const isMobile = () => window.innerWidth <= 640;
 
 /* ===== API ===== */
@@ -654,77 +527,49 @@ function logout() { if(eventSource) eventSource.close(); localStorage.removeItem
 /* ===== TABS ===== */
 function switchTab(tab) {
   currentTab = tab;
-  ['chats','muted','banned'].forEach(t => {
-    document.getElementById(`sidebar-${t}`).style.display = t===tab ? 'flex' : 'none';
-    const btn = document.getElementById(`tab-${t}`);
-    if (btn) btn.className = 'tab-btn' + (t===tab?' active':'');
-  });
-  if (tab!=='chats') { closeChatPanel(); }
+  const isChats = tab === 'chats';
+  document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
+  document.getElementById('sidebar-users').style.display = isChats ? 'none' : 'flex';
+  document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
+  document.getElementById('profile-panel').style.display = isChats ? 'none' : 'flex';
+  document.getElementById('tab-chats').className = 'tab-btn' + (isChats ? ' active' : '');
+  document.getElementById('tab-users').className = 'tab-btn' + (!isChats ? ' active' : '');
+  if (!isChats) renderUserList();
 }
+
 function mobileTab(tab) {
-  if (tab==='chats') { closeChatMobile(); return; }
-  const titles = { muted:'🔇 Замьюченные', banned:'🚫 Забаненные' };
-  document.getElementById('modlist-title').textContent = titles[tab];
-  const content = document.getElementById('modlist-content');
-  content.innerHTML = renderModListHTML(tab);
-  document.getElementById('modlist-modal').classList.add('open');
-}
-function closeModList() { document.getElementById('modlist-modal').classList.remove('open'); }
-
-function renderModListHTML(type) {
-  const list = Object.values(allChats).filter(c => type==='muted' ? c.muted : c.banned);
-  if (!list.length) return `<div class="no-chats" style="padding:28px 16px">Список пуст</div>`;
-  return list.map(c => {
-    const init = (c.name||'?').charAt(0).toUpperCase();
-    const actions = type==='muted'
-      ? `<button class="btn btn-green" onclick="doUnmute(${c.chat_id});closeModList()">✓ Размьют</button>`
-      : `<button class="btn btn-warn" onclick="doUnban(${c.chat_id});closeModList()">✓ Разбан</button>`;
-    return `<div class="user-card">
-      <div class="user-card-avatar ${type}"><span>${init}</span></div>
-      <div class="user-card-info">
-        <div class="user-card-name">${escHtml(c.name||'Пользователь')}</div>
-        <div class="user-card-sub">${c.username?'@'+escHtml(c.username)+' · ':''}ID: ${c.chat_id}</div>
-      </div>
-      <div class="user-card-actions">${actions}</div>
-    </div>`;
-  }).join('');
+  currentTab = tab;
+  // reset panel slide
+  document.getElementById('main-area').classList.remove('panel-open');
+  // show correct sidebar
+  const isChats = tab === 'chats';
+  document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
+  document.getElementById('sidebar-users').style.display = isChats ? 'none' : 'flex';
+  document.getElementById('chat-panel').style.display = 'flex';
+  document.getElementById('profile-panel').style.display = 'flex';
+  // nav highlight
+  ['chats','users'].forEach(t => {
+    const nb = document.getElementById('nav-'+t);
+    if (nb) nb.className = 'nav-btn' + (t===tab ? ' active' : '');
+  });
+  if (!isChats) renderUserList();
 }
 
-function renderModList(type) {
-  const el = document.getElementById(`${type}-list`);
-  if (!el) return;
-  const list = Object.values(allChats).filter(c => type==='muted' ? c.muted : c.banned);
-  if (!list.length) { el.innerHTML='<div class="no-chats">Список пуст</div>'; return; }
-  el.innerHTML = list.map(c => {
-    const init = (c.name||'?').charAt(0).toUpperCase();
-    const actions = type==='muted'
-      ? `<button class="btn btn-green" onclick="doUnmute(${c.chat_id})">✓ Размьют</button>`
-      : `<button class="btn btn-warn" onclick="doUnban(${c.chat_id})">✓ Разбан</button>`;
-    return `<div class="user-card">
-      <div class="user-card-avatar ${type}">${init}</div>
-      <div class="user-card-info">
-        <div class="user-card-name">${escHtml(c.name||'Пользователь')}</div>
-        <div class="user-card-sub">${c.username?'@'+escHtml(c.username)+' · ':''}ID: ${c.chat_id}</div>
-      </div>
-      <div class="user-card-actions">${actions}</div>
-    </div>`;
-  }).join('');
+function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
+function closeMobilePanel() {
+  document.getElementById('main-area').classList.remove('panel-open');
+  if (isMobile()) { selectedChatId = null; selectedProfileId = null; }
 }
-
-/* ===== MOBILE NAV ===== */
-function openChatMobile() { if(isMobile()) document.getElementById('main-area').classList.add('chat-open'); }
-function closeChatMobile() { document.getElementById('main-area').classList.remove('chat-open'); if(isMobile()) selectedChatId=null; }
-function mobileToggleBot() { botActive?stopBot():startBot(); }
 
 /* ===== HAMBURGER ===== */
 function toggleMenu() { document.getElementById('mobile-menu').classList.toggle('open'); }
-function closeMenu() { document.getElementById('mobile-menu').classList.remove('open'); }
 document.addEventListener('click', e => {
   const menu=document.getElementById('mobile-menu'), btn=document.getElementById('menu-btn');
   if(menu.classList.contains('open') && !menu.contains(e.target) && !btn.contains(e.target)) menu.classList.remove('open');
 });
-function menuToggleBot() { closeMenu(); botActive?stopBot():startBot(); }
-function menuAction(a) { closeMenu(); if(a==='broadcast') openBroadcast(); else if(a==='refresh') manualRefresh(); }
+function menuToggleBot() { document.getElementById('mobile-menu').classList.remove('open'); botActive?stopBot():startBot(); }
+function menuAction(a) { document.getElementById('mobile-menu').classList.remove('open'); if(a==='broadcast') openBroadcast(); else manualRefresh(); }
+function mobileToggleBot() { botActive?stopBot():startBot(); }
 
 /* ===== SSE ===== */
 function connectSSE() {
@@ -732,7 +577,7 @@ function connectSSE() {
   const dot=document.getElementById('sse-dot');
   dot.className='sse-dot';
   eventSource = new EventSource(`/admin/api/stream?token=${encodeURIComponent(token)}`);
-  eventSource.onopen=()=>{ dot.className='sse-dot live'; };
+  eventSource.onopen=()=>dot.className='sse-dot live';
   eventSource.onmessage=(e)=>{
     try {
       const ev=JSON.parse(e.data);
@@ -747,13 +592,12 @@ function connectSSE() {
 
 function handleSSEMessage(data) {
   const chatId=data.chat_id;
-  if(!allChats[chatId]) allChats[chatId]={chat_id:chatId,name:data.name||String(chatId),username:data.username||'',messages:[],unread:0,muted:false,banned:false};
+  if(!allChats[chatId]) allChats[chatId]={chat_id:chatId,name:data.name||String(chatId),username:data.username||'',messages:[],unread:0,banned:false};
   const chat=allChats[chatId];
   chat.name=data.name||chat.name; chat.username=data.username||chat.username;
   chat.messages.push({role:data.role,content:data.content,time:data.time});
   if(chatId!==selectedChatId) chat.unread=(chat.unread||0)+1;
-  const elM=document.getElementById('stat-msgs');
-  if(elM&&elM.textContent!=='—') elM.textContent=parseInt(elM.textContent||0)+1;
+  document.getElementById('stat-msgs').textContent=parseInt(document.getElementById('stat-msgs').textContent||0)+1;
   document.getElementById('stat-users').textContent=Object.keys(allChats).length;
   renderChatList();
   if(chatId===selectedChatId) appendMessage(data,chat.messages.length-1);
@@ -761,13 +605,10 @@ function handleSSEMessage(data) {
 
 function handleModeration(data) {
   const chatId=data.chat_id;
-  if(allChats[chatId]) { allChats[chatId].muted=data.muted; allChats[chatId].banned=data.banned; }
-  renderChatList(); renderModList('muted'); renderModList('banned');
-  const elMu=document.getElementById('stat-muted');
-  const elBa=document.getElementById('stat-banned');
-  if(elMu) elMu.textContent=Object.values(allChats).filter(c=>c.muted).length;
-  if(elBa) elBa.textContent=Object.values(allChats).filter(c=>c.banned).length;
-  if(selectedChatId===chatId) updateModButtons(chatId);
+  if(allChats[chatId]) allChats[chatId].banned=data.banned;
+  renderChatList(); renderUserList();
+  document.getElementById('stat-banned').textContent=Object.values(allChats).filter(c=>c.banned).length;
+  if(selectedProfileId===chatId) renderProfile(chatId);
 }
 
 /* ===== INITIAL LOAD ===== */
@@ -777,23 +618,32 @@ async function loadInitialData() {
   if(statsData.ok) {
     document.getElementById('stat-users').textContent=statsData.users;
     document.getElementById('stat-msgs').textContent=statsData.messages;
-    document.getElementById('stat-muted').textContent=statsData.muted||0;
     document.getElementById('stat-banned').textContent=statsData.banned||0;
   }
   if(chatsData.ok) {
     for(const c of chatsData.chats) {
       if(!allChats[c.chat_id]) allChats[c.chat_id]={...c,messages:[],unread:0};
-      else { allChats[c.chat_id].muted=c.muted; allChats[c.chat_id].banned=c.banned; }
+      else { allChats[c.chat_id].banned=c.banned; }
     }
-    renderChatList(); renderModList('muted'); renderModList('banned');
+    renderChatList();
   }
 }
+
 async function loadStats() {
   const d=await api('/stats'); if(!d.ok) return;
   document.getElementById('stat-users').textContent=d.users;
   document.getElementById('stat-msgs').textContent=d.messages;
-  document.getElementById('stat-muted').textContent=d.muted||0;
   document.getElementById('stat-banned').textContent=d.banned||0;
+}
+
+async function manualRefresh() {
+  await loadInitialData();
+  if(selectedChatId&&allChats[selectedChatId]){
+    const d=await api(`/chat/${selectedChatId}`);
+    if(d.ok){allChats[selectedChatId].messages=d.messages;renderMessages();}
+  }
+  if(selectedProfileId) renderProfile(selectedProfileId);
+  renderUserList(); toast('Обновлено','success');
 }
 
 /* ===== BOT STATUS ===== */
@@ -805,12 +655,12 @@ function updateBotStatus(active) {
   const navBot=document.getElementById('nav-bot'), navIcon=document.getElementById('nav-bot-icon'), navLabel=document.getElementById('nav-bot-label');
   if(active) {
     badge.textContent='🟢 Работает'; badge.className='status-badge running';
-    if(stop){stop.style.display='';start.style.display='none';}
+    stop.style.display=''; start.style.display='none';
     if(menuT) menuT.textContent='⏹ Остановить бота';
     if(navBot){navBot.className='nav-btn bot-on';navIcon.textContent='🟢';navLabel.textContent='Бот';}
   } else {
     badge.textContent='🔴 Остановлен'; badge.className='status-badge stopped';
-    if(stop){stop.style.display='none';start.style.display='';}
+    stop.style.display='none'; start.style.display='';
     if(menuT) menuT.textContent='▶ Запустить бота';
     if(navBot){navBot.className='nav-btn bot-off';navIcon.textContent='🔴';navLabel.textContent='Стоп';}
   }
@@ -818,44 +668,54 @@ function updateBotStatus(active) {
 async function stopBot() { await api('/bot/stop','POST'); toast('Бот остановлен','error'); }
 async function startBot() { await api('/bot/start','POST'); toast('Бот запущен','success'); }
 
-async function manualRefresh() {
-  const btn=document.getElementById('refresh-btn');
-  if(btn){btn.disabled=true;btn.textContent='⏳';}
-  try {
-    await loadInitialData();
-    if(selectedChatId&&allChats[selectedChatId]){
-      const d=await api(`/chat/${selectedChatId}`);
-      if(d.ok){allChats[selectedChatId].messages=d.messages;renderMessages();}
-    }
-    renderChatList(); toast('Обновлено','success');
-  } finally { if(btn){btn.disabled=false;btn.textContent='🔄 Обновить';} }
-}
-
 /* ===== CHAT LIST ===== */
-function filterChats() { renderChatList(); }
 function renderChatList() {
-  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  const q=(document.getElementById('chat-search').value||'').toLowerCase();
   const chats=Object.values(allChats).filter(c=>
     !q||(c.name||'').toLowerCase().includes(q)||(c.username||'').toLowerCase().includes(q)||String(c.chat_id).includes(q)
-  ).sort((a,b)=>(b.messages.length||0)-(a.messages.length||0));
+  ).sort((a,b)=>(b.messages.length||b.msg_count||0)-(a.messages.length||a.msg_count||0));
   const el=document.getElementById('chat-list');
-  if(!chats.length){el.innerHTML='<div class="no-chats">Нет пользователей</div>';return;}
+  if(!chats.length){el.innerHTML='<div class="no-items">Нет пользователей</div>';return;}
   el.innerHTML=chats.map(c=>{
     const active=c.chat_id===selectedChatId?'active':'';
-    const msgs=c.messages;
+    const msgs=c.messages||[];
     const last=msgs.length?escHtml(msgs[msgs.length-1].content).substring(0,40):(c.last_message?escHtml(c.last_message).substring(0,40):'Нет сообщений');
     const unread=c.unread>0?`<span class="unread-badge">${c.unread}</span>`:'';
     const init=(c.name||'?').charAt(0).toUpperCase();
-    const avCls=c.banned?'banned':c.muted?'muted':'';
-    const statusTxt=c.banned?'<div class="chat-status banned">🚫 Забанен</div>':c.muted?'<div class="chat-status muted">🔇 Замьючен</div>':'';
+    const avCls=c.banned?'av-banned':'av-default';
+    const banBadge=c.banned?'<div class="chat-ban-badge">🚫 Забанен</div>':'';
     return `<div class="chat-item ${active}" onclick="selectChat(${c.chat_id})">
-      <div class="chat-avatar ${avCls}">${init}</div>
+      <div class="avatar ${avCls}">${init}</div>
       <div class="chat-info">
         <div class="chat-name">${escHtml(c.name||'Пользователь')}</div>
         <div class="chat-preview">${last}</div>
-        ${statusTxt}
+        ${banBadge}
       </div>
-      <div class="chat-meta">${msgs.length||''}</div>${unread}
+      <div class="chat-meta">${msgs.length||c.msg_count||''}</div>${unread}
+    </div>`;
+  }).join('');
+}
+
+/* ===== USER LIST ===== */
+function renderUserList() {
+  const q=(document.getElementById('user-search').value||'').toLowerCase();
+  const users=Object.values(allChats).filter(c=>
+    !q||(c.name||'').toLowerCase().includes(q)||(c.username||'').toLowerCase().includes(q)||String(c.chat_id).includes(q)
+  ).sort((a,b)=>(a.name||'').localeCompare(b.name||'','ru'));
+  const el=document.getElementById('user-list');
+  if(!users.length){el.innerHTML='<div class="no-items">Нет пользователей</div>';return;}
+  el.innerHTML=users.map(c=>{
+    const active=c.chat_id===selectedProfileId?'active':'';
+    const init=(c.name||'?').charAt(0).toUpperCase();
+    const avCls=c.banned?'av-banned':'av-default';
+    const banBadge=c.banned?'<span style="font-size:11px;color:var(--ban-color);margin-left:6px">🚫 Бан</span>':'';
+    const msgs=c.messages?c.messages.length:c.msg_count||0;
+    return `<div class="user-item ${active}" onclick="selectUser(${c.chat_id})">
+      <div class="avatar ${avCls}">${init}</div>
+      <div class="user-info">
+        <div class="user-name">${escHtml(c.name||'Пользователь')}${banBadge}</div>
+        <div class="user-sub">${c.username?'@'+escHtml(c.username)+' · ':''} ${msgs} сообщ.</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -873,73 +733,79 @@ async function selectChat(chatId) {
   document.getElementById('empty-placeholder').style.display='none';
   document.getElementById('messages-area').style.display='flex';
   document.getElementById('send-bar').style.display='flex';
-  updateModButtons(chatId);
   if(!c.messages||c.messages.length===0){
     const d=await api(`/chat/${chatId}`);
     if(d.ok&&allChats[chatId]){allChats[chatId].messages=d.messages;allChats[chatId].name=d.name||c.name;allChats[chatId].username=d.username||c.username;}
   }
   renderMessages();
-  openChatMobile();
+  openMobilePanel();
 }
 
-function closeChatPanel() {
-  selectedChatId=null;
-  document.getElementById('chat-header').style.display='none';
-  document.getElementById('empty-placeholder').style.display='flex';
-  document.getElementById('messages-area').style.display='none';
-  document.getElementById('send-bar').style.display='none';
+/* ===== SELECT USER (profile) ===== */
+async function selectUser(chatId) {
+  selectedProfileId=chatId;
+  renderUserList();
+  await renderProfile(chatId);
+  openMobilePanel();
 }
 
-function updateModButtons(chatId) {
+async function renderProfile(chatId) {
   const c=allChats[chatId]||{};
-  const muteBtn=document.getElementById('mute-btn');
-  const banBtn=document.getElementById('ban-btn');
-  if(c.muted) {
-    muteBtn.className='btn action-chip btn-green'; muteBtn.innerHTML='🔊 <span>Unmute</span>';
-  } else {
-    muteBtn.className='btn action-chip btn-mute'; muteBtn.innerHTML='🔇 <span>Mute</span>';
-  }
+  document.getElementById('profile-empty').style.display='none';
+  document.getElementById('profile-content').style.display='block';
+  const init=(c.name||'?').charAt(0).toUpperCase();
+  const av=document.getElementById('prof-avatar');
+  av.textContent=init;
+  av.className='profile-avatar '+(c.banned?'av-banned':'av-default');
+  document.getElementById('prof-name').textContent=c.name||'Пользователь';
+  document.getElementById('prof-username').textContent=c.username?`@${c.username}`:`ID: ${chatId}`;
+  const badge=document.getElementById('prof-banned-badge');
+  badge.className='profile-banned-badge'+(c.banned?' visible':'');
+  const msgs=c.messages?c.messages.length:c.msg_count||0;
+  document.getElementById('prof-msgs').textContent=msgs;
+  document.getElementById('prof-id').textContent=chatId;
+  document.getElementById('prof-row-name').textContent=c.name||'—';
+  document.getElementById('prof-row-user').textContent=c.username?`@${c.username}`:'—';
+  document.getElementById('prof-row-id').textContent=chatId;
+  const banBtn=document.getElementById('prof-ban-btn');
   if(c.banned) {
-    banBtn.className='btn action-chip btn-warn'; banBtn.innerHTML='✓ <span>Unban</span>';
+    banBtn.className='btn btn-unban btn-lg';
+    banBtn.textContent='✓ Разблокировать';
   } else {
-    banBtn.className='btn action-chip btn-ban'; banBtn.innerHTML='🚫 <span>Ban</span>';
+    banBtn.className='btn btn-ban btn-lg';
+    banBtn.textContent='🚫 Заблокировать';
   }
 }
 
-/* ===== MUTE/BAN ===== */
-async function toggleMute() {
+function openProfileFromChat() {
   if(!selectedChatId) return;
-  const c=allChats[selectedChatId];
-  if(c.muted) await doUnmute(selectedChatId);
-  else await doMute(selectedChatId);
+  switchTab('users');
+  selectUser(selectedChatId);
 }
-async function toggleBan() {
-  if(!selectedChatId) return;
-  const c=allChats[selectedChatId];
-  if(c.banned) await doUnban(selectedChatId);
-  else {
-    showConfirm('🚫 Забанить', `Заблокировать ${(c.name||'пользователя')}? Бот будет полностью игнорировать все его сообщения.`, async()=>{ await doban(selectedChatId); }, 'Забанить');
+
+function openChatFromProfile() {
+  if(!selectedProfileId) return;
+  switchTab('chats');
+  selectChat(selectedProfileId);
+}
+
+/* ===== BAN ===== */
+async function toggleBanFromProfile() {
+  if(!selectedProfileId) return;
+  const c=allChats[selectedProfileId]||{};
+  if(c.banned) {
+    await doUnban(selectedProfileId);
+  } else {
+    showConfirm('🚫 Забанить', `Заблокировать ${escHtml(c.name||'пользователя')}? Бот будет полностью игнорировать все его сообщения.`, async()=>await doBan(selectedProfileId), 'Забанить');
   }
 }
-async function doMute(chatId) {
-  const d=await api(`/chat/${chatId}/mute`,'POST');
-  if(d.ok){ if(allChats[chatId]) allChats[chatId].muted=true; renderChatList(); renderModList('muted'); if(chatId===selectedChatId) updateModButtons(chatId); toast('Пользователь замьючен','warn'); updateStatCounts(); }
-}
-async function doUnmute(chatId) {
-  const d=await api(`/chat/${chatId}/unmute`,'POST');
-  if(d.ok){ if(allChats[chatId]) allChats[chatId].muted=false; renderChatList(); renderModList('muted'); if(chatId===selectedChatId) updateModButtons(chatId); toast('Мьют снят','success'); updateStatCounts(); }
-}
-async function doban(chatId) {
+async function doBan(chatId) {
   const d=await api(`/chat/${chatId}/ban`,'POST');
-  if(d.ok){ if(allChats[chatId]){allChats[chatId].banned=true;allChats[chatId].muted=false;} renderChatList(); renderModList('banned'); renderModList('muted'); if(chatId===selectedChatId) updateModButtons(chatId); toast('Пользователь забанен','error'); updateStatCounts(); }
+  if(d.ok){ if(allChats[chatId]) allChats[chatId].banned=true; renderChatList(); renderUserList(); if(chatId===selectedProfileId) renderProfile(chatId); document.getElementById('stat-banned').textContent=Object.values(allChats).filter(c=>c.banned).length; toast('Пользователь заблокирован','error'); }
 }
 async function doUnban(chatId) {
   const d=await api(`/chat/${chatId}/unban`,'POST');
-  if(d.ok){ if(allChats[chatId]) allChats[chatId].banned=false; renderChatList(); renderModList('banned'); if(chatId===selectedChatId) updateModButtons(chatId); toast('Бан снят','success'); updateStatCounts(); }
-}
-function updateStatCounts() {
-  document.getElementById('stat-muted').textContent=Object.values(allChats).filter(c=>c.muted).length;
-  document.getElementById('stat-banned').textContent=Object.values(allChats).filter(c=>c.banned).length;
+  if(d.ok){ if(allChats[chatId]) allChats[chatId].banned=false; renderChatList(); renderUserList(); if(chatId===selectedProfileId) renderProfile(chatId); document.getElementById('stat-banned').textContent=Object.values(allChats).filter(c=>c.banned).length; toast('Блокировка снята','success'); }
 }
 
 /* ===== MESSAGES ===== */
@@ -948,9 +814,8 @@ function renderMessages() {
   if(!area||!selectedChatId) return;
   const chat=allChats[selectedChatId], msgs=chat?chat.messages:[];
   if(!msgs.length){area.innerHTML='<div class="msgs-empty">Нет сообщений</div>';return;}
-  const name=(chat&&chat.name)||'Пользователь';
   area.innerHTML='';
-  msgs.forEach((m,idx)=>area.appendChild(buildMsgEl(m,idx,name)));
+  msgs.forEach((m,idx)=>area.appendChild(buildMsgEl(m,idx,chat.name)));
   area.scrollTop=area.scrollHeight;
 }
 function buildMsgEl(m,idx,chatName) {
@@ -966,8 +831,7 @@ function appendMessage(m,idx) {
   if(!area) return;
   const wasAtBottom=area.scrollHeight-area.scrollTop-area.clientHeight<80;
   const empty=area.querySelector('.msgs-empty'); if(empty) empty.remove();
-  const chat=allChats[selectedChatId]||{};
-  area.appendChild(buildMsgEl(m,idx,chat.name));
+  area.appendChild(buildMsgEl(m,idx,(allChats[selectedChatId]||{}).name));
   if(wasAtBottom) area.scrollTop=area.scrollHeight;
 }
 async function deleteMessage(idx) {
@@ -998,6 +862,7 @@ async function sendMsg(){
   document.getElementById('send-btn').disabled=false;
   toast('Отправлено','success');inp.focus();
 }
+document.getElementById('msg-input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';});
 
 /* ===== BROADCAST ===== */
 function openBroadcast(){document.getElementById('broadcast-modal').classList.add('open');}
@@ -1032,8 +897,7 @@ function toast(msg,type='success'){
 }
 function escHtml(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-document.getElementById('msg-input').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,110)+'px';});
-
+/* ===== INIT ===== */
 (async()=>{ const ok=await checkAuth(); if(ok) showApp(); })();
 </script>
 </body>
