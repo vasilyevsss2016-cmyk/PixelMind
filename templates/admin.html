@@ -1068,20 +1068,8 @@ function updateBotStatus(active) {
     if(navBot){navBot.className='nav-btn bot-off';navIcon.textContent='🔴';navLabel.textContent='Стоп';}
   }
 }
-async function stopBot() {
-  const btn=document.getElementById('stop-btn');
-  if(btn) btn.disabled=true;
-  await api('/bot/stop','POST');
-  toast('Бот остановлен','error');
-  setTimeout(()=>{ if(btn) btn.disabled=false; },2000);
-}
-async function startBot() {
-  const btn=document.getElementById('start-btn');
-  if(btn) btn.disabled=true;
-  await api('/bot/start','POST');
-  toast('Бот запущен','success');
-  setTimeout(()=>{ if(btn) btn.disabled=false; },2000);
-}
+async function stopBot() { await api('/bot/stop','POST'); toast('Бот остановлен','error'); }
+async function startBot() { await api('/bot/start','POST'); toast('Бот запущен','success'); }
 
 /* ===== CHAT LIST ===== */
 function renderChatList() {
