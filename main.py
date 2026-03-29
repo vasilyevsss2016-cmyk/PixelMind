@@ -579,7 +579,7 @@ def keep_alive_loop():
             logger.info("Keep-alive ping отправлен")
         except Exception as e:
             logger.warning(f"Keep-alive ошибка: {e}")
-        time.sleep(270)
+        time.sleep(180)
 
 
 # ============ ОБРАБОТКА КОМАНД ============
