@@ -2377,7 +2377,8 @@ def web_get_credits():
         "ok": True,
         "credits": u.get("credits", 0),
         "plan": u.get("plan", "free"),
-        "plan_expires": u.get("plan_expires")
+        "plan_expires": u.get("plan_expires"),
+        "msg_count": len(u.get("chat_history", []))
     })
 
 @app.route("/app/request-payment", methods=["POST"])
@@ -2555,6 +2556,56 @@ def admin_api_reject_payment(pid):
     if not check_admin_token():
         return jsonify({"ok": False}), 401
     return _do_reject_payment(pid)
+
+@app.route("/admin/api/web-chat/<uid>")
+def admin_api_web_chat_get(uid):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
+    return jsonify({
+        "ok": True,
+        "history": u.get("chat_history", []),
+        "username": u.get("username", ""),
+        "credits": u.get("credits", 0),
+        "plan": u.get("plan", "free"),
+    })
+
+@app.route("/admin/api/web-chat/<uid>/send", methods=["POST"])
+def admin_api_web_chat_send(uid):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "").strip()
+    if not text:
+        return jsonify({"ok": False, "error": "Пустое сообщение"}), 400
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
+    history = u.get("chat_history", [])
+    history.append({
+        "role": "assistant",
+        "content": text,
+        "ts": datetime.now().isoformat(),
+        "from_admin": True
+    })
+    u["chat_history"] = history
+    save_web_users(users)
+    return jsonify({"ok": True})
+
+@app.route("/admin/api/web-chat/<uid>/clear", methods=["POST"])
+def admin_api_web_chat_clear(uid):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    if uid not in users:
+        return jsonify({"ok": False, "error": "Пользователь не найден"}), 404
+    users[uid]["chat_history"] = []
+    save_web_users(users)
+    return jsonify({"ok": True})
 
 @app.route("/app/clear", methods=["POST"])
 def web_clear_history():

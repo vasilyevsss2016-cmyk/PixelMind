@@ -443,6 +443,78 @@ header {
   .invite-row { flex-wrap:wrap; gap:8px; }
   .invite-row-actions { width:100%; justify-content:flex-end; }
 }
+
+/* ===== WEB CHAT PANEL ===== */
+#web-chat-panel {
+  flex:1; display:none; flex-direction:column; overflow:hidden; min-width:0;
+  background:rgba(8,14,28,0.35);
+}
+.wc-header {
+  display:flex; align-items:center; gap:10px; padding:10px 16px;
+  border-bottom:1px solid var(--glass-border);
+  background:rgba(8,14,28,0.55); backdrop-filter:blur(20px); flex-shrink:0;
+  min-height:54px;
+}
+.wc-header-info { flex:1; min-width:0; }
+.wc-title { font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wc-sub { font-size:12px; color:var(--text2); margin-top:2px; }
+.wc-empty {
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  color:var(--text3); text-align:center; padding:20px; gap:8px;
+}
+.wc-empty .icon { font-size:48px; }
+.wc-messages {
+  flex:1; overflow-y:auto; padding:16px 14px; display:flex; flex-direction:column; gap:8px;
+}
+.wc-bubble-wrap { display:flex; flex-direction:column; }
+.wc-bubble-wrap.user { align-items:flex-end; }
+.wc-bubble-wrap.assistant { align-items:flex-start; }
+.wc-bubble {
+  max-width:76%; padding:10px 14px; font-size:14px; line-height:1.5;
+  white-space:pre-wrap; word-break:break-word; border-radius:16px;
+}
+.wc-bubble-wrap.user .wc-bubble {
+  background:rgba(90,171,255,0.18); border:1px solid rgba(90,171,255,0.3);
+  border-radius:16px 16px 4px 16px;
+}
+.wc-bubble-wrap.assistant .wc-bubble {
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:16px 16px 16px 4px;
+}
+.wc-bubble-wrap.assistant.admin-msg .wc-bubble {
+  background:rgba(167,139,250,0.15); border:1px solid rgba(167,139,250,0.35);
+}
+.wc-admin-badge {
+  font-size:10px; color:#a78bfa; font-weight:600;
+  margin-bottom:3px; padding:0 2px;
+}
+.wc-ts { font-size:10px; color:var(--text3); margin-top:3px; padding:0 2px; }
+.wc-send-bar {
+  display:flex; gap:8px; align-items:flex-end; padding:10px 14px;
+  border-top:1px solid var(--glass-border); background:rgba(8,14,28,0.55); flex-shrink:0;
+}
+.wc-send-bar textarea {
+  flex:1; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);
+  border-radius:12px; padding:10px 14px; color:var(--text); font-size:14px;
+  resize:none; outline:none; font-family:inherit; max-height:120px; line-height:1.4;
+  transition:border .2s;
+}
+.wc-send-bar textarea:focus { border-color:rgba(90,171,255,.4); }
+.wc-send-bar button {
+  padding:10px 18px; background:var(--accent); border:none; border-radius:12px;
+  color:#fff; font-size:18px; font-weight:700; cursor:pointer; height:44px;
+  flex-shrink:0; transition:opacity .15s;
+}
+.wc-send-bar button:hover { opacity:.85; }
+.wc-hint { font-size:11px; color:var(--text3); text-align:center; padding:4px 0 8px; }
+@media (max-width:640px) {
+  #web-chat-panel {
+    position:absolute; inset:0; width:100%; z-index:11;
+    transform:translateX(100%); transition:transform .25s ease; background:var(--bg1);
+  }
+  .main.panel-open #web-chat-panel { transform:translateX(0); }
+  .wc-bubble { max-width:88%; }
+}
 </style>
 </head>
 <body>
@@ -616,6 +688,32 @@ header {
             <button class="btn btn-ban btn-lg" id="prof-ban-btn" onclick="toggleBanFromProfile()">🚫 Заблокировать</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Web Chat Panel (переписка веб-пользователей) -->
+    <div id="web-chat-panel">
+      <div class="wc-header" id="wc-header" style="display:none">
+        <button id="wc-back-btn" style="display:none;background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px 4px 0;line-height:1" onclick="closeWcPanel()">‹</button>
+        <div class="wc-header-info">
+          <div class="wc-title" id="wc-title">—</div>
+          <div class="wc-sub" id="wc-sub">—</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-ghost action-chip" onclick="openWcCreditsModal()" title="Кредиты">⚡</button>
+          <button class="btn btn-red action-chip" onclick="clearWcChat()" title="Очистить историю">🗑</button>
+        </div>
+      </div>
+      <div class="wc-empty" id="wc-empty">
+        <div class="icon">💬</div>
+        <p>Выбери веб-пользователя слева,<br>чтобы открыть переписку</p>
+      </div>
+      <div id="wc-messages" class="wc-messages" style="display:none"></div>
+      <div class="wc-hint" id="wc-hint" style="display:none">Ваше сообщение будет добавлено как ответ AI</div>
+      <div id="wc-send-bar" class="wc-send-bar" style="display:none">
+        <textarea id="wc-input" placeholder="Написать от имени AI..." rows="1"
+          onkeydown="handleWcKey(event)" oninput="autoResizeWc(this)"></textarea>
+        <button onclick="sendWebMsg()">→</button>
       </div>
     </div>
 
@@ -1097,8 +1195,7 @@ async function showApp() {
 function logout() { if(eventSource) eventSource.close(); localStorage.removeItem('flux_admin_token'); location.reload(); }
 
 /* ===== TABS ===== */
-function switchTab(tab) {
-  currentTab = tab;
+function _applyTabLayout(tab) {
   const isChats = tab === 'chats';
   const isUsers = tab === 'users';
   const isInvite = tab === 'invite';
@@ -1106,38 +1203,42 @@ function switchTab(tab) {
   document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
   document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
-  document.getElementById('profile-panel').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('invite-panel').style.display = isInvite ? 'flex' : 'none';
   document.getElementById('payments-panel').style.display = isPayments ? 'flex' : 'none';
+  // На вкладке users: web-chat-panel основная, profile-panel — только для TG-пользователей
+  if (isUsers) {
+    const showProfile = !!selectedProfileId && !selectedWebUid;
+    document.getElementById('profile-panel').style.display = showProfile ? 'flex' : 'none';
+    document.getElementById('web-chat-panel').style.display = showProfile ? 'none' : 'flex';
+  } else {
+    document.getElementById('profile-panel').style.display = 'none';
+    document.getElementById('web-chat-panel').style.display = 'none';
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  _applyTabLayout(tab);
   ['chats','users','invite','payments'].forEach(t => {
     const tb = document.getElementById('tab-'+t);
     if (tb) tb.className = 'tab-btn' + (t===tab ? ' active' : '');
   });
-  if (isUsers) { renderUserList(); loadWebUsersTab(); }
-  if (isInvite) loadInviteList();
-  if (isPayments) { loadPayments(); loadWebUsersCredits(); }
+  if (tab === 'users') { renderUserList(); loadWebUsersTab(); }
+  if (tab === 'invite') loadInviteList();
+  if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
 }
 
 function mobileTab(tab) {
   currentTab = tab;
   document.getElementById('main-area').classList.remove('panel-open');
-  const isChats = tab === 'chats';
-  const isUsers = tab === 'users';
-  const isInvite = tab === 'invite';
-  const isPayments = tab === 'payments';
-  document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
-  document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
-  document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
-  document.getElementById('profile-panel').style.display = isUsers ? 'flex' : 'none';
-  document.getElementById('invite-panel').style.display = (isInvite) ? 'flex' : 'none';
-  document.getElementById('payments-panel').style.display = isPayments ? 'flex' : 'none';
+  _applyTabLayout(tab);
   ['chats','users','invite','payments'].forEach(t => {
     const nb = document.getElementById('nav-'+t);
     if (nb) nb.className = 'nav-btn' + (t===tab ? ' active' : '');
   });
-  if (isUsers) { renderUserList(); loadWebUsersTab(); }
-  if (isInvite) loadInviteList();
-  if (isPayments) { loadPayments(); loadWebUsersCredits(); }
+  if (tab === 'users') { renderUserList(); loadWebUsersTab(); }
+  if (tab === 'invite') loadInviteList();
+  if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
 }
 
 function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
@@ -1391,10 +1492,13 @@ function renderWebUserList() {
 
 async function selectWebUser(uid) {
   selectedWebUid = uid;
+  selectedProfileId = null;
   renderWebUserList();
-  const u = webUsersCache.find(x => x.uid === uid);
-  if (!u) return;
-  renderWebUserProfile(u);
+  renderUserList();
+  // Переключаем панели
+  document.getElementById('profile-panel').style.display = 'none';
+  document.getElementById('web-chat-panel').style.display = 'flex';
+  await loadWebUserChat(uid);
   openMobilePanel();
 }
 
@@ -1422,7 +1526,120 @@ function renderWebUserProfile(u) {
   `;
 }
 
+/* ===== WEB CHAT PANEL FUNCTIONS ===== */
+let currentWcUid = null;
+
+async function loadWebUserChat(uid) {
+  currentWcUid = uid;
+  const u = webUsersCache.find(x => x.uid === uid) || {};
+  // Обновляем шапку
+  const cr = u.credits === -1 ? '∞' : (u.credits ?? '?');
+  document.getElementById('wc-title').textContent = u.username || uid;
+  document.getElementById('wc-sub').textContent =
+    `${u.email || 'без email'} · ${u.plan || 'free'} · ⚡ ${cr} кр.`;
+  document.getElementById('wc-header').style.display = 'flex';
+  // Мобильная кнопка назад
+  if (isMobile()) document.getElementById('wc-back-btn').style.display = 'block';
+  // Загружаем историю
+  document.getElementById('wc-empty').style.display = 'none';
+  document.getElementById('wc-messages').style.display = 'flex';
+  document.getElementById('wc-hint').style.display = 'block';
+  document.getElementById('wc-send-bar').style.display = 'flex';
+  document.getElementById('wc-messages').innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:10px">Загрузка…</div>';
+  const d = await api('/web-chat/' + uid);
+  if (!d.ok) {
+    document.getElementById('wc-messages').innerHTML = '<div style="color:var(--danger);text-align:center;padding:20px">Ошибка загрузки</div>';
+    return;
+  }
+  renderWcMessages(d.history || []);
+}
+
+function renderWcMessages(history) {
+  const el = document.getElementById('wc-messages');
+  if (!history.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;text-align:center;padding:20px">Переписка пуста</div>';
+    return;
+  }
+  el.innerHTML = history.map(msg => {
+    const isUser = msg.role === 'user';
+    const isAdmin = msg.from_admin;
+    const ts = msg.ts ? new Date(msg.ts).toLocaleString('ru', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+    const adminBadge = isAdmin ? '<div class="wc-admin-badge">👤 Администратор</div>' : '';
+    return `<div class="wc-bubble-wrap ${msg.role}${isAdmin ? ' admin-msg' : ''}">
+      ${adminBadge}
+      <div class="wc-bubble">${escHtml(msg.content)}</div>
+      ${ts ? `<div class="wc-ts">${ts}</div>` : ''}
+    </div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendWebMsg() {
+  if (!currentWcUid) return;
+  const inp = document.getElementById('wc-input');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  inp.style.height = '';
+  const d = await api('/web-chat/' + currentWcUid + '/send', 'POST', { text });
+  if (d.ok) {
+    const rd = await api('/web-chat/' + currentWcUid);
+    if (rd.ok) renderWcMessages(rd.history || []);
+    toast('Сообщение отправлено ✅', 'success');
+  } else {
+    toast(d.error || 'Ошибка отправки', 'error');
+  }
+}
+
+async function clearWcChat() {
+  if (!currentWcUid) return;
+  const u = webUsersCache.find(x => x.uid === currentWcUid) || {};
+  showConfirm('🗑 Очистить переписку',
+    `Удалить всю историю чата пользователя <b>${escHtml(u.username || currentWcUid)}</b>? Это действие необратимо.`,
+    async () => {
+      const d = await api('/web-chat/' + currentWcUid + '/clear', 'POST', {});
+      if (d.ok) {
+        renderWcMessages([]);
+        // Обновляем кеш
+        const cached = webUsersCache.find(x => x.uid === currentWcUid);
+        toast('История очищена', 'success');
+      } else toast(d.error || 'Ошибка', 'error');
+    }, 'Очистить'
+  );
+}
+
+function openWcCreditsModal() {
+  if (!currentWcUid) return;
+  const u = webUsersCache.find(x => x.uid === currentWcUid) || {};
+  openCreditsModal(currentWcUid, u.username || currentWcUid, 'add');
+}
+
+function closeWcPanel() {
+  selectedWebUid = null;
+  currentWcUid = null;
+  closeMobilePanel();
+  document.getElementById('wc-empty').style.display = 'flex';
+  document.getElementById('wc-messages').style.display = 'none';
+  document.getElementById('wc-hint').style.display = 'none';
+  document.getElementById('wc-send-bar').style.display = 'none';
+  document.getElementById('wc-header').style.display = 'none';
+  renderWebUserList();
+}
+
+function handleWcKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendWebMsg(); }
+}
+
+function autoResizeWc(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
 async function renderProfile(chatId) {
+  selectedWebUid = null;
+  // Переключаем панели: показываем profile-panel, скрываем web-chat-panel
+  document.getElementById('web-chat-panel').style.display = 'none';
+  document.getElementById('profile-panel').style.display = 'flex';
   const c=allChats[chatId]||{};
   document.getElementById('profile-empty').style.display='none';
   document.getElementById('profile-content').style.display='block';
@@ -1948,11 +2165,17 @@ async function confirmCreditsAdjust() {
   if (d.ok) {
     toast(creditsModalMode === 'add' ? `+${val} кредитов добавлено ✅` : `−${val} кредитов списано`, 'success');
     closeCreditsModal();
-    // Обновляем кеш и перерисовываем профиль
+    // Обновляем кеш
     const cached = webUsersCache.find(x => x.uid === creditsModalUid);
     if (cached) { cached.credits = d.credits; }
-    if (selectedWebUid === creditsModalUid && cached) renderWebUserProfile(cached);
     renderWebUserList();
+    // Обновляем подзаголовок WC-панели если открыт этот пользователь
+    if (currentWcUid === creditsModalUid && cached) {
+      const cr = cached.credits === -1 ? '∞' : cached.credits;
+      const subEl = document.getElementById('wc-sub');
+      if (subEl) subEl.textContent =
+        `${cached.email || 'без email'} · ${cached.plan || 'free'} · ⚡ ${cr} кр.`;
+    }
     loadWebUsersCredits();
   } else {
     errEl.textContent = d.error || 'Ошибка';

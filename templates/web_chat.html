@@ -751,6 +751,7 @@ async function doLogout() {
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
 let _creditsPollTimer = null;
+let _lastMsgCount = null;
 
 function startCreditsPolling() {
   if (_creditsPollTimer) clearInterval(_creditsPollTimer);
@@ -758,12 +759,22 @@ function startCreditsPolling() {
     try {
       const r = await fetch('/app/credits');
       const d = await r.json();
-      if (d.ok && d.credits !== currentCredits) {
+      if (!d.ok) return;
+      // Обновление кредитов
+      if (d.credits !== currentCredits) {
         const prev = currentCredits;
         updateCreditsBadge(d.credits);
         if (prev !== null && d.credits > prev && prev !== -1) {
           toast('⚡ Кредиты зачислены: ' + (d.credits === -1 ? '∞' : d.credits), 'ok');
         }
+      }
+      // Новые сообщения от админа
+      if (_lastMsgCount !== null && d.msg_count > _lastMsgCount) {
+        _lastMsgCount = d.msg_count;
+        await loadHistory();
+        toast('💬 Новое сообщение от поддержки', 'ok');
+      } else if (_lastMsgCount === null) {
+        _lastMsgCount = d.msg_count;
       }
     } catch(e) {}
   }, 20000);
@@ -780,7 +791,10 @@ async function enterApp(username) {
   try {
     const r = await fetch('/app/credits');
     const d = await r.json();
-    if (d.ok) updateCreditsBadge(d.credits);
+    if (d.ok) {
+      updateCreditsBadge(d.credits);
+      _lastMsgCount = d.msg_count ?? null;
+    }
   } catch(e) {}
   startCreditsPolling();
   document.getElementById('msg-input').focus();
