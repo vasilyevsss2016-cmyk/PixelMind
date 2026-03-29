@@ -2502,9 +2502,27 @@ def web_chat_send():
         history = history[-200:]
     chat["history"] = history
     chat["updated_at"] = datetime.now().isoformat()
-    # Auto-name chat from first user message
+    # Auto-name chat via AI on first user message
     if len(history) == 2 and chat.get("name", "").startswith("Чат "):
-        chat["name"] = text[:32] + ("…" if len(text) > 32 else "")
+        try:
+            name_resp = http_requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": AI_MODEL,
+                    "messages": [
+                        {"role": "system", "content": "Придумай короткое (2-4 слова) название темы для чата на основе сообщения пользователя. Только название, без кавычек и пунктуации в конце."},
+                        {"role": "user", "content": text[:200]}
+                    ],
+                    "max_tokens": 20
+                },
+                timeout=10
+            )
+            generated = name_resp.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+            if generated and len(generated) < 60:
+                chat["name"] = generated
+        except Exception:
+            chat["name"] = text[:32] + ("…" if len(text) > 32 else "")
     save_web_users(users)
     remaining = u["credits"]
     return jsonify({"ok": True, "reply": reply, "credits": remaining, "chat_name": chat["name"]})
