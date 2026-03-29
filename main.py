@@ -611,16 +611,48 @@ def generate_image(prompt: str) -> bytes | None:
 
 
 def generate_video_bytes(prompt: str) -> bytes | None:
-    encoded = urllib.parse.quote(prompt)
-    seed = int(time.time())
-    url = (
-        f"https://video.pollinations.ai/prompt/{encoded}"
-        f"?width=1280&height=720&duration=4&fps=24&nologo=true&seed={seed}"
-    )
+    """Генерирует видео: картинка через Gemini + Ken Burns эффект через ffmpeg."""
+    import subprocess, tempfile, os
+
+    # Шаг 1 — генерируем изображение
+    img_bytes = generate_image(prompt)
+    if not img_bytes:
+        logger.error("Видео: не удалось сгенерировать кадр")
+        return None
+
     try:
-        resp = http_requests.get(url, timeout=120, verify=False)
-        if resp.status_code == 200 and len(resp.content) > 1024:
-            return resp.content
+        with tempfile.TemporaryDirectory() as tmpdir:
+            img_path = os.path.join(tmpdir, "frame.png")
+            out_path = os.path.join(tmpdir, "output.mp4")
+
+            with open(img_path, "wb") as f:
+                f.write(img_bytes)
+
+            # Шаг 2 — Ken Burns: плавный зум + пан, 8 сек, 25 fps
+            cmd = [
+                "ffmpeg", "-y",
+                "-loop", "1", "-t", "8", "-i", img_path,
+                "-vf", (
+                    "zoompan=z='min(zoom+0.0015,1.5)'"
+                    ":d=200"
+                    ":x='iw/2-(iw/zoom/2)'"
+                    ":y='ih/2-(ih/zoom/2)'"
+                    ":s=1024x1024,"
+                    "scale=1024:576:force_original_aspect_ratio=decrease,"
+                    "pad=1024:576:(ow-iw)/2:(oh-ih)/2"
+                ),
+                "-c:v", "libx264", "-r", "25",
+                "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart",
+                out_path,
+            ]
+            result = subprocess.run(cmd, capture_output=True, timeout=60)
+            if result.returncode != 0:
+                logger.error(f"ffmpeg error: {result.stderr.decode()[-300:]}")
+                return None
+
+            with open(out_path, "rb") as f:
+                return f.read()
     except Exception as e:
         logger.error(f"Ошибка генерации видео: {e}")
     return None
