@@ -18,10 +18,11 @@ from flask import Flask, request, jsonify, render_template, session
 import requests as http_requests
 
 try:
-    from gtts import gTTS
-    GTTS_AVAILABLE = True
+    import edge_tts
+    import asyncio
+    EDGE_TTS_AVAILABLE = True
 except ImportError:
-    GTTS_AVAILABLE = False
+    EDGE_TTS_AVAILABLE = False
 
 try:
     import speech_recognition as sr
@@ -285,17 +286,33 @@ def send_document(chat_id: int, filename: str, content: bytes, caption: str = ""
     )
 
 
-def reply_with_voice_or_text(chat_id: int, text: str):
-    if voice_reply_enabled.get(chat_id, False) and GTTS_AVAILABLE:
-        try:
-            tts = gTTS(text=text, lang="ru")
+TTS_VOICE = "ru-RU-DmitryNeural"
+
+
+def synthesize_speech(text: str) -> bytes | None:
+    if not EDGE_TTS_AVAILABLE:
+        return None
+    try:
+        async def _synth():
+            communicate = edge_tts.Communicate(text, TTS_VOICE)
             buf = io.BytesIO()
-            tts.write_to_fp(buf)
+            async for chunk in communicate.stream():
+                if chunk["type"] == "audio":
+                    buf.write(chunk["data"])
             buf.seek(0)
-            send_voice(chat_id, buf.read())
+            return buf.read()
+        return asyncio.run(_synth())
+    except Exception as e:
+        logger.error(f"Ошибка edge-tts: {e}")
+        return None
+
+
+def reply_with_voice_or_text(chat_id: int, text: str):
+    if voice_reply_enabled.get(chat_id, False) and EDGE_TTS_AVAILABLE:
+        audio = synthesize_speech(text)
+        if audio:
+            send_voice(chat_id, audio)
             return
-        except Exception as e:
-            logger.error(f"Ошибка TTS: {e}")
     send_message(chat_id, text)
 
 
@@ -389,18 +406,14 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
         if not args:
             send_message(chat_id, "Использование: /tts [текст]")
             return True
-        if not GTTS_AVAILABLE:
+        if not EDGE_TTS_AVAILABLE:
             send_message(chat_id, "Озвучка временно недоступна.")
             return True
         send_chat_action(chat_id, "record_voice")
-        try:
-            tts = gTTS(text=args, lang="ru")
-            buf = io.BytesIO()
-            tts.write_to_fp(buf)
-            buf.seek(0)
-            send_voice(chat_id, buf.read())
-        except Exception as e:
-            logger.error(f"TTS ошибка: {e}")
+        audio = synthesize_speech(args)
+        if audio:
+            send_voice(chat_id, audio)
+        else:
             send_message(chat_id, "Не удалось озвучить текст 😔")
         return True
 
@@ -533,19 +546,15 @@ def webhook():
         if not tts_text:
             send_message(chat_id, "Напиши что озвучить, например: Озвучь привет как дела")
             return "ok"
-        if not GTTS_AVAILABLE:
+        if not EDGE_TTS_AVAILABLE:
             send_message(chat_id, "Озвучка временно недоступна 😔")
             return "ok"
         send_chat_action(chat_id, "record_voice")
-        try:
-            tts = gTTS(text=tts_text, lang="ru")
-            buf = io.BytesIO()
-            tts.write_to_fp(buf)
-            buf.seek(0)
-            send_voice(chat_id, buf.read())
+        audio = synthesize_speech(tts_text)
+        if audio:
+            send_voice(chat_id, audio)
             log_message(chat_id, "assistant", f"🔊 [Озвучено]: {tts_text}")
-        except Exception as e:
-            logger.error(f"TTS ошибка: {e}")
+        else:
             send_message(chat_id, "Не удалось озвучить текст 😔")
         return "ok"
 
