@@ -94,10 +94,12 @@ user_info: dict[int, dict] = {}
 full_chat_log: dict[int, list] = {}
 message_count: int = 0
 bot_active: bool = True
+muted_users: set = set()
+banned_users: set = set()
 
 
 def load_users():
-    global known_chats, user_info, message_count
+    global known_chats, user_info, message_count, muted_users, banned_users
     try:
         if os.path.exists(USERS_FILE):
             with open(USERS_FILE, "r", encoding="utf-8") as f:
@@ -107,6 +109,8 @@ def load_users():
                 known_chats.add(uid)
                 user_info[uid] = info
             message_count = data.get("message_count", 0)
+            muted_users = set(data.get("muted", []))
+            banned_users = set(data.get("banned", []))
             logger.info(f"📂 Загружено {len(known_chats)} пользователей из {USERS_FILE}")
     except Exception as e:
         logger.error(f"Ошибка загрузки пользователей: {e}")
@@ -116,7 +120,9 @@ def save_users():
     try:
         data = {
             "users": {str(uid): info for uid, info in user_info.items()},
-            "message_count": message_count
+            "message_count": message_count,
+            "muted": list(muted_users),
+            "banned": list(banned_users)
         }
         with open(USERS_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
@@ -599,6 +605,13 @@ def process_message(message):
     if not bot_active:
         return
 
+    if chat_id in banned_users:
+        return
+
+    if chat_id in muted_users:
+        log_message(chat_id, "user", message.get("text", "[медиа]"))
+        return
+
     text = message.get("text", "")
     voice = message.get("voice")
     video_note = message.get("video_note")
@@ -840,7 +853,9 @@ def api_stats():
         "ok": True,
         "users": len(known_chats),
         "messages": message_count,
-        "chats": len(chat_histories)
+        "chats": len(chat_histories),
+        "muted": len(muted_users),
+        "banned": len(banned_users)
     })
 
 
@@ -858,7 +873,9 @@ def api_chats():
             "name": info.get("name", str(cid)),
             "username": info.get("username", ""),
             "last_message": last,
-            "msg_count": len(log)
+            "msg_count": len(log),
+            "muted": cid in muted_users,
+            "banned": cid in banned_users
         })
     chats.sort(key=lambda x: x["msg_count"], reverse=True)
     return jsonify({"ok": True, "chats": chats})
@@ -895,6 +912,52 @@ def api_clear_chat(chat_id):
     if not check_admin_token():
         return jsonify({"ok": False}), 403
     full_chat_log[chat_id] = []
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/chat/<int:chat_id>/mute", methods=["POST"])
+def api_mute(chat_id):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    muted_users.add(chat_id)
+    banned_users.discard(chat_id)
+    save_users()
+    push_sse("moderation", {"chat_id": chat_id, "muted": True, "banned": False})
+    logger.info(f"Пользователь {chat_id} замьючен")
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/chat/<int:chat_id>/unmute", methods=["POST"])
+def api_unmute(chat_id):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    muted_users.discard(chat_id)
+    save_users()
+    push_sse("moderation", {"chat_id": chat_id, "muted": False, "banned": False})
+    logger.info(f"Пользователь {chat_id} размьючен")
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/chat/<int:chat_id>/ban", methods=["POST"])
+def api_ban(chat_id):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    banned_users.add(chat_id)
+    muted_users.discard(chat_id)
+    save_users()
+    push_sse("moderation", {"chat_id": chat_id, "muted": False, "banned": True})
+    logger.info(f"Пользователь {chat_id} забанен")
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/chat/<int:chat_id>/unban", methods=["POST"])
+def api_unban(chat_id):
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    banned_users.discard(chat_id)
+    save_users()
+    push_sse("moderation", {"chat_id": chat_id, "muted": False, "banned": False})
+    logger.info(f"Пользователь {chat_id} разбанен")
     return jsonify({"ok": True})
 
 
