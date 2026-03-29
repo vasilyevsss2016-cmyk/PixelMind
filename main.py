@@ -83,6 +83,8 @@ app = Flask(__name__)
 app.secret_key = ADMIN_TOKEN
 
 # ============ ГЛОБАЛЬНОЕ СОСТОЯНИЕ ============
+USERS_FILE = "users.json"
+
 chat_histories: dict[int, list[dict]] = {}
 chat_modes: dict[int, str] = {}
 voice_reply_enabled: dict[int, bool] = {}
@@ -91,6 +93,34 @@ user_info: dict[int, dict] = {}
 full_chat_log: dict[int, list] = {}
 message_count: int = 0
 bot_active: bool = True
+
+
+def load_users():
+    global known_chats, user_info, message_count
+    try:
+        if os.path.exists(USERS_FILE):
+            with open(USERS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            for uid_str, info in data.get("users", {}).items():
+                uid = int(uid_str)
+                known_chats.add(uid)
+                user_info[uid] = info
+            message_count = data.get("message_count", 0)
+            logger.info(f"📂 Загружено {len(known_chats)} пользователей из {USERS_FILE}")
+    except Exception as e:
+        logger.error(f"Ошибка загрузки пользователей: {e}")
+
+
+def save_users():
+    try:
+        data = {
+            "users": {str(uid): info for uid, info in user_info.items()},
+            "message_count": message_count
+        }
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения пользователей: {e}")
 
 # SSE
 sse_clients: list[queue.Queue] = []
@@ -138,6 +168,8 @@ def log_message(chat_id: int, role: str, content: str):
 def get_ai_reply(chat_id: int, user_message: str) -> str:
     global message_count
     message_count += 1
+    if message_count % 10 == 0:
+        save_users()
 
     if chat_id not in chat_histories:
         chat_histories[chat_id] = []
@@ -551,6 +583,7 @@ def process_message(message):
     first_name = user.get("first_name", "")
     last_name = user.get("last_name", "")
 
+    is_new = chat_id not in known_chats
     known_chats.add(chat_id)
     user_info[chat_id] = {
         "username": username,
@@ -558,6 +591,9 @@ def process_message(message):
         "last_name": last_name,
         "name": f"{first_name} {last_name}".strip() or username or str(chat_id)
     }
+    if is_new:
+        save_users()
+        logger.info(f"Новый пользователь сохранён: {chat_id}")
 
     if not bot_active:
         return
@@ -952,6 +988,8 @@ def startup():
     if not OPENROUTER_API_KEY:
         logger.error("❌ Не указан OPENROUTER_API_KEY — добавь его в Secrets")
         return
+
+    load_users()
 
     if REPLIT_URL:
         try:
