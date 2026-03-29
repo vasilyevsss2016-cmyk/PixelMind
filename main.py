@@ -85,6 +85,7 @@ app.secret_key = ADMIN_TOKEN
 
 # ============ ГЛОБАЛЬНОЕ СОСТОЯНИЕ ============
 USERS_FILE = "users.json"
+CHAT_LOG_FILE = "chat_log.json"
 
 chat_histories: dict[int, list[dict]] = {}
 chat_modes: dict[int, str] = {}
@@ -126,9 +127,32 @@ def save_users():
     except Exception as e:
         logger.error(f"Ошибка сохранения пользователей: {e}")
 
+
+def load_chat_log():
+    global full_chat_log
+    try:
+        if os.path.exists(CHAT_LOG_FILE):
+            with open(CHAT_LOG_FILE, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+            full_chat_log = {int(k): v for k, v in raw.items()}
+            total = sum(len(v) for v in full_chat_log.values())
+            logger.info(f"📂 Загружено {total} сообщений из {CHAT_LOG_FILE}")
+    except Exception as e:
+        logger.error(f"Ошибка загрузки истории чатов: {e}")
+
+
+def save_chat_log():
+    try:
+        with chat_log_lock:
+            with open(CHAT_LOG_FILE, "w", encoding="utf-8") as f:
+                json.dump({str(k): v for k, v in full_chat_log.items()}, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"Ошибка сохранения истории чатов: {e}")
+
 # SSE
 sse_clients: list[queue.Queue] = []
 sse_lock = threading.Lock()
+chat_log_lock = threading.Lock()
 
 
 def push_sse(event_type: str, data: dict):
@@ -160,6 +184,7 @@ def log_message(chat_id: int, role: str, content: str):
         "time": datetime.now().strftime("%d.%m %H:%M")
     }
     full_chat_log[chat_id].append(entry)
+    save_chat_log()
     info = user_info.get(chat_id, {})
     push_sse("message", {
         "chat_id": chat_id,
@@ -894,6 +919,7 @@ def api_delete_message(chat_id, msg_idx):
     log = full_chat_log.get(chat_id, [])
     if 0 <= msg_idx < len(log):
         log.pop(msg_idx)
+        save_chat_log()
         return jsonify({"ok": True})
     return jsonify({"ok": False, "error": "index out of range"}), 400
 
@@ -903,6 +929,7 @@ def api_clear_chat(chat_id):
     if not check_admin_token():
         return jsonify({"ok": False}), 403
     full_chat_log[chat_id] = []
+    save_chat_log()
     return jsonify({"ok": True})
 
 
@@ -1056,6 +1083,7 @@ def startup():
         return
 
     load_users()
+    load_chat_log()
 
     if REPLIT_URL:
         try:
