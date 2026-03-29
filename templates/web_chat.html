@@ -450,7 +450,7 @@ header {
 
 <script>
 let currentUsername = '';
-let currentCredits = 0;
+let currentCredits = null;
 let isSending = false;
 const toastQ = [];
 let toastBusy = false;
@@ -750,6 +750,25 @@ async function doLogout() {
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
 
+let _creditsPollTimer = null;
+
+function startCreditsPolling() {
+  if (_creditsPollTimer) clearInterval(_creditsPollTimer);
+  _creditsPollTimer = setInterval(async () => {
+    try {
+      const r = await fetch('/app/credits');
+      const d = await r.json();
+      if (d.ok && d.credits !== currentCredits) {
+        const prev = currentCredits;
+        updateCreditsBadge(d.credits);
+        if (prev !== null && d.credits > prev && prev !== -1) {
+          toast('⚡ Кредиты зачислены: ' + (d.credits === -1 ? '∞' : d.credits), 'ok');
+        }
+      }
+    } catch(e) {}
+  }, 20000);
+}
+
 async function enterApp(username) {
   currentUsername = username;
   document.getElementById('auth-screen').style.display = 'none';
@@ -763,6 +782,7 @@ async function enterApp(username) {
     const d = await r.json();
     if (d.ok) updateCreditsBadge(d.credits);
   } catch(e) {}
+  startCreditsPolling();
   document.getElementById('msg-input').focus();
 }
 
