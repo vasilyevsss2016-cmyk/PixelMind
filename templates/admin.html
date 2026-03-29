@@ -316,6 +316,8 @@ header {
 
 /* ===== TOAST ===== */
 .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); padding:11px 22px; border-radius:12px; font-size:14px; font-weight:500; z-index:600; animation:slideUp .25s ease; white-space:nowrap; pointer-events:none; backdrop-filter:blur(20px); border:1px solid rgba(255,255,255,0.15); }
+.toast.hiding { animation:slideDown .35s ease forwards; }
+@keyframes slideDown { from{opacity:1;transform:translateX(-50%) translateY(0)} to{opacity:0;transform:translateX(-50%) translateY(16px)} }
 .toast.success { background:rgba(52,208,88,0.85); color:#fff; box-shadow:0 4px 20px rgba(52,208,88,.4); }
 .toast.error { background:rgba(255,69,58,0.85); color:#fff; box-shadow:0 4px 20px rgba(255,69,58,.4); }
 .toast.warn { background:rgba(255,179,64,0.85); color:#fff; box-shadow:0 4px 20px rgba(255,179,64,.4); }
@@ -1066,8 +1068,20 @@ function updateBotStatus(active) {
     if(navBot){navBot.className='nav-btn bot-off';navIcon.textContent='🔴';navLabel.textContent='Стоп';}
   }
 }
-async function stopBot() { await api('/bot/stop','POST'); toast('Бот остановлен','error'); }
-async function startBot() { await api('/bot/start','POST'); toast('Бот запущен','success'); }
+async function stopBot() {
+  const btn=document.getElementById('stop-btn');
+  if(btn) btn.disabled=true;
+  await api('/bot/stop','POST');
+  toast('Бот остановлен','error');
+  setTimeout(()=>{ if(btn) btn.disabled=false; },2000);
+}
+async function startBot() {
+  const btn=document.getElementById('start-btn');
+  if(btn) btn.disabled=true;
+  await api('/bot/start','POST');
+  toast('Бот запущен','success');
+  setTimeout(()=>{ if(btn) btn.disabled=false; },2000);
+}
 
 /* ===== CHAT LIST ===== */
 function renderChatList() {
@@ -1600,7 +1614,10 @@ function toast(msg,type='success'){
   const el=document.createElement('div');
   el.className=`toast ${type}`;el.textContent=msg;
   document.body.appendChild(el);
-  setTimeout(()=>el.remove(),2600);
+  setTimeout(()=>{
+    el.classList.add('hiding');
+    setTimeout(()=>el.remove(),350);
+  },2200);
 }
 function escHtml(str){return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
