@@ -1977,6 +1977,160 @@ def startup():
     logger.info(f"🌐 Админ-панель: https://{REPLIT_URL}/admin")
 
 
+# ============ ВЕБ-ЧАТ ============
+WEB_USERS_FILE = "web_users.json"
+WEB_CHAT_HISTORIES: dict[str, list] = {}  # in-memory per session
+
+def load_web_users() -> dict:
+    try:
+        with open(WEB_USERS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def save_web_users(data: dict):
+    with open(WEB_USERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def web_hash_pwd(pwd: str) -> str:
+    return hashlib.sha256(pwd.encode()).hexdigest()
+
+def get_web_user_id():
+    return session.get("web_user_id")
+
+@app.route("/app")
+def web_chat_page():
+    return render_template("web_chat.html")
+
+@app.route("/app/register", methods=["POST"])
+def web_register():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+    if not username or not email or not password:
+        return jsonify({"ok": False, "error": "Заполните все поля"}), 400
+    if len(username) < 2:
+        return jsonify({"ok": False, "error": "Имя минимум 2 символа"}), 400
+    if len(password) < 6:
+        return jsonify({"ok": False, "error": "Пароль минимум 6 символов"}), 400
+    if "@" not in email:
+        return jsonify({"ok": False, "error": "Некорректный email"}), 400
+    users = load_web_users()
+    for u in users.values():
+        if u["email"] == email:
+            return jsonify({"ok": False, "error": "Email уже зарегистрирован"}), 400
+        if u["username"].lower() == username.lower():
+            return jsonify({"ok": False, "error": "Имя пользователя занято"}), 400
+    uid = secrets.token_hex(16)
+    users[uid] = {
+        "username": username,
+        "email": email,
+        "password_hash": web_hash_pwd(password),
+        "created_at": datetime.now().isoformat(),
+        "chat_history": []
+    }
+    save_web_users(users)
+    session["web_user_id"] = uid
+    session["web_username"] = username
+    return jsonify({"ok": True, "username": username})
+
+@app.route("/app/login", methods=["POST"])
+def web_login():
+    data = request.get_json(silent=True) or {}
+    login_val = (data.get("login") or "").strip().lower()
+    password = data.get("password") or ""
+    users = load_web_users()
+    found_uid = None
+    found_user = None
+    for uid, u in users.items():
+        if u["email"] == login_val or u["username"].lower() == login_val:
+            found_uid = uid
+            found_user = u
+            break
+    if not found_user or found_user["password_hash"] != web_hash_pwd(password):
+        return jsonify({"ok": False, "error": "Неверный логин или пароль"}), 401
+    session["web_user_id"] = found_uid
+    session["web_username"] = found_user["username"]
+    return jsonify({"ok": True, "username": found_user["username"]})
+
+@app.route("/app/logout", methods=["POST"])
+def web_logout():
+    session.pop("web_user_id", None)
+    session.pop("web_username", None)
+    return jsonify({"ok": True})
+
+@app.route("/app/me")
+def web_me():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False}), 401
+    return jsonify({"ok": True, "username": u["username"], "email": u["email"]})
+
+@app.route("/app/history")
+def web_history():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    u = users.get(uid, {})
+    return jsonify({"ok": True, "history": u.get("chat_history", [])})
+
+@app.route("/app/chat", methods=["POST"])
+def web_chat_send():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"ok": False, "error": "Пустое сообщение"}), 400
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Пользователь не найден"}), 401
+    history = u.get("chat_history", [])
+    # Build messages for API
+    messages = [{"role": "system", "content": f"Ты — Flux, дружелюбный AI-ассистент. Отвечай на русском языке. Текущая дата: {datetime.now().strftime('%d.%m.%Y')}."}]
+    for msg in history[-20:]:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    messages.append({"role": "user", "content": text})
+    try:
+        resp = http_requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            json={"model": AI_MODEL, "messages": messages, "max_tokens": 1500},
+            timeout=60
+        )
+        resp.raise_for_status()
+        reply = resp.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Ошибка AI: {str(e)}"}), 500
+    now = datetime.now().isoformat()
+    history.append({"role": "user", "content": text, "ts": now})
+    history.append({"role": "assistant", "content": reply, "ts": datetime.now().isoformat()})
+    if len(history) > 200:
+        history = history[-200:]
+    u["chat_history"] = history
+    save_web_users(users)
+    return jsonify({"ok": True, "reply": reply})
+
+@app.route("/app/clear", methods=["POST"])
+def web_clear_history():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False}), 401
+    users = load_web_users()
+    if uid in users:
+        users[uid]["chat_history"] = []
+        save_web_users(users)
+    return jsonify({"ok": True})
+
+
 # Запускается и при gunicorn, и при python main.py
 startup()
 
