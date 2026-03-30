@@ -2947,6 +2947,30 @@ def admin_api_web_chat_clear(uid):
     save_web_users(users)
     return jsonify({"ok": True})
 
+@app.route("/admin/api/test-error-email", methods=["POST"])
+def admin_test_error_email():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 401
+    fake_error = "OSError: [Errno 98] Address already in use — порт 5000 занят"
+    fake_tb = (
+        "Traceback (most recent call last):\n"
+        "  File \"main.py\", line 823, in keep_alive\n"
+        "    sock = socket.create_connection((\"0.0.0.0\", 5000), timeout=5)\n"
+        "  File \"/usr/lib/python3.11/socket.py\", line 851, in create_connection\n"
+        "    raise err\n"
+        "OSError: [Errno 98] Address already in use\n"
+        "[2026-03-30 08:01:13] [CRITICAL] WORKER TIMEOUT (pid:275)\n"
+        "[2026-03-30 08:01:13] [ERROR] Worker pid 275 terminated due to signal 9\n"
+        "[2026-03-30 08:01:18] [CRITICAL] Port 5000 unreachable after 3 retries. Shutting down."
+    )
+    threading.Thread(
+        target=_send_error_email_to_admins,
+        args=(fake_error, fake_tb, "bot", 123456789),
+        daemon=True
+    ).start()
+    return jsonify({"ok": True, "msg": "Тестовое письмо отправлено всем администраторам"})
+
+
 @app.route("/app/clear", methods=["POST"])
 def web_clear_history():
     uid = get_web_user_id()
