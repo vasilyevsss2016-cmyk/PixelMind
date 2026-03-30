@@ -18,11 +18,75 @@
   --text:#f2f6ff; --text2:#a8bad4; --text3:#7a90b0;
   --header-h:54px; --stats-h:48px; --bottom-nav-h:64px;
 }
+
+/* ===== LIGHT THEME ===== */
+body.theme-light {
+  --bg1:#eef3fa; --bg2:#e4edf8;
+  --glass:rgba(255,255,255,0.72);
+  --glass-hover:rgba(255,255,255,0.88);
+  --glass-border:rgba(0,0,0,0.10);
+  --glass-shine:rgba(255,255,255,0.96);
+  --text:#1a2436; --text2:#4a5e78; --text3:#7a90a8;
+  background: radial-gradient(ellipse at 20% 10%, #d8eaff 0%, #eef4fd 55%, #f4f8ff 100%);
+}
+body.theme-light .glass { box-shadow:0 2px 32px rgba(0,0,0,.07),inset 0 1px 0 rgba(255,255,255,0.9); }
+body.theme-light #app-header { background:rgba(235,243,255,0.92); border-bottom:1px solid rgba(0,0,0,0.08); }
+body.theme-light .stats-bar { background:rgba(228,237,250,0.92); border-bottom-color:rgba(0,0,0,0.07); }
+body.theme-light .tabs-bar { background:rgba(228,237,250,0.92); border-bottom-color:rgba(0,0,0,0.07); }
+body.theme-light .tab-btn { color:var(--text2); }
+body.theme-light .tab-btn.active { background:rgba(90,171,255,0.15); color:var(--accent); border-color:rgba(90,171,255,0.3); box-shadow:none; }
+body.theme-light .tab-btn:hover:not(.active) { background:rgba(0,0,0,0.04); color:var(--text); }
+body.theme-light .sidebar { background:rgba(222,232,248,0.92); border-right-color:rgba(0,0,0,0.08); }
+body.theme-light .sidebar-header { border-bottom-color:rgba(0,0,0,0.07); }
+body.theme-light .search-input { background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.1); color:var(--text); }
+body.theme-light .chat-item { border-bottom-color:rgba(0,0,0,0.04); }
+body.theme-light .chat-item:hover { background:rgba(0,0,0,0.04); }
+body.theme-light .chat-item.active { background:rgba(90,171,255,0.14); border-left-color:var(--accent); }
+body.theme-light .chat-name { color:var(--text); }
+body.theme-light .chat-preview { color:var(--text2); }
+body.theme-light #mobile-menu { background:rgba(235,243,255,0.97); border-color:rgba(0,0,0,0.1); box-shadow:0 12px 40px rgba(0,0,0,.12); }
+body.theme-light .menu-item { color:var(--text); }
+body.theme-light .chat-panel { background:rgba(235,243,255,0.55); }
+body.theme-light #web-chat-panel { background:rgba(235,243,255,0.55); }
+body.theme-light #chat-header { background:rgba(225,236,252,0.95); border-bottom-color:rgba(0,0,0,0.07); }
+body.theme-light .msg.user .msg-bubble { background:rgba(90,171,255,0.18); border-color:rgba(90,171,255,0.28); color:var(--text); }
+body.theme-light .msg.assistant .msg-bubble { background:rgba(255,255,255,0.9); border-color:rgba(0,0,0,0.08); color:var(--text); }
+body.theme-light .msg.admin .msg-bubble { background:rgba(255,179,64,0.14); border-color:rgba(255,179,64,0.28); color:var(--text); }
+body.theme-light .user-item { border-bottom-color:rgba(0,0,0,0.05); }
+body.theme-light .user-item:hover { background:rgba(0,0,0,0.03); }
+body.theme-light .invite-list-card { background:rgba(255,255,255,0.72); border-color:rgba(0,0,0,0.07); }
+body.theme-light .invite-header-card { background:rgba(255,255,255,0.78); border-color:rgba(0,0,0,0.07); }
+body.theme-light .invite-list-header { border-bottom-color:rgba(0,0,0,0.06); }
+body.theme-light #invite-panel, body.theme-light #payments-panel, body.theme-light #settings-panel { background:rgba(228,237,250,0.55); }
+body.theme-light #profile-panel { background:rgba(228,237,250,0.55); }
+body.theme-light .profile-card { background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.07); }
+body.theme-light .profile-stat { background:rgba(0,0,0,0.03); border-color:rgba(0,0,0,0.07); }
+body.theme-light .profile-row { border-bottom-color:rgba(0,0,0,0.06); }
+body.theme-light #bottom-nav { background:rgba(228,237,250,0.97); border-top-color:rgba(0,0,0,0.08); }
+body.theme-light .nav-btn { color:var(--text2); }
+body.theme-light .nav-btn.active { color:var(--accent); }
+body.theme-light .modal-overlay { background:rgba(0,0,0,0.22); }
+body.theme-light .modal { background:rgba(242,248,255,0.97); border-color:rgba(0,0,0,0.1); box-shadow:0 20px 60px rgba(0,0,0,.1); color:var(--text); }
+body.theme-light .confirm-box { background:rgba(242,248,255,0.97); border:1px solid rgba(0,0,0,0.1); color:var(--text); }
+body.theme-light .fa-info-box { background:rgba(90,171,255,0.08); border-color:rgba(90,171,255,0.2); }
+body.theme-light .btn-ghost { background:rgba(0,0,0,0.05); color:var(--text); border-color:rgba(0,0,0,0.1); }
+body.theme-light .btn-ghost:hover { background:rgba(0,0,0,0.09); }
+body.theme-light input[type=text], body.theme-light input[type=password], body.theme-light input[type=email], body.theme-light input[type=number] { background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.12); color:var(--text); }
+body.theme-light textarea { background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.12); color:var(--text); }
+body.theme-light .wc-header { background:rgba(225,236,252,0.95); border-bottom-color:rgba(0,0,0,0.07); }
+body.theme-light .wc-bubble { color:var(--text); }
+body.theme-light .wc-send-bar { background:rgba(225,236,252,0.95); border-top-color:rgba(0,0,0,0.07); }
+body.theme-light .wc-send-bar textarea { background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.1); color:var(--text); }
+body.theme-light .stat { background:rgba(255,255,255,0.55); border-color:rgba(0,0,0,0.07); }
+body.theme-light .no-items, body.theme-light .invite-empty, body.theme-light .wc-empty p { color:var(--text3); }
+body.theme-light #invite-panel input, body.theme-light #payments-panel input, body.theme-light #settings-panel input { background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.12); color:var(--text); }
+
 html,body { height:100%; overflow:hidden; }
 body {
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
   background: radial-gradient(ellipse at 20% 10%, #0d1f3c 0%, #0a0e1a 50%, #060810 100%);
   color:var(--text); min-height:100vh;
+  transition: background 0.4s, color 0.2s;
 }
 
 /* ===== LIQUID GLASS ===== */
@@ -391,7 +455,7 @@ header {
 }
 
 /* ===== INVITE PANEL ===== */
-#invite-panel, #payments-panel {
+#invite-panel, #payments-panel, #settings-panel {
   flex:1; display:none; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch;
   background:rgba(8,14,28,0.4);
 }
@@ -605,6 +669,7 @@ header {
     <button class="tab-btn" onclick="switchTab('users')" id="tab-users">👥 Пользователи</button>
     <button class="tab-btn" onclick="switchTab('invite')" id="tab-invite">📨 Email-рассылка</button>
     <button class="tab-btn" onclick="switchTab('payments')" id="tab-payments">💳 Платежи</button>
+    <button class="tab-btn" onclick="switchTab('settings')" id="tab-settings">⚙️ Настройки</button>
   </div>
 
   <div class="main" id="main-area">
@@ -742,6 +807,67 @@ header {
       </div>
     </div>
 
+    <!-- Settings panel -->
+    <div id="settings-panel" style="display:none">
+      <div class="invite-content" style="max-width:560px">
+
+        <!-- Profile card -->
+        <div class="invite-header-card">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+            <div id="sp-avatar" style="width:58px;height:58px;border-radius:50%;background:linear-gradient(135deg,rgba(90,171,255,0.6),rgba(59,130,246,0.85));display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;flex-shrink:0">A</div>
+            <div>
+              <div id="sp-name" style="font-size:20px;font-weight:700"></div>
+              <div data-i18n="sp_profile_sub" style="font-size:12px;color:var(--text3);margin-top:2px">Администратор</div>
+            </div>
+          </div>
+          <div id="sp-email" style="font-size:13px;color:var(--text2);margin-bottom:14px;padding:8px 12px;background:rgba(90,171,255,0.08);border:1px solid rgba(90,171,255,0.18);border-radius:10px">📧 —</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost" onclick="openChangePwd()" style="flex:1;justify-content:center">🔑 <span data-i18n="sp_changepwd">Сменить пароль</span></button>
+            <button class="btn btn-ghost" onclick="open2FASettings()" style="flex:1;justify-content:center">🔐 <span data-i18n="sp_2fa">Двухфакторная</span></button>
+          </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="invite-list-card" style="margin-top:18px">
+          <div class="invite-list-header" data-i18n="sp_appearance_title">🎨 Внешний вид</div>
+          <div style="padding:16px 18px">
+            <div data-i18n="sp_appearance_desc" style="font-size:13px;color:var(--text2);margin-bottom:12px">Выберите тему интерфейса</div>
+            <div style="display:flex;gap:10px">
+              <button id="sp-theme-dark" onclick="setTheme('dark')" class="btn btn-ghost" style="flex:1;justify-content:center;flex-direction:column;gap:5px;height:76px;border-radius:14px;font-size:13px;transition:all .22s">
+                <span style="font-size:24px">🌙</span><span data-i18n="sp_theme_dark">Тёмная</span>
+              </button>
+              <button id="sp-theme-light" onclick="setTheme('light')" class="btn btn-ghost" style="flex:1;justify-content:center;flex-direction:column;gap:5px;height:76px;border-radius:14px;font-size:13px;transition:all .22s">
+                <span style="font-size:24px">☀️</span><span data-i18n="sp_theme_light">Светлая</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Language -->
+        <div class="invite-list-card" style="margin-top:18px">
+          <div class="invite-list-header" data-i18n="sp_lang_title">🌐 Язык / Language</div>
+          <div style="padding:16px 18px">
+            <div data-i18n="sp_lang_desc" style="font-size:13px;color:var(--text2);margin-bottom:12px">Язык интерфейса</div>
+            <div style="display:flex;gap:10px">
+              <button id="sp-lang-ru" onclick="setLanguage('ru')" class="btn btn-ghost" style="flex:1;justify-content:center;flex-direction:column;gap:5px;height:76px;border-radius:14px;font-size:13px;transition:all .22s">
+                <span style="font-size:24px">🇷🇺</span><span>Русский</span>
+              </button>
+              <button id="sp-lang-en" onclick="setLanguage('en')" class="btn btn-ghost" style="flex:1;justify-content:center;flex-direction:column;gap:5px;height:76px;border-radius:14px;font-size:13px;transition:all .22s">
+                <span style="font-size:24px">🇬🇧</span><span>English</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logout -->
+        <div style="margin-top:24px;padding-bottom:28px">
+          <button class="btn btn-red" onclick="logout()" style="width:100%;justify-content:center;padding:14px;font-size:15px;border-radius:14px">
+            🚪 <span data-i18n="sp_logout">Выйти из аккаунта</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Credits adjust modal -->
     <div id="credits-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:3000;align-items:center;justify-content:center">
       <div style="background:var(--glass-bg,#1a2540);border:1px solid var(--glass-border);border-radius:18px;padding:28px;width:320px;max-width:90vw;backdrop-filter:blur(20px)">
@@ -834,6 +960,9 @@ header {
     </button>
     <button class="nav-btn" onclick="mobileTab('payments')" id="nav-payments">
       <span class="nav-icon">💳</span><span>Платежи</span>
+    </button>
+    <button class="nav-btn" onclick="mobileTab('settings')" id="nav-settings">
+      <span class="nav-icon">⚙️</span><span>Настройки</span>
     </button>
     <div class="nav-divider"></div>
     <button class="nav-btn" id="nav-broadcast-btn" onclick="openBroadcast()">
@@ -1044,6 +1173,12 @@ header {
 </div>
 
 <script>
+/* Apply theme ASAP to avoid flash */
+(function() {
+  const t = localStorage.getItem('flux_admin_theme') || 'dark';
+  if (t === 'light') document.body.classList.add('theme-light');
+})();
+
 let token = localStorage.getItem('flux_admin_token') || '';
 let currentUsername = localStorage.getItem('flux_admin_user') || '';
 let allChats = {};
@@ -1234,11 +1369,13 @@ function _applyTabLayout(tab) {
   const isUsers = tab === 'users';
   const isInvite = tab === 'invite';
   const isPayments = tab === 'payments';
+  const isSettings = tab === 'settings';
   document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
   document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
   document.getElementById('invite-panel').style.display = isInvite ? 'flex' : 'none';
   document.getElementById('payments-panel').style.display = isPayments ? 'flex' : 'none';
+  document.getElementById('settings-panel').style.display = isSettings ? 'flex' : 'none';
   // На вкладке users: web-chat-panel основная, profile-panel — только для TG-пользователей
   if (isUsers) {
     const showProfile = !!selectedProfileId && !selectedWebUid;
@@ -1253,26 +1390,28 @@ function _applyTabLayout(tab) {
 function switchTab(tab) {
   currentTab = tab;
   _applyTabLayout(tab);
-  ['chats','users','invite','payments'].forEach(t => {
+  ['chats','users','invite','payments','settings'].forEach(t => {
     const tb = document.getElementById('tab-'+t);
     if (tb) tb.className = 'tab-btn' + (t===tab ? ' active' : '');
   });
   if (tab === 'users') { renderUserList(); loadWebUsersTab(); }
   if (tab === 'invite') loadInviteList();
   if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
+  if (tab === 'settings') loadSettings();
 }
 
 function mobileTab(tab) {
   currentTab = tab;
   document.getElementById('main-area').classList.remove('panel-open');
   _applyTabLayout(tab);
-  ['chats','users','invite','payments'].forEach(t => {
+  ['chats','users','invite','payments','settings'].forEach(t => {
     const nb = document.getElementById('nav-'+t);
     if (nb) nb.className = 'nav-btn' + (t===tab ? ' active' : '');
   });
   if (tab === 'users') { renderUserList(); loadWebUsersTab(); }
   if (tab === 'invite') loadInviteList();
   if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
+  if (tab === 'settings') loadSettings();
 }
 
 function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
@@ -1885,6 +2024,105 @@ function closeChangePwd() {
   document.getElementById('changepwd-modal').classList.remove('open');
 }
 document.getElementById('changepwd-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeChangePwd(); });
+
+/* ===== THEME & LANGUAGE ===== */
+const I18N = {
+  ru: {
+    sp_profile_sub:'Администратор', sp_changepwd:'Сменить пароль', sp_2fa:'Двухфакторная',
+    sp_appearance_title:'🎨 Внешний вид', sp_appearance_desc:'Выберите тему интерфейса',
+    sp_theme_dark:'Тёмная', sp_theme_light:'Светлая',
+    sp_lang_title:'🌐 Язык / Language', sp_lang_desc:'Язык интерфейса',
+    sp_logout:'Выйти из аккаунта',
+  },
+  en: {
+    sp_profile_sub:'Administrator', sp_changepwd:'Change password', sp_2fa:'Two-factor auth',
+    sp_appearance_title:'🎨 Appearance', sp_appearance_desc:'Choose interface theme',
+    sp_theme_dark:'Dark', sp_theme_light:'Light',
+    sp_lang_title:'🌐 Language / Язык', sp_lang_desc:'Interface language',
+    sp_logout:'Log out',
+  }
+};
+let _currentLang = localStorage.getItem('flux_admin_lang') || 'ru';
+
+function initTheme() {
+  const theme = localStorage.getItem('flux_admin_theme') || 'dark';
+  document.body.classList.toggle('theme-light', theme === 'light');
+}
+
+function setTheme(theme) {
+  localStorage.setItem('flux_admin_theme', theme);
+  document.body.classList.toggle('theme-light', theme === 'light');
+  _updateThemeButtons(theme);
+  toast(theme === 'light' ? '☀️ Светлая тема включена' : '🌙 Тёмная тема включена', 'success');
+}
+
+function _updateThemeButtons(theme) {
+  const dBtn = document.getElementById('sp-theme-dark');
+  const lBtn = document.getElementById('sp-theme-light');
+  if (!dBtn) return;
+  // Reset both
+  [dBtn, lBtn].forEach(b => {
+    b.style.background = ''; b.style.borderColor = ''; b.style.color = '';
+    b.style.boxShadow = '';
+  });
+  if (theme === 'dark') {
+    dBtn.style.background = 'rgba(90,171,255,0.2)';
+    dBtn.style.borderColor = 'rgba(90,171,255,0.45)';
+    dBtn.style.color = 'var(--accent)';
+    dBtn.style.boxShadow = '0 0 0 2px rgba(90,171,255,0.25)';
+  } else {
+    lBtn.style.background = 'rgba(255,196,0,0.16)';
+    lBtn.style.borderColor = 'rgba(255,196,0,0.42)';
+    lBtn.style.color = '#f0b429';
+    lBtn.style.boxShadow = '0 0 0 2px rgba(255,196,0,0.2)';
+  }
+}
+
+function setLanguage(lang) {
+  _currentLang = lang;
+  localStorage.setItem('flux_admin_lang', lang);
+  _applyI18N();
+  _updateLangButtons(lang);
+}
+
+function _updateLangButtons(lang) {
+  const ruBtn = document.getElementById('sp-lang-ru');
+  const enBtn = document.getElementById('sp-lang-en');
+  if (!ruBtn) return;
+  ruBtn.style.background = lang === 'ru' ? 'rgba(90,171,255,0.2)' : '';
+  ruBtn.style.borderColor = lang === 'ru' ? 'rgba(90,171,255,0.45)' : '';
+  ruBtn.style.color = lang === 'ru' ? 'var(--accent)' : '';
+  enBtn.style.background = lang === 'en' ? 'rgba(90,171,255,0.2)' : '';
+  enBtn.style.borderColor = lang === 'en' ? 'rgba(90,171,255,0.45)' : '';
+  enBtn.style.color = lang === 'en' ? 'var(--accent)' : '';
+}
+
+function _applyI18N() {
+  const t = I18N[_currentLang] || I18N.ru;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (t[key] !== undefined) el.textContent = t[key];
+  });
+}
+
+async function loadSettings() {
+  const letter = (currentUsername || 'A')[0].toUpperCase();
+  const avatarEl = document.getElementById('sp-avatar');
+  const nameEl = document.getElementById('sp-name');
+  const emailEl = document.getElementById('sp-email');
+  if (!avatarEl) return;
+  avatarEl.textContent = letter;
+  nameEl.textContent = currentUsername || '—';
+  emailEl.textContent = '📧 …';
+  try {
+    const d = await api('/has-email');
+    emailEl.textContent = '📧 ' + (d.email || (_currentLang === 'en' ? 'Email not set' : 'Email не задан'));
+  } catch(e) { emailEl.textContent = '📧 —'; }
+  const theme = localStorage.getItem('flux_admin_theme') || 'dark';
+  _updateThemeButtons(theme);
+  _updateLangButtons(_currentLang);
+  _applyI18N();
+}
 
 /* ===== 2FA SETTINGS ===== */
 let _fa2Method = 'email';
