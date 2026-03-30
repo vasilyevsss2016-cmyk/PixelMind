@@ -2342,6 +2342,40 @@ def web_resend_email_verify():
     send_web_reg_code(pending["email"], code, pending["username"])
     return jsonify({"ok": True})
 
+@app.route("/app/change-email", methods=["POST"])
+def web_change_email():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"ok": False, "error": "Некорректный email"}), 400
+    users = load_web_users()
+    u = users.get(uid, {})
+    if u.get("email", "") == email:
+        return jsonify({"ok": False, "error": "Это уже ваш текущий email"}), 400
+    for oid, ou in users.items():
+        if oid != uid and (ou.get("email") or "") == email:
+            return jsonify({"ok": False, "error": "Email уже используется другим пользователем"}), 400
+    username = u.get("username", "")
+    code = str(random.randint(100000, 999999))
+    token = secrets.token_hex(20)
+    WEB_EMAIL_VERIFY[token] = {
+        "uid": uid,
+        "email": email,
+        "username": username,
+        "code": code,
+        "expires": time.time() + 600,
+        "resend_at": time.time() + 60,
+        "set_email": True,
+    }
+    sent = send_web_reg_code(email, code, username)
+    if not sent:
+        return jsonify({"ok": False, "error": "Не удалось отправить письмо. Проверьте email."}), 500
+    return jsonify({"ok": True, "token": token})
+
+
 @app.route("/app/logout", methods=["POST"])
 def web_logout():
     session.pop("web_user_id", None)

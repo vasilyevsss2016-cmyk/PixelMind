@@ -458,7 +458,7 @@ header {
       <div class="credits-badge ok" id="credits-badge" onclick="openUpgrade()" title="Кредиты">
         <span>⚡</span><span id="credits-count">—</span><span class="cr-label">кр.</span>
       </div>
-      <div class="user-chip">
+      <div class="user-chip" onclick="openProfile()" style="cursor:pointer" title="Профиль">
         <div class="user-avatar" id="user-avatar-letter">?</div>
         <span class="uname" id="header-username"></span>
       </div>
@@ -591,6 +591,60 @@ header {
         <div class="modal-title" style="margin-bottom:8px">Заявка на продление принята!</div>
         <div style="color:var(--text2);font-size:14px;margin-bottom:24px">Подписка продлится после подтверждения администратором. Обычно это занимает до нескольких часов.</div>
         <button class="upg-btn upg-btn-blue" onclick="closeRenewal()">Хорошо</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div class="modal-overlay" id="profile-modal" onclick="if(event.target===this)closeProfile()">
+    <div class="modal-box">
+      <!-- Step: info -->
+      <div id="prof-step-info">
+        <button class="modal-close" onclick="closeProfile()">✕</button>
+        <div style="text-align:center;margin-bottom:16px">
+          <div id="prof-avatar" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#3a8eff,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;margin:0 auto 12px"></div>
+          <div id="prof-username" style="font-size:18px;font-weight:700;color:var(--text)"></div>
+        </div>
+        <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px">
+            <span style="color:var(--text2)">Email</span>
+            <span id="prof-email" style="font-weight:500;color:var(--text)">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
+            <span style="color:var(--text2)">Тариф</span>
+            <span id="prof-plan" style="font-weight:600;color:var(--accent)">—</span>
+          </div>
+        </div>
+        <button class="upg-btn upg-btn-blue" style="margin-bottom:8px" onclick="startChangeEmail()">✏️ Сменить email</button>
+        <button class="upg-btn upg-btn-ghost" onclick="closeProfile()">Закрыть</button>
+      </div>
+      <!-- Step: enter new email -->
+      <div id="prof-step-email" style="display:none">
+        <button class="modal-close" onclick="closeProfile()">✕</button>
+        <div class="modal-title">✏️ Сменить email</div>
+        <div class="modal-sub">Введите новый email — отправим код подтверждения</div>
+        <input class="auth-input" id="prof-new-email" type="email" placeholder="Новый email" autocomplete="email" style="margin:16px 0 8px">
+        <div class="auth-error" id="prof-email-err" style="display:none;margin-bottom:8px"></div>
+        <button class="upg-btn upg-btn-blue" id="prof-send-btn" onclick="sendChangeEmailCode()">Отправить код →</button>
+        <button class="upg-btn upg-btn-ghost" onclick="showProfStep('info')">← Назад</button>
+      </div>
+      <!-- Step: verify code -->
+      <div id="prof-step-code" style="display:none">
+        <button class="modal-close" onclick="closeProfile()">✕</button>
+        <div class="modal-title">📨 Введите код</div>
+        <div class="modal-sub">Код отправлен на <b id="prof-code-email" style="color:var(--text)"></b></div>
+        <input class="auth-input" id="prof-code-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" style="margin:16px 0 8px;text-align:center;letter-spacing:6px;font-size:22px;font-weight:700">
+        <div class="auth-error" id="prof-code-err" style="display:none;margin-bottom:8px"></div>
+        <button class="upg-btn upg-btn-blue" id="prof-verify-btn" onclick="verifyChangeEmailCode()">Подтвердить</button>
+        <button class="upg-btn upg-btn-ghost" id="prof-resend-btn" onclick="resendChangeEmailCode()">Отправить повторно</button>
+        <button class="upg-btn upg-btn-ghost" onclick="showProfStep('email')">← Назад</button>
+      </div>
+      <!-- Step: success -->
+      <div id="prof-step-done" style="display:none;text-align:center;padding:12px 0">
+        <div style="font-size:48px;margin-bottom:12px">✅</div>
+        <div class="modal-title" style="margin-bottom:8px">Email обновлён!</div>
+        <div style="color:var(--text2);font-size:14px;margin-bottom:24px">Ваш новый email: <b id="prof-done-email" style="color:var(--text)"></b></div>
+        <button class="upg-btn upg-btn-blue" onclick="closeProfile()">Готово</button>
       </div>
     </div>
   </div>
@@ -1327,8 +1381,147 @@ async function init() {
   document.getElementById('l-pwd').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
   document.getElementById('r-pwd').addEventListener('keydown', e => { if(e.key==='Enter') doRegister(); });
   document.getElementById('v-code').addEventListener('keydown', e => { if(e.key==='Enter') doVerify(); });
+  document.getElementById('prof-code-input').addEventListener('keydown', e => { if(e.key==='Enter') verifyChangeEmailCode(); });
+  document.getElementById('prof-new-email').addEventListener('keydown', e => { if(e.key==='Enter') sendChangeEmailCode(); });
 }
 init();
+
+// ===== PROFILE MODAL =====
+let _profToken = '';
+let _profNewEmail = '';
+
+const PLAN_LABELS = { free: 'Бесплатный', core: 'CORE', pro: 'PRO' };
+
+function showProfStep(step) {
+  ['info','email','code','done'].forEach(s =>
+    document.getElementById('prof-step-'+s).style.display = s===step ? 'block' : 'none'
+  );
+}
+
+async function openProfile() {
+  document.getElementById('profile-modal').classList.add('visible');
+  showProfStep('info');
+  try {
+    const r = await fetch('/app/me');
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('prof-avatar').textContent = d.username.charAt(0).toUpperCase();
+      document.getElementById('prof-username').textContent = d.username;
+      document.getElementById('prof-email').textContent = d.email || 'не указан';
+      document.getElementById('prof-plan').textContent = PLAN_LABELS[d.plan] || d.plan;
+    }
+  } catch(e) {}
+}
+
+function closeProfile() {
+  document.getElementById('profile-modal').classList.remove('visible');
+  _profToken = '';
+  _profNewEmail = '';
+  document.getElementById('prof-new-email').value = '';
+  document.getElementById('prof-code-input').value = '';
+  document.getElementById('prof-email-err').style.display = 'none';
+  document.getElementById('prof-code-err').style.display = 'none';
+}
+
+function startChangeEmail() {
+  showProfStep('email');
+  setTimeout(() => document.getElementById('prof-new-email').focus(), 100);
+}
+
+async function sendChangeEmailCode() {
+  const email = document.getElementById('prof-new-email').value.trim();
+  const errEl = document.getElementById('prof-email-err');
+  const btn   = document.getElementById('prof-send-btn');
+  errEl.style.display = 'none';
+  if (!email || !email.includes('@')) {
+    errEl.textContent = 'Введите корректный email';
+    errEl.style.display = 'block';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Отправляем...';
+  try {
+    const r = await fetch('/app/change-email', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      _profToken = d.token;
+      _profNewEmail = email;
+      document.getElementById('prof-code-email').textContent = email;
+      document.getElementById('prof-code-input').value = '';
+      showProfStep('code');
+      setTimeout(() => document.getElementById('prof-code-input').focus(), 100);
+    } else {
+      errEl.textContent = d.error || 'Ошибка отправки';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Ошибка сети';
+    errEl.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Отправить код →';
+}
+
+async function verifyChangeEmailCode() {
+  const code  = document.getElementById('prof-code-input').value.trim();
+  const errEl = document.getElementById('prof-code-err');
+  const btn   = document.getElementById('prof-verify-btn');
+  errEl.style.display = 'none';
+  if (code.length !== 6) {
+    errEl.textContent = 'Введите 6-значный код';
+    errEl.style.display = 'block';
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Проверяем...';
+  try {
+    const r = await fetch('/app/verify-email', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({token: _profToken, code})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('prof-done-email').textContent = _profNewEmail;
+      showProfStep('done');
+      toast('✅ Email успешно изменён', 'ok');
+    } else {
+      errEl.textContent = d.error || 'Неверный код';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Ошибка сети';
+    errEl.style.display = 'block';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Подтвердить';
+}
+
+async function resendChangeEmailCode() {
+  const btn = document.getElementById('prof-resend-btn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/app/resend-email-verify', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({token: _profToken})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      toast('📨 Код отправлен повторно', 'ok');
+      setTimeout(() => btn.disabled = false, 60000);
+    } else {
+      toast(d.error || 'Подождите', 'err');
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.disabled = false;
+  }
+}
 </script>
 </body>
 </html>
