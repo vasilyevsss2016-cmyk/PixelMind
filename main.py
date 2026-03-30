@@ -189,6 +189,7 @@ full_chat_log: dict[int, list] = {}
 message_count: int = 0
 bot_active: bool = True
 banned_users: set = set()
+_error_pending: dict = {}  # chat_id -> {"error": str, "tb": str}
 
 
 def load_users():
@@ -1023,6 +1024,25 @@ def process_message(message):
     photo = message.get("photo")
     document = message.get("document")
 
+    # ——— Обработка ответа на ошибку (2 = перезапустить, 3 = решить с ИИ) ———
+    if text and text.strip() in ("2", "3") and chat_id in _error_pending:
+        err_info = _error_pending.pop(chat_id)
+        if text.strip() == "2":
+            chat_histories[chat_id] = []
+            save_chat_log()
+            send_message(chat_id, "🔄 История сброшена, бот перезапущен. Можешь начать заново!")
+        else:
+            send_chat_action(chat_id, "typing")
+            ai_prompt = (
+                "Ты — помощник разработчика. В Telegram-боте произошла ошибка. "
+                "Проанализируй её и объясни простыми словами: что пошло не так и как это можно исправить.\n\n"
+                f"Ошибка: {err_info['error']}\n\n"
+                f"Трейсбек:\n{err_info['tb'][:2000]}"
+            )
+            solution = get_ai_reply(chat_id, ai_prompt)
+            send_message(chat_id, f"🤖 *Анализ ошибки:*\n\n{solution}", parse_mode="Markdown")
+        return
+
     if text and text.startswith("/"):
         logger.info(f"Команда от @{username}: {text}")
         log_message(chat_id, "user", text)
@@ -1214,6 +1234,42 @@ def process_message(message):
         logger.info(f"Ответ: {reply}")
 
 
+def _format_error_report(error_text: str, tb_text: str) -> str:
+    tb_trimmed = tb_text.strip()[-1200:]
+    return (
+        "⚠️ *Произошла ошибка*\n\n"
+        f"❌ *Причина:* `{error_text}`\n\n"
+        f"📋 *Лог:*\n```\n{tb_trimmed}\n```\n\n"
+        "Что делать?\n"
+        "Отправь *2* — сбросить историю и перезапустить\n"
+        "Отправь *3* — попросить ИИ разобраться в ошибке"
+    )
+
+
+def _process_message_safe(message):
+    import traceback as _tb
+    chat_id = message.get("chat", {}).get("id")
+    try:
+        process_message(message)
+    except Exception as exc:
+        tb_text = _tb.format_exc()
+        logger.error(f"❗ Необработанная ошибка (chat_id={chat_id}): {exc}\n{tb_text}")
+        if chat_id:
+            _error_pending[chat_id] = {"error": str(exc), "tb": tb_text}
+            try:
+                send_message(
+                    chat_id,
+                    _format_error_report(str(exc), tb_text),
+                    parse_mode="Markdown"
+                )
+            except Exception:
+                try:
+                    send_message(chat_id,
+                        f"⚠️ Ошибка: {exc}\n\nОтправь 2 — перезапустить, 3 — решить с ИИ")
+                except Exception:
+                    pass
+
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
@@ -1222,8 +1278,7 @@ def webhook():
     message = data.get("message")
     if not message:
         return "ok"
-    # Сразу отвечаем Telegram и обрабатываем в фоне
-    threading.Thread(target=process_message, args=(message,), daemon=True).start()
+    threading.Thread(target=_process_message_safe, args=(message,), daemon=True).start()
     return "ok"
 
 
