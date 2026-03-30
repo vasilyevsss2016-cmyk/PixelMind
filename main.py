@@ -2070,7 +2070,7 @@ def send_web_reg_code(email: str, code: str, username: str) -> bool:
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = f"Ваш код подтверждения — {code}"
-        msg["From"] = SMTP_USER
+        msg["From"] = f"Flux AI <{SMTP_USER}>"
         msg["To"] = email
         html = f"""
 <div style="font-family:-apple-system,sans-serif;max-width:420px;margin:0 auto;background:#0f1525;border-radius:16px;padding:32px;color:#e8eaf6">
@@ -2083,7 +2083,7 @@ def send_web_reg_code(email: str, code: str, username: str) -> bool:
   <p style="margin:20px 0 0;color:#8892b0;font-size:13px;text-align:center">Код действителен 10 минут. Если вы не регистрировались — проигнорируйте это письмо.</p>
 </div>"""
         msg.attach(MIMEText(html, "html", "utf-8"))
-        with smtplib.SMTP_SSL("smtp.mail.ru", 465) as srv:
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as srv:
             srv.login(SMTP_USER, SMTP_PASSWORD)
             srv.sendmail(SMTP_USER, email, msg.as_string())
         return True
