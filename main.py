@@ -2693,11 +2693,16 @@ def admin_api_adjust_credits():
     u = users[uid]
     cur = u.get("credits", 0)
     if cur == -1:
-        return jsonify({"ok": False, "error": "У пользователя безлимитные кредиты"}), 400
-    new_val = max(0, cur + amount)
+        if amount > 0:
+            # Добавление к безлимиту не имеет смысла
+            return jsonify({"ok": False, "error": "У пользователя безлимитные кредиты"}), 400
+        # Любое списание с безлимита → снимает безлимитный статус → 0
+        new_val = 0
+    else:
+        new_val = max(0, cur + amount)
     u["credits"] = new_val
     save_web_users(users)
-    return jsonify({"ok": True, "credits": new_val, "username": u.get("username", "")})
+    return jsonify({"ok": True, "credits": new_val, "username": u.get("username", ""), "was_unlimited": cur == -1})
 
 def _get_payments_list():
     payments = load_web_payments()

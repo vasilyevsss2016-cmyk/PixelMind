@@ -751,6 +751,9 @@ header {
           <input id="credits-modal-input" type="number" min="1" placeholder="Количество кредитов" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);font-size:15px;outline:none;box-sizing:border-box">
           <button id="credits-modal-all-btn" onclick="fillAllCredits()" title="Списать все" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);padding:4px 10px;border-radius:7px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.12);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">Всё</button>
         </div>
+        <div id="credits-modal-inf-hint" style="display:none;align-items:center;gap:7px;margin-top:9px;padding:8px 12px;border-radius:9px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.28);font-size:12px;color:#f87171">
+          ⚠️ Любое списание снимет безлимитный статус — пользователь получит 0 кредитов
+        </div>
         <div style="display:flex;gap:10px;margin-top:14px">
           <button class="btn" id="credits-modal-confirm" style="flex:1;background:var(--accent);color:#fff" onclick="confirmCreditsAdjust()">Применить</button>
           <button class="btn btn-ghost" style="flex:1" onclick="closeCreditsModal()">Отмена</button>
@@ -2261,6 +2264,9 @@ function openCreditsModal(uid, username, mode, currentCredits) {
   // Show "Всё" button in deduct mode: for finite credits > 0, or for unlimited (∞)
   const allBtn = document.getElementById('credits-modal-all-btn');
   allBtn.style.display = (!isAdd && (creditsModalCurrent > 0 || creditsModalCurrent === -1)) ? 'block' : 'none';
+  // Show unlimited warning hint immediately if deduct + unlimited
+  const hint = document.getElementById('credits-modal-inf-hint');
+  if (hint) hint.style.display = (!isAdd && creditsModalCurrent === -1) ? 'flex' : 'none';
   const modal = document.getElementById('credits-modal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('credits-modal-input').focus(), 50);
@@ -2268,12 +2274,16 @@ function openCreditsModal(uid, username, mode, currentCredits) {
 
 function fillAllCredits() {
   const inp = document.getElementById('credits-modal-input');
+  const hint = document.getElementById('credits-modal-inf-hint');
   if (creditsModalCurrent === -1) {
-    // Unlimited: can't deduct "all" — just focus so admin types manually
-    inp.placeholder = 'Введите сколько снять';
+    // Безлимит: любое число → обнулит статус → 0
+    inp.value = 1;
+    inp.placeholder = 'Любое число → 0 кр.';
+    if (hint) hint.style.display = 'flex';
     inp.focus();
   } else {
     inp.value = creditsModalCurrent;
+    if (hint) hint.style.display = 'none';
     inp.focus();
   }
 }
@@ -2294,7 +2304,15 @@ async function confirmCreditsAdjust() {
   const d = await api('/adjust-credits', 'POST', { uid: creditsModalUid, amount });
   btn.disabled = false; btn.textContent = 'Применить';
   if (d.ok) {
-    toast(creditsModalMode === 'add' ? `+${val} кредитов добавлено ✅` : `−${val} кредитов списано`, 'success');
+    let msg;
+    if (creditsModalMode === 'add') {
+      msg = `+${val} кредитов добавлено ✅`;
+    } else if (d.was_unlimited) {
+      msg = `Безлимитный статус снят — теперь 0 кредитов`;
+    } else {
+      msg = `−${val} кредитов списано`;
+    }
+    toast(msg, 'success');
     closeCreditsModal();
     // Обновляем кеш
     const cached = webUsersCache.find(x => x.uid === creditsModalUid);
