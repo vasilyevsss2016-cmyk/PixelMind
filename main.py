@@ -190,6 +190,7 @@ message_count: int = 0
 bot_active: bool = True
 banned_users: set = set()
 _error_pending: dict = {}  # chat_id -> {"error": str, "tb": str}
+_error_tokens: dict  = {}  # token  -> {"chat_id": int|None, "error": str, "tb": str, "source": str, "ts": float}
 
 
 def load_users():
@@ -1268,6 +1269,12 @@ def _process_message_safe(message):
                         f"⚠️ Ошибка: {exc}\n\nОтправь 2 — перезапустить, 3 — решить с ИИ")
                 except Exception:
                     pass
+        # Отправляем email-уведомление администраторам
+        threading.Thread(
+            target=_send_error_email_to_admins,
+            args=(str(exc), tb_text, "bot", chat_id),
+            daemon=True
+        ).start()
 
 
 @app.route("/webhook", methods=["POST"])
@@ -2958,6 +2965,147 @@ def web_clear_history():
 
 # ============ ОБРАБОТЧИКИ ОШИБОК ============
 
+def _make_error_token(chat_id, error: str, tb: str, source: str = "bot") -> str:
+    token = secrets.token_urlsafe(20)
+    _error_tokens[token] = {
+        "chat_id": chat_id,
+        "error": error,
+        "tb": tb,
+        "source": source,
+        "ts": time.time(),
+    }
+    # Чистим токены старше 24 часов
+    cutoff = time.time() - 86400
+    stale = [k for k, v in _error_tokens.items() if v["ts"] < cutoff]
+    for k in stale:
+        _error_tokens.pop(k, None)
+    return token
+
+
+def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_id=None):
+    """Отправляет письмо всем администраторам с кликабельными кнопками."""
+    if not SMTP_USER or not SMTP_PASSWORD or not ADMIN_EMAILS or not REPLIT_URL:
+        return
+    try:
+        token = _make_error_token(chat_id, error, tb, source)
+        base = f"https://{REPLIT_URL}"
+        restart_url = f"{base}/error-action/{token}/restart"
+        analyze_url = f"{base}/error-action/{token}/analyze"
+        tb_trimmed = tb.strip()[-2000:] if tb else ""
+        source_label = "Telegram-бот" if source == "bot" else "Веб-приложение"
+
+        html_body = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a">
+<div style="max-width:660px;margin:0 auto;background:#0f1525;padding:32px;border-radius:16px;border:1px solid #1e2a45;color:#e8eaf6">
+  <div style="font-size:36px;text-align:center;margin-bottom:12px">⚡</div>
+  <h2 style="color:#ff6b6b;margin:0 0 4px;font-size:20px;text-align:center">Flux AI — Ошибка</h2>
+  <p style="text-align:center;color:#8892b0;margin:0 0 4px;font-size:13px">Источник: <b style="color:#c0c8e0">{source_label}</b></p>
+  {"<p style='text-align:center;color:#8892b0;font-size:12px;margin:0 0 24px'>chat_id: " + str(chat_id) + "</p>" if chat_id else "<div style='margin-bottom:24px'></div>"}
+  <div style="background:#1e1e32;border-left:4px solid #ff4444;border-radius:8px;padding:14px 18px;margin-bottom:20px">
+    <p style="margin:0;font-size:13px;color:#ff9999;font-family:monospace;word-break:break-all">{error}</p>
+  </div>
+  <p style="color:#8892b0;font-size:13px;margin:0 0 8px">📋 <b style="color:#c0c8e0">Лог:</b></p>
+  <pre style="background:#111122;border:1px solid #2a2a4a;border-radius:8px;padding:14px;font-size:11px;color:#c0c0d8;white-space:pre-wrap;word-break:break-all;margin:0 0 28px;max-height:280px;overflow:hidden">{tb_trimmed}</pre>
+  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+    <td align="center" style="padding:0 8px">
+      <a href="{restart_url}" style="display:inline-block;background:#e53935;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-size:14px;font-weight:700">🔄 Перезапустить (2)</a>
+    </td>
+    <td align="center" style="padding:0 8px">
+      <a href="{analyze_url}" style="display:inline-block;background:linear-gradient(135deg,#6c63ff,#9b59b6);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-size:14px;font-weight:700">🤖 Анализ с ИИ (3)</a>
+    </td>
+  </tr></table>
+  <p style="margin:28px 0 0;color:#555e7a;font-size:12px;text-align:center">Flux AI · Ссылки действительны 24 часа</p>
+</div></body></html>"""
+
+        for username, to_email in ADMIN_EMAILS.items():
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = f"⚠️ Flux AI — Ошибка [{source_label}]: {error[:70]}"
+                msg["From"] = f"Flux AI <{SMTP_USER}>"
+                msg["To"] = to_email
+                msg.attach(MIMEText(html_body, "html", "utf-8"))
+                with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as srv:
+                    srv.login(SMTP_USER, SMTP_PASSWORD)
+                    srv.sendmail(SMTP_USER, to_email, msg.as_string())
+                logger.info(f"📧 Email об ошибке отправлен: {to_email}")
+            except Exception as mail_err:
+                logger.error(f"Ошибка отправки email об ошибке {to_email}: {mail_err}")
+    except Exception as e:
+        logger.error(f"_send_error_email_to_admins: {e}")
+
+
+_ACTION_PAGE = """<!DOCTYPE html>
+<html lang="ru"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title}</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{background:#0f0f13;color:#e8e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}}
+  .card{{background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #2a2a4a;border-radius:16px;padding:36px;max-width:680px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center}}
+  .icon{{font-size:52px;margin-bottom:16px}}
+  h1{{font-size:22px;font-weight:700;margin-bottom:10px;color:#fff}}
+  p{{color:#8892b0;font-size:14px;line-height:1.6;margin-bottom:12px}}
+  pre{{background:#111122;border:1px solid #2a2a4a;border-radius:8px;padding:14px;font-size:12px;text-align:left;color:#c0c0d8;white-space:pre-wrap;word-break:break-all;margin:16px 0;max-height:320px;overflow-y:auto}}
+  .btn{{display:inline-block;margin-top:18px;padding:10px 26px;border-radius:10px;background:#2a2a4a;color:#aaaacc;text-decoration:none;font-size:14px;font-weight:600}}
+  .btn:hover{{background:#33335a}}
+  .spinner{{display:inline-block;width:18px;height:18px;border:3px solid #ffffff33;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}}
+  @keyframes spin{{to{{transform:rotate(360deg)}}}}
+  #ai{{margin-top:20px;background:#0d1f0d;border:1px solid #2a4a2a;border-radius:10px;padding:16px;font-size:14px;line-height:1.6;color:#a8e6a8;text-align:left;display:none}}
+</style></head><body>
+<div class="card">
+  <div class="icon">{icon}</div>
+  <h1>{title}</h1>
+  {body}
+  <a href="/admin" class="btn">← Открыть панель</a>
+</div>{extra_script}
+</body></html>"""
+
+
+@app.route("/error-action/<token>/restart")
+def error_action_restart(token):
+    info = _error_tokens.pop(token, None)
+    if not info:
+        return _render_error_page(404, "Ссылка недействительна", "Токен не найден или уже использован", "")
+    chat_id = info.get("chat_id")
+    if chat_id and chat_id in chat_histories:
+        chat_histories[chat_id] = []
+        save_chat_log()
+        try:
+            send_message(chat_id, "🔄 Администратор сбросил историю чата. Можешь начать заново!")
+        except Exception:
+            pass
+        body = f"<p>История чата пользователя <b>chat_id {chat_id}</b> очищена.<br>Пользователь уведомлён в Telegram.</p>"
+    else:
+        body = "<p>Ошибка была отмечена как обработанная. История чата не изменена (веб-источник).</p>"
+    page = _ACTION_PAGE.format(icon="✅", title="Перезапуск выполнен", body=body, extra_script="")
+    return page, 200
+
+
+@app.route("/error-action/<token>/analyze")
+def error_action_analyze(token):
+    info = _error_tokens.get(token)
+    if not info:
+        return _render_error_page(404, "Ссылка недействительна", "Токен не найден или уже использован", "")
+    error_json_safe = json.dumps(info["error"])
+    tb_json_safe    = json.dumps(info["tb"][:2000])
+    body = f"""<p>ИИ анализирует ошибку, подождите...</p>
+<pre id="tb">{info['tb'].strip()[-1500:]}</pre>
+<div id="ai"></div>"""
+    script = f"""<script>
+(async function(){{
+  const ai = document.getElementById('ai');
+  ai.style.display='block';
+  ai.innerHTML='<span class="spinner"></span>Анализирую...';
+  try{{
+    const r = await fetch('/api/analyze-error',{{method:'POST',headers:{{'Content-Type':'application/json'}},
+      body:JSON.stringify({{error:{error_json_safe},tb:{tb_json_safe}}})}});
+    const d = await r.json();
+    ai.textContent = d.ok ? d.analysis : ('Ошибка: '+(d.error||'?'));
+  }}catch(e){{ai.textContent='Ошибка запроса: '+e.message;}}
+}})();
+</script>"""
+    page = _ACTION_PAGE.format(icon="🤖", title="Анализ ошибки с ИИ", body=body, extra_script=script)
+    return page, 200
+
 _ERROR_PAGE_HTML = """<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -3095,6 +3243,8 @@ def error_500(e):
     import traceback as _tb
     tb = _tb.format_exc()
     logger.error(f"Flask 500 error: {e}\n{tb}")
+    threading.Thread(target=_send_error_email_to_admins,
+                     args=(str(e), tb, "web", None), daemon=True).start()
     if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
         return jsonify({"ok": False, "error": str(e), "traceback": tb[-2000:]}), 500
     return _render_error_page(500, "Внутренняя ошибка сервера", str(e), tb)
@@ -3105,6 +3255,8 @@ def error_unhandled(e):
     import traceback as _tb
     tb = _tb.format_exc()
     logger.error(f"Flask unhandled exception: {e}\n{tb}")
+    threading.Thread(target=_send_error_email_to_admins,
+                     args=(str(e), tb, "web", None), daemon=True).start()
     if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
         return jsonify({"ok": False, "error": str(e), "traceback": tb[-2000:]}), 500
     return _render_error_page(500, "Необработанная ошибка", str(e), tb)
