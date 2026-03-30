@@ -747,7 +747,10 @@ header {
       <div style="background:var(--glass-bg,#1a2540);border:1px solid var(--glass-border);border-radius:18px;padding:28px;width:320px;max-width:90vw;backdrop-filter:blur(20px)">
         <div style="font-size:18px;font-weight:700;margin-bottom:6px" id="credits-modal-title">Изменить кредиты</div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:16px" id="credits-modal-sub"></div>
-        <input id="credits-modal-input" type="number" min="1" placeholder="Количество кредитов" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);font-size:15px;outline:none;box-sizing:border-box">
+        <div style="position:relative">
+          <input id="credits-modal-input" type="number" min="1" placeholder="Количество кредитов" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--text);font-size:15px;outline:none;box-sizing:border-box">
+          <button id="credits-modal-all-btn" onclick="fillAllCredits()" title="Списать все" style="display:none;position:absolute;right:8px;top:50%;transform:translateY(-50%);padding:4px 10px;border-radius:7px;border:1px solid rgba(239,68,68,.35);background:rgba(239,68,68,.12);color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">Всё</button>
+        </div>
         <div style="display:flex;gap:10px;margin-top:14px">
           <button class="btn" id="credits-modal-confirm" style="flex:1;background:var(--accent);color:#fff" onclick="confirmCreditsAdjust()">Применить</button>
           <button class="btn btn-ghost" style="flex:1" onclick="closeCreditsModal()">Отмена</button>
@@ -1549,8 +1552,8 @@ function renderWebUserProfile(u) {
   document.querySelectorAll('.profile-stat-lbl')[1].textContent = 'План';
   const actions = document.getElementById('profile-content').querySelector('.profile-actions');
   actions.innerHTML = `
-    <button class="btn btn-blue btn-lg" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','add')">➕ Добавить кредиты</button>
-    <button class="btn btn-ban btn-lg" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','deduct')">➖ Списать кредиты</button>
+    <button class="btn btn-blue btn-lg" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','add',${u.credits})">➕ Добавить кредиты</button>
+    <button class="btn btn-ban btn-lg" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','deduct',${u.credits})">➖ Списать кредиты</button>
   `;
 }
 
@@ -1639,7 +1642,7 @@ async function clearWcChat() {
 function openWcCreditsModal() {
   if (!currentWcUid) return;
   const u = webUsersCache.find(x => x.uid === currentWcUid) || {};
-  openCreditsModal(currentWcUid, u.username || currentWcUid, 'add');
+  openCreditsModal(currentWcUid, u.username || currentWcUid, 'add', u.credits);
 }
 
 /* ===== PLAN MODAL ===== */
@@ -2216,6 +2219,7 @@ async function rejectPayment(pid) {
 /* ===== WEB USERS CREDITS ===== */
 let creditsModalUid = null;
 let creditsModalMode = null; // 'add' | 'deduct'
+let creditsModalCurrent = 0;
 
 async function loadWebUsersCredits() {
   const el = document.getElementById('web-users-credits-list');
@@ -2236,25 +2240,35 @@ async function loadWebUsersCredits() {
       </div>
       <div style="font-weight:700;color:${crColor};min-width:40px;text-align:right;font-size:15px">${cr}</div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn" style="padding:5px 10px;font-size:13px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)" title="Добавить кредиты" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','add')">＋</button>
-        <button class="btn" style="padding:5px 10px;font-size:13px;background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)" title="Списать кредиты" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','deduct')">－</button>
+        <button class="btn" style="padding:5px 10px;font-size:13px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3)" title="Добавить кредиты" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','add',${u.credits})">＋</button>
+        <button class="btn" style="padding:5px 10px;font-size:13px;background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.25)" title="Списать кредиты" onclick="openCreditsModal('${u.uid}','${escHtml(u.username)}','deduct',${u.credits})">－</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function openCreditsModal(uid, username, mode) {
+function openCreditsModal(uid, username, mode, currentCredits) {
   creditsModalUid = uid;
   creditsModalMode = mode;
+  creditsModalCurrent = (currentCredits !== undefined && currentCredits !== -1) ? parseInt(currentCredits) || 0 : 0;
   const isAdd = mode === 'add';
   document.getElementById('credits-modal-title').textContent = isAdd ? '➕ Добавить кредиты' : '➖ Списать кредиты';
-  document.getElementById('credits-modal-sub').textContent = `Пользователь: ${username}`;
+  const crDisplay = currentCredits === -1 ? '∞' : (currentCredits ?? '?');
+  document.getElementById('credits-modal-sub').textContent = `${username} · Баланс: ${crDisplay} кр.`;
   document.getElementById('credits-modal-input').value = '';
   document.getElementById('credits-modal-err').style.display = 'none';
   document.getElementById('credits-modal-confirm').style.background = isAdd ? 'var(--accent-green,#22c55e)' : '#ef4444';
+  // Show "Всё" button only for deduct mode with finite credits
+  const allBtn = document.getElementById('credits-modal-all-btn');
+  allBtn.style.display = (!isAdd && currentCredits !== -1 && creditsModalCurrent > 0) ? 'block' : 'none';
   const modal = document.getElementById('credits-modal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('credits-modal-input').focus(), 50);
+}
+
+function fillAllCredits() {
+  document.getElementById('credits-modal-input').value = creditsModalCurrent;
+  document.getElementById('credits-modal-input').focus();
 }
 
 function closeCreditsModal() {
