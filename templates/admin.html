@@ -2250,7 +2250,7 @@ async function loadWebUsersCredits() {
 function openCreditsModal(uid, username, mode, currentCredits) {
   creditsModalUid = uid;
   creditsModalMode = mode;
-  creditsModalCurrent = (currentCredits !== undefined && currentCredits !== -1) ? parseInt(currentCredits) || 0 : 0;
+  creditsModalCurrent = (currentCredits !== undefined) ? (currentCredits === -1 ? -1 : parseInt(currentCredits) || 0) : 0;
   const isAdd = mode === 'add';
   document.getElementById('credits-modal-title').textContent = isAdd ? '➕ Добавить кредиты' : '➖ Списать кредиты';
   const crDisplay = currentCredits === -1 ? '∞' : (currentCredits ?? '?');
@@ -2258,17 +2258,24 @@ function openCreditsModal(uid, username, mode, currentCredits) {
   document.getElementById('credits-modal-input').value = '';
   document.getElementById('credits-modal-err').style.display = 'none';
   document.getElementById('credits-modal-confirm').style.background = isAdd ? 'var(--accent-green,#22c55e)' : '#ef4444';
-  // Show "Всё" button only for deduct mode with finite credits
+  // Show "Всё" button in deduct mode: for finite credits > 0, or for unlimited (∞)
   const allBtn = document.getElementById('credits-modal-all-btn');
-  allBtn.style.display = (!isAdd && currentCredits !== -1 && creditsModalCurrent > 0) ? 'block' : 'none';
+  allBtn.style.display = (!isAdd && (creditsModalCurrent > 0 || creditsModalCurrent === -1)) ? 'block' : 'none';
   const modal = document.getElementById('credits-modal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('credits-modal-input').focus(), 50);
 }
 
 function fillAllCredits() {
-  document.getElementById('credits-modal-input').value = creditsModalCurrent;
-  document.getElementById('credits-modal-input').focus();
+  const inp = document.getElementById('credits-modal-input');
+  if (creditsModalCurrent === -1) {
+    // Unlimited: can't deduct "all" — just focus so admin types manually
+    inp.placeholder = 'Введите сколько снять';
+    inp.focus();
+  } else {
+    inp.value = creditsModalCurrent;
+    inp.focus();
+  }
 }
 
 function closeCreditsModal() {
