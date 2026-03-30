@@ -39,16 +39,12 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "gunicorn --workers 1 --threads 16 --timeout 0 --bind 0.0.0.0:5000 main:app"
+args = "fuser -k 5000/tcp 2>/dev/null; sleep 0.5; gunicorn --workers 1 --threads 16 --timeout 0 --bind 0.0.0.0:5000 --reuse-port main:app"
 waitForPort = 5000
 
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 8080
-externalPort = 8080
 
 [userenv]
 

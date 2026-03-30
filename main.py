@@ -810,14 +810,14 @@ _IMAGE_RE = re.compile(
 # ============ KEEP-ALIVE ============
 
 def keep_alive_loop():
-    time.sleep(30)
+    time.sleep(20)
     while True:
         try:
-            http_requests.get(f"https://{REPLIT_URL}/", timeout=10, verify=False)
-            logger.info("Keep-alive ping отправлен")
+            r = http_requests.get(f"https://{REPLIT_URL}/ping", timeout=10, verify=False)
+            logger.info(f"Keep-alive ping → {r.status_code}")
         except Exception as e:
             logger.warning(f"Keep-alive ошибка: {e}")
-        time.sleep(180)
+        time.sleep(50)
 
 
 # ============ ОБРАБОТКА КОМАНД ============
@@ -1232,6 +1232,11 @@ def webhook():
 @app.route("/")
 def index():
     return redirect("/admin")
+
+
+@app.route("/ping")
+def ping():
+    return "ok", 200
 
 
 # ============ ADMIN AUTH ============
