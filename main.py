@@ -2956,6 +2956,160 @@ def web_clear_history():
     return jsonify({"ok": True})
 
 
+# ============ ОБРАБОТЧИКИ ОШИБОК ============
+
+_ERROR_PAGE_HTML = """<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ошибка {code}</title>
+<style>
+  *{{box-sizing:border-box;margin:0;padding:0}}
+  body{{background:#0f0f13;color:#e8e8f0;font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}}
+  .card{{background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid #2a2a4a;border-radius:16px;padding:32px;max-width:780px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5)}}
+  .badge{{display:inline-block;background:#ff4444;color:#fff;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;letter-spacing:1px;margin-bottom:16px}}
+  h1{{font-size:22px;font-weight:700;margin-bottom:8px;color:#fff}}
+  .cause{{background:#1e1e32;border-left:3px solid #ff6b6b;padding:12px 16px;border-radius:8px;font-family:monospace;font-size:13px;color:#ff9999;margin:16px 0;word-break:break-all}}
+  details{{margin-top:16px}}
+  summary{{cursor:pointer;color:#8888cc;font-size:13px;user-select:none;padding:6px 0}}
+  summary:hover{{color:#aaaaff}}
+  pre{{background:#111122;border:1px solid #2a2a4a;border-radius:8px;padding:14px;font-size:12px;overflow-x:auto;margin-top:10px;color:#c0c0d8;max-height:320px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}}
+  .actions{{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}}
+  .btn{{padding:10px 22px;border-radius:10px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}}
+  .btn-back{{background:#2a2a4a;color:#aaaacc}}
+  .btn-back:hover{{background:#33335a}}
+  .btn-ai{{background:linear-gradient(135deg,#6c63ff,#9b59b6);color:#fff}}
+  .btn-ai:hover{{opacity:.9}}
+  .btn-ai:disabled{{opacity:.5;cursor:default}}
+  #ai-result{{margin-top:20px;background:#0d1f0d;border:1px solid #2a4a2a;border-radius:10px;padding:16px;font-size:14px;line-height:1.6;color:#a8e6a8;display:none}}
+  .spinner{{display:inline-block;width:14px;height:14px;border:2px solid #ffffff44;border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}}
+  @keyframes spin{{to{{transform:rotate(360deg)}}}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="badge">ОШИБКА {code}</div>
+  <h1>{title}</h1>
+  <div class="cause">{error_escaped}</div>
+  <details>
+    <summary>📋 Подробный лог (трейсбек)</summary>
+    <pre id="tb-text">{tb_escaped}</pre>
+  </details>
+  <div class="actions">
+    <button class="btn btn-back" onclick="history.length>1?history.back():location.href='/'">← Назад</button>
+    <button class="btn btn-ai" id="ai-btn" onclick="analyzeError()">🤖 Анализ с ИИ</button>
+  </div>
+  <div id="ai-result"></div>
+</div>
+<script>
+async function analyzeError() {{
+  const btn = document.getElementById('ai-btn');
+  const res = document.getElementById('ai-result');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Анализирую...';
+  res.style.display = 'block';
+  res.textContent = 'ИИ анализирует ошибку, подождите...';
+  try {{
+    const r = await fetch('/api/analyze-error', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{error: {error_json}, tb: document.getElementById('tb-text').textContent}})
+    }});
+    const d = await r.json();
+    if (d.ok) {{
+      res.textContent = d.analysis;
+    }} else {{
+      res.textContent = 'Не удалось получить анализ: ' + (d.error || 'неизвестная ошибка');
+    }}
+  }} catch(e) {{
+    res.textContent = 'Ошибка запроса: ' + e.message;
+  }}
+  btn.disabled = false;
+  btn.innerHTML = '🤖 Анализ с ИИ';
+}}
+</script>
+</body>
+</html>"""
+
+
+def _render_error_page(code: int, title: str, error: str, tb: str) -> tuple:
+    import html as _html
+    import json as _json
+    page = _ERROR_PAGE_HTML.format(
+        code=code,
+        title=_html.escape(title),
+        error_escaped=_html.escape(error),
+        tb_escaped=_html.escape(tb[-3000:] if tb else ""),
+        error_json=_json.dumps(error)
+    )
+    return page, code
+
+
+@app.route("/api/analyze-error", methods=["POST"])
+def api_analyze_error():
+    data = request.get_json(silent=True) or {}
+    error_text = (data.get("error") or "").strip()
+    tb_text = (data.get("tb") or "").strip()
+    if not error_text and not tb_text:
+        return jsonify({"ok": False, "error": "Нет данных об ошибке"}), 400
+    ai_prompt = (
+        "Ты — помощник разработчика. В Python/Flask веб-приложении произошла ошибка. "
+        "Проанализируй её и объясни простыми словами: что пошло не так и как это исправить.\n\n"
+        f"Ошибка: {error_text}\n\nТрейсбек:\n{tb_text[:2000]}"
+    )
+    try:
+        resp = http_requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            json={"model": AI_MODEL, "messages": [
+                {"role": "system", "content": "Ты — помощник разработчика. Отвечай на русском языке. Будь кратким и понятным."},
+                {"role": "user", "content": ai_prompt}
+            ], "max_tokens": 700},
+            timeout=60
+        )
+        resp.raise_for_status()
+        analysis = resp.json()["choices"][0]["message"]["content"].strip()
+        return jsonify({"ok": True, "analysis": analysis})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
+
+
+@app.errorhandler(404)
+def error_404(e):
+    path = request.path
+    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+        return jsonify({"ok": False, "error": f"Маршрут не найден: {path}"}), 404
+    return _render_error_page(404, f"Страница не найдена: {path}", str(e), "")
+
+
+@app.errorhandler(405)
+def error_405(e):
+    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+        return jsonify({"ok": False, "error": "Метод не разрешён"}), 405
+    return _render_error_page(405, "Метод не разрешён", str(e), "")
+
+
+@app.errorhandler(500)
+def error_500(e):
+    import traceback as _tb
+    tb = _tb.format_exc()
+    logger.error(f"Flask 500 error: {e}\n{tb}")
+    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+        return jsonify({"ok": False, "error": str(e), "traceback": tb[-2000:]}), 500
+    return _render_error_page(500, "Внутренняя ошибка сервера", str(e), tb)
+
+
+@app.errorhandler(Exception)
+def error_unhandled(e):
+    import traceback as _tb
+    tb = _tb.format_exc()
+    logger.error(f"Flask unhandled exception: {e}\n{tb}")
+    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+        return jsonify({"ok": False, "error": str(e), "traceback": tb[-2000:]}), 500
+    return _render_error_page(500, "Необработанная ошибка", str(e), tb)
+
+
 # Запускается и при gunicorn, и при python main.py
 startup()
 
