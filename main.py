@@ -21,7 +21,7 @@ import urllib.parse
 from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from flask import Flask, request, jsonify, render_template, redirect, session, Response, stream_with_context
+from flask import Flask, request, jsonify, render_template, redirect, session, Response, stream_with_context, send_file, make_response
 import requests as http_requests
 
 import pyotp
@@ -1303,6 +1303,27 @@ def index():
 @app.route("/ping")
 def ping():
     return "ok", 200
+
+
+_BASE = os.path.dirname(os.path.abspath(__file__))
+
+@app.route("/manifest.json")
+def pwa_manifest():
+    return send_file(os.path.join(_BASE, "manifest.json"), mimetype="application/manifest+json")
+
+@app.route("/sw.js")
+def pwa_sw():
+    resp = make_response(send_file(os.path.join(_BASE, "sw.js"), mimetype="application/javascript"))
+    resp.headers["Service-Worker-Allowed"] = "/"
+    return resp
+
+@app.route("/pwa-icon-192.png")
+def pwa_icon_192():
+    return send_file(os.path.join(_BASE, "icon-192.png"), mimetype="image/png")
+
+@app.route("/pwa-icon-512.png")
+def pwa_icon_512():
+    return send_file(os.path.join(_BASE, "icon-512.png"), mimetype="image/png")
 
 
 # ============ ADMIN AUTH ============
