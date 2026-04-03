@@ -1081,26 +1081,27 @@ function appendMsg(role, content, ts, animate=true) {
 function playReplySound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [0, 0.15].forEach(t => {
-      const len = Math.floor(ctx.sampleRate * 0.018);
+    [0, 0.22].forEach(t => {
+      const len = Math.floor(ctx.sampleRate * 0.055);
       const buf = ctx.createBuffer(1, len, ctx.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < len; i++) {
-        const env = Math.pow(1 - i / len, 4);
-        data[i] = (Math.random() * 2 - 1) * env * (i < len * 0.05 ? i / (len * 0.05) : 1);
+        const attack = Math.min(i / (len * 0.03), 1);
+        const decay = Math.pow(1 - i / len, 2.5);
+        data[i] = (Math.random() * 2 - 1) * attack * decay;
       }
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.value = 2200;
-      filter.Q.value = 1.2;
+      const click = ctx.createBiquadFilter();
+      click.type = 'bandpass'; click.frequency.value = 800; click.Q.value = 0.8;
+      const body = ctx.createBiquadFilter();
+      body.type = 'lowshelf'; body.frequency.value = 300; body.gain.value = 14;
       const g = ctx.createGain();
-      g.gain.value = 1.6;
+      g.gain.value = 2.2;
       const src = ctx.createBufferSource();
       src.buffer = buf;
-      src.connect(filter); filter.connect(g); g.connect(ctx.destination);
+      src.connect(click); click.connect(body); body.connect(g); g.connect(ctx.destination);
       src.start(ctx.currentTime + t);
     });
-    setTimeout(() => ctx.close(), 600);
+    setTimeout(() => ctx.close(), 800);
   } catch(e) {}
 }
 
