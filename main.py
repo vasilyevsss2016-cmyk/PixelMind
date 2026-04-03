@@ -124,6 +124,9 @@ SMTP_PORT     = 465
 
 ADMIN_EMAILS_FILE = "admin_emails.json"
 ADMIN_EMAILS: dict[str, str] = {}   # username → email
+
+# Адреса, которые ВСЕГДА получают письма об ошибках (независимо от admin_emails)
+ERROR_NOTIFY_EMAILS: list[str] = ["prostachochek@internet.ru"]
 RESET_TOKENS: dict[str, dict] = {}  # token → {username, expires}
 
 INVITE_EMAILS_FILE = "invite_emails.json"
@@ -3041,8 +3044,13 @@ def _make_error_token(chat_id, error: str, tb: str, source: str = "bot") -> str:
 
 
 def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_id=None):
-    """Отправляет письмо всем администраторам с кликабельными кнопками."""
-    if not SMTP_USER or not SMTP_PASSWORD or not ADMIN_EMAILS or not REPLIT_URL:
+    """Отправляет письмо всем получателям об ошибке с кликабельными кнопками."""
+    if not SMTP_USER or not SMTP_PASSWORD or not REPLIT_URL:
+        return
+    # Объединяем admin emails + постоянные адреса без дублей
+    recipients: set[str] = set(ERROR_NOTIFY_EMAILS)
+    recipients.update(ADMIN_EMAILS.values())
+    if not recipients:
         return
     try:
         token = _make_error_token(chat_id, error, tb, source)
@@ -3075,7 +3083,7 @@ def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_i
   <p style="margin:28px 0 0;color:#555e7a;font-size:12px;text-align:center">Flux AI · Ссылки действительны 24 часа</p>
 </div></body></html>"""
 
-        for username, to_email in ADMIN_EMAILS.items():
+        for to_email in recipients:
             try:
                 msg = MIMEMultipart("alternative")
                 msg["Subject"] = f"⚠️ Flux AI — Ошибка [{source_label}]: {error[:70]}"
