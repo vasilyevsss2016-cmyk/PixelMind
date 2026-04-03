@@ -1082,7 +1082,7 @@ function appendMsg(role, content, ts, animate=true) {
 function playReplySound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [[0, 1046], [0.18, 1318]].forEach(([t, freq]) => {
+    [[0, 1318], [0.18, 1046]].forEach(([t, freq]) => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
