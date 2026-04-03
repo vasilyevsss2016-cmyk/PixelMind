@@ -608,7 +608,10 @@ header {
         <div style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:14px 16px;margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px">
             <span style="color:var(--text2)">Email</span>
-            <span id="prof-email" style="font-weight:500;color:var(--text)">—</span>
+            <span style="display:flex;align-items:center;gap:6px">
+              <span id="prof-email" style="font-weight:500;color:var(--text)">—</span>
+              <button onclick="startChangeEmail()" title="Изменить email" style="background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;border-radius:6px;color:var(--text2);line-height:1;transition:color .15s" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--text2)'">✏️</button>
+            </span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px">
             <span style="color:var(--text2)">Тариф</span>

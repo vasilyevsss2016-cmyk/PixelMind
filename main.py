@@ -1623,6 +1623,60 @@ def admin_set_email():
     return jsonify({"ok": True})
 
 
+_admin_email_change: dict = {}  # username → {email, code, expires, resend_at}
+
+
+@app.route("/admin/api/send-email-change-code", methods=["POST"])
+def admin_send_email_change_code():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email or "@" not in email or "." not in email.split("@")[-1]:
+        return jsonify({"ok": False, "error": "Некорректный email"}), 400
+    if ADMIN_EMAILS.get(username, "") == email:
+        return jsonify({"ok": False, "error": "Это уже ваш текущий email"}), 400
+    existing = _admin_email_change.get(username)
+    if existing and time.time() < existing.get("resend_at", 0):
+        wait = int(existing["resend_at"] - time.time())
+        return jsonify({"ok": False, "error": f"Подождите {wait} с. перед повторной отправкой"}), 429
+    code = str(random.randint(100000, 999999))
+    _admin_email_change[username] = {
+        "email": email, "code": code,
+        "expires": time.time() + 600, "resend_at": time.time() + 60,
+    }
+    sent = send_web_reg_code(email, code, username)
+    if not sent:
+        return jsonify({"ok": False, "error": "Не удалось отправить письмо. Проверьте email."}), 500
+    return jsonify({"ok": True})
+
+
+@app.route("/admin/api/verify-admin-email-code", methods=["POST"])
+def admin_verify_email_code():
+    token = request.headers.get("X-Admin-Token", "")
+    username = ADMIN_TOKENS.get(token)
+    if not username:
+        return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    code = (data.get("code") or "").strip()
+    pending = _admin_email_change.get(username)
+    if not pending:
+        return jsonify({"ok": False, "error": "Нет активного запроса. Запросите код заново."}), 400
+    if time.time() > pending["expires"]:
+        _admin_email_change.pop(username, None)
+        return jsonify({"ok": False, "error": "Код истёк. Запросите новый."}), 400
+    if pending["code"] != code:
+        return jsonify({"ok": False, "error": "Неверный код"}), 400
+    new_email = pending["email"]
+    ADMIN_EMAILS[username] = new_email
+    save_admin_emails()
+    _admin_email_change.pop(username, None)
+    logger.info(f"Администратор {username} сменил email на {new_email}")
+    return jsonify({"ok": True, "email": new_email})
+
+
 @app.route("/admin/api/add-account", methods=["POST"])
 def admin_add_account():
     token = request.headers.get("X-Admin-Token", "")

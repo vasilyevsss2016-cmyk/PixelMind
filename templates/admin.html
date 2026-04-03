@@ -820,10 +820,11 @@ header {
               <div data-i18n="sp_profile_sub" style="font-size:12px;color:var(--text3);margin-top:2px">Администратор</div>
             </div>
           </div>
-          <div id="sp-email" style="font-size:13px;color:var(--text2);margin-bottom:14px;padding:8px 12px;background:rgba(90,171,255,0.08);border:1px solid rgba(90,171,255,0.18);border-radius:10px">📧 —</div>
+          <div id="sp-email" style="font-size:13px;color:var(--text2);margin-bottom:10px;padding:8px 12px;background:rgba(90,171,255,0.08);border:1px solid rgba(90,171,255,0.18);border-radius:10px">📧 —</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-ghost" onclick="openChangePwd()" style="flex:1;justify-content:center">🔑 <span data-i18n="sp_changepwd">Сменить пароль</span></button>
             <button class="btn btn-ghost" onclick="open2FASettings()" style="flex:1;justify-content:center">🔐 <span data-i18n="sp_2fa">Двухфакторная</span></button>
+            <button class="btn btn-ghost" onclick="openAdminChangeEmail()" style="flex:1 1 100%;justify-content:center">✏️ Сменить email</button>
           </div>
         </div>
 
@@ -1151,10 +1152,53 @@ header {
     <div style="display:flex;flex-direction:column;gap:8px">
       <button class="btn btn-ghost" onclick="closeAdminProfile();openChangePwd()" style="justify-content:flex-start;padding:13px 16px">🔑 Сменить пароль</button>
       <button class="btn btn-ghost" onclick="closeAdminProfile();open2FASettings()" style="justify-content:flex-start;padding:13px 16px">🔐 Настройки 2FA</button>
+      <button class="btn btn-ghost" onclick="closeAdminProfile();openAdminChangeEmail()" style="justify-content:flex-start;padding:13px 16px">✏️ Сменить email</button>
     </div>
     <div class="modal-footer" style="margin-top:20px">
       <button class="btn btn-ghost" onclick="closeAdminProfile()">Закрыть</button>
       <button class="btn btn-red" onclick="logout()" style="justify-content:center">🚪 Выйти</button>
+    </div>
+  </div>
+</div>
+
+<!-- Admin Change Email Modal -->
+<div class="modal-overlay" id="admin-change-email-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <!-- Step: enter new email -->
+    <div id="ace-step-email">
+      <h3 style="margin:0 0 6px;font-size:18px">✏️ Сменить email</h3>
+      <p style="font-size:13px;color:var(--text2);margin:0 0 18px">Введите новый email — отправим код подтверждения</p>
+      <input type="email" id="ace-email-input" placeholder="новый@email.ru" autocomplete="email"
+        style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,0.06));border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-size:14px;outline:none;margin-bottom:10px"
+        onkeydown="if(event.key==='Enter')adminSendEmailCode()">
+      <div id="ace-email-err" style="font-size:13px;color:var(--danger,#ff4d4d);min-height:18px;margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="closeAdminChangeEmail()" style="flex:1;justify-content:center">Отмена</button>
+        <button class="btn btn-blue" id="ace-send-btn" onclick="adminSendEmailCode()" style="flex:1;justify-content:center">Отправить код →</button>
+      </div>
+    </div>
+    <!-- Step: verify code -->
+    <div id="ace-step-code" style="display:none">
+      <h3 style="margin:0 0 6px;font-size:18px">📨 Введите код</h3>
+      <p style="font-size:13px;color:var(--text2);margin:0 0 4px">Код отправлен на <b id="ace-code-dest" style="color:var(--accent)"></b></p>
+      <p style="font-size:12px;color:var(--text3);margin:0 0 16px">Действителен 10 минут</p>
+      <input type="text" id="ace-code-input" inputmode="numeric" maxlength="6" placeholder="000000"
+        style="width:100%;box-sizing:border-box;background:var(--input-bg,rgba(255,255,255,0.06));border:1px solid var(--border);border-radius:10px;padding:13px 14px;color:var(--text);font-size:24px;font-weight:700;letter-spacing:8px;text-align:center;outline:none;margin-bottom:10px"
+        onkeydown="if(event.key==='Enter')adminVerifyEmailCode()">
+      <div id="ace-code-err" style="font-size:13px;color:var(--danger,#ff4d4d);min-height:18px;margin-bottom:10px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-blue" id="ace-verify-btn" onclick="adminVerifyEmailCode()" style="justify-content:center">Подтвердить</button>
+        <button class="btn btn-ghost" id="ace-resend-btn" onclick="adminResendEmailCode()" style="justify-content:center">Отправить повторно</button>
+        <button class="btn btn-ghost" onclick="showAceStep('email')" style="justify-content:center">← Назад</button>
+      </div>
+    </div>
+    <!-- Step: success -->
+    <div id="ace-step-done" style="display:none;text-align:center;padding:12px 0">
+      <div style="font-size:52px;margin-bottom:14px">✅</div>
+      <h3 style="margin:0 0 8px;font-size:18px">Email обновлён!</h3>
+      <p style="font-size:14px;color:var(--text2);margin:0 0 24px">Новый email: <b id="ace-done-email" style="color:var(--accent)"></b></p>
+      <button class="btn btn-blue" onclick="closeAdminChangeEmail()" style="width:100%;justify-content:center">Готово</button>
     </div>
   </div>
 </div>
@@ -1439,6 +1483,103 @@ async function openAdminProfile() {
 }
 function closeAdminProfile() { document.getElementById('admin-profile-modal').classList.remove('open'); }
 document.getElementById('admin-profile-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAdminProfile(); });
+
+/* ===== ADMIN CHANGE EMAIL ===== */
+let _aceResendTimer = null;
+function showAceStep(step) {
+  ['email','code','done'].forEach(s => {
+    document.getElementById(`ace-step-${s}`).style.display = s === step ? '' : 'none';
+  });
+  if (step === 'email') setTimeout(()=>document.getElementById('ace-email-input').focus(), 80);
+  if (step === 'code')  setTimeout(()=>document.getElementById('ace-code-input').focus(), 80);
+}
+function openAdminChangeEmail() {
+  document.getElementById('ace-email-input').value = '';
+  document.getElementById('ace-code-input').value = '';
+  document.getElementById('ace-email-err').textContent = '';
+  document.getElementById('ace-code-err').textContent = '';
+  showAceStep('email');
+  document.getElementById('admin-change-email-modal').classList.add('open');
+}
+function closeAdminChangeEmail() {
+  document.getElementById('admin-change-email-modal').classList.remove('open');
+  if (_aceResendTimer) { clearInterval(_aceResendTimer); _aceResendTimer = null; }
+}
+document.getElementById('admin-change-email-modal').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeAdminChangeEmail(); });
+
+async function adminSendEmailCode() {
+  const email = document.getElementById('ace-email-input').value.trim();
+  const errEl = document.getElementById('ace-email-err');
+  errEl.textContent = '';
+  if (!email) { errEl.textContent = 'Введите email'; return; }
+  const btn = document.getElementById('ace-send-btn');
+  btn.disabled = true; btn.textContent = 'Отправка…';
+  try {
+    const d = await api('/send-email-change-code', 'POST', { email });
+    if (d.ok) {
+      document.getElementById('ace-code-dest').textContent = email;
+      document.getElementById('ace-code-input').value = '';
+      document.getElementById('ace-code-err').textContent = '';
+      showAceStep('code');
+      startAceResendTimer(60);
+    } else {
+      errEl.textContent = d.error || 'Ошибка отправки';
+    }
+  } catch(e) { errEl.textContent = 'Ошибка сети'; }
+  btn.disabled = false; btn.textContent = 'Отправить код →';
+}
+async function adminVerifyEmailCode() {
+  const code = document.getElementById('ace-code-input').value.trim();
+  const errEl = document.getElementById('ace-code-err');
+  errEl.textContent = '';
+  if (!code) { errEl.textContent = 'Введите код'; return; }
+  const btn = document.getElementById('ace-verify-btn');
+  btn.disabled = true; btn.textContent = 'Проверка…';
+  try {
+    const d = await api('/verify-admin-email-code', 'POST', { code });
+    if (d.ok) {
+      document.getElementById('ace-done-email').textContent = d.email;
+      document.getElementById('sp-email').textContent = '📧 ' + d.email;
+      document.getElementById('apm-email').textContent = d.email;
+      showAceStep('done');
+      if (_aceResendTimer) { clearInterval(_aceResendTimer); _aceResendTimer = null; }
+    } else {
+      errEl.textContent = d.error || 'Неверный код';
+    }
+  } catch(e) { errEl.textContent = 'Ошибка сети'; }
+  btn.disabled = false; btn.textContent = 'Подтвердить';
+}
+async function adminResendEmailCode() {
+  const email = document.getElementById('ace-code-dest').textContent;
+  const btn = document.getElementById('ace-resend-btn');
+  btn.disabled = true;
+  try {
+    const d = await api('/send-email-change-code', 'POST', { email });
+    if (d.ok) {
+      document.getElementById('ace-code-err').textContent = '';
+      startAceResendTimer(60);
+    } else {
+      document.getElementById('ace-code-err').textContent = d.error || 'Ошибка отправки';
+      btn.disabled = false;
+    }
+  } catch(e) { document.getElementById('ace-code-err').textContent = 'Ошибка сети'; btn.disabled = false; }
+}
+function startAceResendTimer(sec) {
+  const btn = document.getElementById('ace-resend-btn');
+  if (_aceResendTimer) clearInterval(_aceResendTimer);
+  let left = sec;
+  btn.disabled = true;
+  btn.textContent = `Отправить повторно (${left}с)`;
+  _aceResendTimer = setInterval(()=>{
+    left--;
+    if (left <= 0) {
+      clearInterval(_aceResendTimer); _aceResendTimer = null;
+      btn.disabled = false; btn.textContent = 'Отправить повторно';
+    } else {
+      btn.textContent = `Отправить повторно (${left}с)`;
+    }
+  }, 1000);
+}
 
 function menuAction(a) {
   document.getElementById('mobile-menu').classList.remove('open');
