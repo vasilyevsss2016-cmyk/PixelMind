@@ -995,7 +995,6 @@ function startCreditsPolling() {
       if (_lastMsgCount !== null && d.msg_count > _lastMsgCount) {
         _lastMsgCount = d.msg_count;
         await loadHistory();
-        toast('💬 Новое сообщение от поддержки', 'ok');
       } else if (_lastMsgCount === null) {
         _lastMsgCount = d.msg_count;
       }
