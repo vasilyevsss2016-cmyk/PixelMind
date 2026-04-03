@@ -46,7 +46,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
-AI_MODEL = "stepfun/step-3.5-flash:free"
+AI_MODEL = "arcee-ai/trinity-large-preview:free"
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
 
@@ -569,10 +569,14 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
             timeout=30,
         )
         data = response.json()
-        reply = data["choices"][0]["message"]["content"].strip()
+        msg = data["choices"][0]["message"]
+        reply = (msg.get("content") or msg.get("reasoning") or "").strip()
 
         if "<think>" in reply:
             reply = re.sub(r"<think>.*?</think>", "", reply, flags=re.DOTALL).strip()
+
+        if not reply:
+            raise ValueError("Пустой ответ от модели")
 
         history.append({"role": "assistant", "content": reply})
         chat_histories[chat_id] = history
@@ -608,7 +612,8 @@ def describe_image_with_ai(chat_id: int, image_data: bytes, user_prompt: str = "
             timeout=40,
         )
         data = response.json()
-        return data["choices"][0]["message"]["content"].strip()
+        _m = data["choices"][0]["message"]
+        return (_m.get("content") or _m.get("reasoning") or "").strip()
     except Exception as e:
         logger.error(f"Ошибка vision API: {e}")
         return "Не смог проанализировать изображение 😔"
@@ -2109,7 +2114,7 @@ def api_generate_block_message():
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
             json={
-                "model": "stepfun/step-3.5-flash:free",
+                "model": AI_MODEL,
                 "messages": [{
                     "role": "user",
                     "content": (
@@ -2123,7 +2128,8 @@ def api_generate_block_message():
             },
             timeout=15
         )
-        msg = resp.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+        _m = resp.json()["choices"][0]["message"]
+        msg = (_m.get("content") or _m.get("reasoning") or "").strip().strip('"').strip("'")
         return jsonify({"ok": True, "message": msg})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
@@ -2161,7 +2167,7 @@ def api_generate_block_button():
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
             json={
-                "model": "stepfun/step-3.5-flash:free",
+                "model": AI_MODEL,
                 "messages": [{
                     "role": "user",
                     "content": (
@@ -2176,7 +2182,8 @@ def api_generate_block_button():
             },
             timeout=15
         )
-        url = resp.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+        _m2 = resp.json()["choices"][0]["message"]
+        url = (_m2.get("content") or _m2.get("reasoning") or "").strip().strip('"').strip("'")
         if not url.startswith(("http", "mailto", "tg:")):
             url = "https://" + url.lstrip("/")
         return jsonify({"ok": True, "url": url})
@@ -2818,7 +2825,8 @@ def web_chat_send():
             timeout=60
         )
         resp.raise_for_status()
-        reply = resp.json()["choices"][0]["message"]["content"].strip()
+        _m3 = resp.json()["choices"][0]["message"]
+        reply = (_m3.get("content") or _m3.get("reasoning") or "").strip()
     except Exception as e:
         return jsonify({"ok": False, "error": f"Ошибка AI: {str(e)}"}), 500
     # Deduct credit (skip if unlimited: credits == -1)
@@ -2847,7 +2855,8 @@ def web_chat_send():
                 },
                 timeout=10
             )
-            generated = name_resp.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+            _mn = name_resp.json()["choices"][0]["message"]
+            generated = (_mn.get("content") or _mn.get("reasoning") or "").strip().strip('"').strip("'")
             if generated and len(generated) < 60:
                 chat["name"] = generated
         except Exception:
@@ -3491,7 +3500,8 @@ def api_analyze_error():
             timeout=60
         )
         resp.raise_for_status()
-        analysis = resp.json()["choices"][0]["message"]["content"].strip()
+        _ma = resp.json()["choices"][0]["message"]
+        analysis = (_ma.get("content") or _ma.get("reasoning") or "").strip()
         return jsonify({"ok": True, "analysis": analysis})
     except Exception as exc:
         return jsonify({"ok": False, "error": str(exc)}), 500
