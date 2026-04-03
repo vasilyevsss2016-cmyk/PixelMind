@@ -1082,19 +1082,19 @@ function appendMsg(role, content, ts, animate=true) {
 function playReplySound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [[0, 1318], [0.18, 1046]].forEach(([t, freq]) => {
+    [[0, 1318], [0.13, 1046]].forEach(([t, freq]) => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination);
-      o.type = 'sine';
+      o.type = 'triangle';
       o.frequency.value = freq;
       g.gain.setValueAtTime(0, ctx.currentTime + t);
-      g.gain.linearRampToValueAtTime(0.22, ctx.currentTime + t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.28);
+      g.gain.linearRampToValueAtTime(0.35, ctx.currentTime + t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.09);
       o.start(ctx.currentTime + t);
-      o.stop(ctx.currentTime + t + 0.3);
+      o.stop(ctx.currentTime + t + 0.1);
     });
-    setTimeout(() => ctx.close(), 1000);
+    setTimeout(() => ctx.close(), 600);
   } catch(e) {}
 }
 
