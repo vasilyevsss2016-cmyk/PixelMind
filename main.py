@@ -3130,13 +3130,13 @@ def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_i
   <pre style="background:#111122;border:1px solid #2a2a4a;border-radius:8px;padding:14px;font-size:11px;color:#c0c0d8;white-space:pre-wrap;word-break:break-all;margin:0 0 28px;max-height:280px;overflow:hidden">{tb_trimmed}</pre>
   <table width="100%" cellpadding="0" cellspacing="0"><tr>
     <td align="center" style="padding:0 8px">
-      <a href="{restart_url}" style="display:inline-block;background:#e53935;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-size:14px;font-weight:700">🔄 Перезапустить (2)</a>
+      <a href="{restart_url}" style="display:inline-block;background:#e53935;color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-size:14px;font-weight:700">🔄 Перезапустить</a>
     </td>
     <td align="center" style="padding:0 8px">
-      <a href="{analyze_url}" style="display:inline-block;background:linear-gradient(135deg,#6c63ff,#9b59b6);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-size:14px;font-weight:700">🤖 Анализ с ИИ (3)</a>
+      <a href="{analyze_url}" style="display:inline-block;background:linear-gradient(135deg,#6c63ff,#9b59b6);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-size:14px;font-weight:700">🤖 Анализ с ИИ</a>
     </td>
   </tr></table>
-  <p style="margin:28px 0 0;color:#555e7a;font-size:12px;text-align:center">PixelMind · Ссылки действительны 24 часа</p>
+  <p style="margin:28px 0 0;color:#555e7a;font-size:12px;text-align:center">PixelMind</p>
 </div></body></html>"""
 
         for to_email in recipients:
