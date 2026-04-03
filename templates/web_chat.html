@@ -1079,6 +1079,26 @@ function appendMsg(role, content, ts, animate=true) {
   return div;
 }
 
+function playReplySound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const g = ctx.createGain();
+    g.connect(ctx.destination);
+    [[0, 880, 0.18], [0.12, 1100, 0.13], [0.22, 1320, 0.08]].forEach(([t, f, v]) => {
+      const o = ctx.createOscillator();
+      const og = ctx.createGain();
+      o.connect(og); og.connect(g);
+      o.type = 'sine'; o.frequency.value = f;
+      og.gain.setValueAtTime(0, ctx.currentTime + t);
+      og.gain.linearRampToValueAtTime(v, ctx.currentTime + t + 0.04);
+      og.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
+      o.start(ctx.currentTime + t);
+      o.stop(ctx.currentTime + t + 0.35);
+    });
+    setTimeout(() => ctx.close(), 1000);
+  } catch(e) {}
+}
+
 function showTyping() {
   const area = document.getElementById('chat-area');
   const div = document.createElement('div');
@@ -1116,6 +1136,7 @@ async function sendMsg() {
     hideTyping();
     if (d.ok) {
       appendMsg('assistant', d.reply, new Date().toISOString());
+      playReplySound();
       if (d.credits !== undefined) updateCreditsBadge(d.credits);
       if (d.credits === 0) { toast('Кредиты закончились! Пополните баланс.','err'); setTimeout(openUpgrade, 800); }
       else if (d.credits <= 5 && d.credits > 0) toast(`Осталось ${d.credits} кредитов`,'info');
