@@ -1019,6 +1019,12 @@ def process_message(message):
     if not bot_active:
         return
 
+    _wb = load_web_block()
+    if _wb.get("enabled"):
+        problem = _wb.get("message") or "сервисе"
+        send_message(chat_id, f"⚠️ Извините, у нас временные неполадки в {problem} и мы временно закрыли доступ. Мы его разрешим когда всё починим, это очень скоро.")
+        return
+
     if chat_id in banned_users:
         return
 
