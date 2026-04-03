@@ -1081,17 +1081,24 @@ function appendMsg(role, content, ts, animate=true) {
 function playReplySound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [[0, 1318], [0.13, 1046]].forEach(([t, freq]) => {
-      const o = ctx.createOscillator();
+    [0, 0.15].forEach(t => {
+      const len = Math.floor(ctx.sampleRate * 0.018);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        const env = Math.pow(1 - i / len, 4);
+        data[i] = (Math.random() * 2 - 1) * env * (i < len * 0.05 ? i / (len * 0.05) : 1);
+      }
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 2200;
+      filter.Q.value = 1.2;
       const g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type = 'triangle';
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0, ctx.currentTime + t);
-      g.gain.linearRampToValueAtTime(0.35, ctx.currentTime + t + 0.005);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.09);
-      o.start(ctx.currentTime + t);
-      o.stop(ctx.currentTime + t + 0.1);
+      g.gain.value = 1.6;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(filter); filter.connect(g); g.connect(ctx.destination);
+      src.start(ctx.currentTime + t);
     });
     setTimeout(() => ctx.close(), 600);
   } catch(e) {}
