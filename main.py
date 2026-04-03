@@ -2173,7 +2173,8 @@ def save_web_block(data: dict):
 def check_web_block():
     b = load_web_block()
     if b.get("enabled"):
-        msg = b.get("message") or "Вход и регистрация временно закрыты."
+        problem = b.get("message") or "сервисе"
+        msg = f"Извините, у нас временные неполадки в {problem} и мы временно закрыли вход. Мы его разрешим когда всё починим, это очень скоро."
         return jsonify({"ok": False, "blocked": True, "error": msg}), 403
     return None
 
