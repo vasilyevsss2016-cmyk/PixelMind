@@ -206,8 +206,8 @@ header {
 .logo { font-size:18px; font-weight:700; color:var(--accent); display:flex; align-items:center; gap:8px; letter-spacing:-.3px; }
 .sse-dot { width:8px; height:8px; border-radius:50%; background:var(--text3); transition:background .3s,box-shadow .3s; position:relative; }
 .sse-dot.live { background:var(--accent2); box-shadow:0 0 6px var(--accent2); }
-.sse-dot.live::after { content:''; position:absolute; inset:-4px; border-radius:50%; border:2px solid var(--accent2); opacity:0; animation:ripple 2s ease-out infinite; }
-@keyframes ripple { 0%{inset:-2px;opacity:.7} 100%{inset:-10px;opacity:0} }
+.sse-dot.live::after { content:''; position:absolute; inset:-4px; border-radius:50%; border:2px solid var(--accent2); opacity:0; animation:ripple 2.4s ease-out infinite; transform-origin:center; }
+@keyframes ripple { 0%{transform:scale(1);opacity:.65} 70%{transform:scale(2.2);opacity:0} 100%{transform:scale(2.2);opacity:0} }
 .header-right { display:flex; align-items:center; gap:8px; }
 .status-badge { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; backdrop-filter:blur(10px); }
 .status-badge.running { background:rgba(52,208,88,0.15); color:var(--accent2); border:1px solid rgba(52,208,88,0.3); }
