@@ -1021,8 +1021,8 @@ def process_message(message):
 
     _wb = load_web_block()
     if _wb.get("enabled"):
-        problem = _wb.get("message") or "сервисе"
-        send_message(chat_id, f"⚠️ Извините, у нас временные неполадки в {problem} и мы временно закрыли доступ. Мы его разрешим когда всё починим, это очень скоро.")
+        msg = _wb.get("message") or "Извините, сервис временно недоступен. Мы уже работаем над устранением проблемы, это займёт совсем немного времени."
+        send_message(chat_id, f"⚠️ {msg}")
         return
 
     if chat_id in banned_users:
@@ -2098,6 +2098,37 @@ def api_invite_reset():
     return jsonify({"ok": True})
 
 
+@app.route("/admin/api/generate-block-message", methods=["POST"])
+def api_generate_block_message():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    problem = (data.get("problem") or "").strip() or "сервисе"
+    try:
+        resp = http_requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": "stepfun/step-3.5-flash:free",
+                "messages": [{
+                    "role": "user",
+                    "content": (
+                        f"Напиши красивое, тёплое и короткое сообщение об ошибке для пользователей сервиса PixelMind. "
+                        f"Проблема: неполадки в {problem}. "
+                        f"Требования: 2-3 предложения, вежливо, без лишних слов, на русском, без emoji в начале, "
+                        f"скажи что вход временно закрыт и всё починят очень скоро. Только текст сообщения, без кавычек."
+                    )
+                }],
+                "max_tokens": 150,
+            },
+            timeout=15
+        )
+        msg = resp.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+        return jsonify({"ok": True, "message": msg})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 @app.route("/admin/api/web-block", methods=["GET"])
 def api_web_block_get():
     if not check_admin_token():
@@ -2179,8 +2210,7 @@ def save_web_block(data: dict):
 def check_web_block():
     b = load_web_block()
     if b.get("enabled"):
-        problem = b.get("message") or "сервисе"
-        msg = f"Извините, у нас временные неполадки в {problem} и мы временно закрыли вход. Мы его разрешим когда всё починим, это очень скоро."
+        msg = b.get("message") or "Извините, сервис временно недоступен. Мы уже работаем над устранением проблемы, это займёт совсем немного времени."
         return jsonify({"ok": False, "blocked": True, "error": msg}), 403
     return None
 
