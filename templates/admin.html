@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Flux Admin</title>
+<title>PixelMind Admin</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -586,7 +586,7 @@ header {
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo"></div>
-    <h1>Flux Admin</h1>
+    <h1>PixelMind Admin</h1>
     <p>Панель управления ботом</p>
     <form onsubmit="event.preventDefault();login()">
       <input type="text" id="username-input" placeholder="Логин" autocomplete="username" />
@@ -596,7 +596,7 @@ header {
     <div class="login-error" id="login-error">Неверный логин или пароль</div>
     <button type="button" class="forgot-btn" onclick="openForgot()">Забыл пароль или логин?</button>
     <div style="margin-top:16px;text-align:center">
-      <a href="/app" style="display:inline-flex;align-items:center;gap:6px;color:var(--text2,#8892b0);font-size:13px;text-decoration:none;padding:9px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.04);transition:all .18s" onmouseover="this.style.background='rgba(90,171,255,0.08)';this.style.color='#5aabff';this.style.borderColor='rgba(90,171,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='';this.style.borderColor='rgba(255,255,255,0.09)'">⚡ Я не админ — хочу пользоваться Flux</a>
+      <a href="/app" style="display:inline-flex;align-items:center;gap:6px;color:var(--text2,#8892b0);font-size:13px;text-decoration:none;padding:9px 18px;border-radius:12px;border:1px solid rgba(255,255,255,0.09);background:rgba(255,255,255,0.04);transition:all .18s" onmouseover="this.style.background='rgba(90,171,255,0.08)';this.style.color='#5aabff';this.style.borderColor='rgba(90,171,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.color='';this.style.borderColor='rgba(255,255,255,0.09)'">⚡ Я не админ — хочу пользоваться PixelMind</a>
     </div>
   </div>
 </div>
@@ -623,7 +623,7 @@ header {
 
 <div id="app">
   <header>
-    <div class="logo"><span class="sse-dot" id="sse-dot"></span>Flux Admin</div>
+    <div class="logo"><span class="sse-dot" id="sse-dot"></span>PixelMind Admin</div>
     <div class="header-right">
       <div class="status-badge running" id="bot-status-badge">🟢 Работает</div>
       <div class="desktop-btns">
@@ -2108,7 +2108,7 @@ function renderMessages() {
 }
 function buildMsgEl(m,idx,chatName) {
   const cls=m.role==='user'?'user':m.role==='admin'?'admin':'assistant';
-  const label=m.role==='user'?`👤 ${escHtml(chatName||'Пользователь')}`:m.role==='admin'?'🔑 Администратор':'⚡ Flux';
+  const label=m.role==='user'?`👤 ${escHtml(chatName||'Пользователь')}`:m.role==='admin'?'🔑 Администратор':'⚡ PixelMind';
   const div=document.createElement('div');
   div.className=`msg ${cls}`; div.dataset.idx=idx;
   div.innerHTML=`<div class="msg-label">${label}</div><div class="msg-row"><div class="msg-bubble">${escHtml(m.content)}</div><button class="del-btn" onclick="deleteMessage(${idx})" title="Удалить">✕</button></div>${m.time?`<div class="msg-time">${m.time}</div>`:''}`;

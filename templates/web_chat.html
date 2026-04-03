@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Flux — AI Чат</title>
+<title>PixelMind — AI Чат</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -367,7 +367,7 @@ header {
 <div id="auth-screen">
   <div class="auth-box">
     <div class="auth-logo">⚡</div>
-    <div class="auth-title">Flux AI</div>
+    <div class="auth-title">PixelMind</div>
     <div class="auth-sub">Общайся с AI без Telegram</div>
 
     <div class="auth-tabs">
@@ -451,7 +451,7 @@ header {
       <button class="menu-btn" onclick="openChatSidebar()" title="Список чатов">☰</button>
       <div class="header-logo">
         <span class="bolt">⚡</span>
-        <span class="name">Flux AI</span>
+        <span class="name">PixelMind</span>
       </div>
     </div>
     <div class="header-right">
@@ -522,7 +522,7 @@ header {
           <div class="sbp-row"><span>Банк</span><div class="sbp-val">Т-Банк</div></div>
           <div class="sbp-row"><span>Номер СБП</span><div class="sbp-val"><span id="sbp-phone-val">+7 981 969 43 98</span> <button class="copy-btn" onclick="copyText('+79819694398')" title="Копировать">📋</button></div></div>
           <div class="sbp-row"><span>Сумма</span><div class="sbp-val" style="color:var(--accent2)"><span id="sbp-amount-val">—</span> ₽ <button class="copy-btn" onclick="copyText(document.getElementById('sbp-amount-val').textContent)" title="Копировать">📋</button></div></div>
-          <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="sbp-comment-val">Flux —</span> <button class="copy-btn" onclick="copyText(document.getElementById('sbp-comment-val').textContent)" title="Копировать">📋</button></div></div>
+          <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="sbp-comment-val">PixelMind —</span> <button class="copy-btn" onclick="copyText(document.getElementById('sbp-comment-val').textContent)" title="Копировать">📋</button></div></div>
           <div class="sbp-note">⚠️ Обязательно укажи комментарий — так мы найдём твой платёж. После перевода нажми «Я оплатил», кредиты добавятся после проверки администратором.</div>
         </div>
         <button class="upg-btn upg-btn-blue" id="paid-btn" onclick="confirmPaid()">✅ Я оплатил</button>
@@ -578,7 +578,7 @@ header {
           <div class="sbp-row"><span>Банк</span><div class="sbp-val">Т-Банк</div></div>
           <div class="sbp-row"><span>Номер СБП</span><div class="sbp-val"><span>+7 981 969 43 98</span> <button class="copy-btn" onclick="copyText('+79819694398')" title="Копировать">📋</button></div></div>
           <div class="sbp-row"><span>Сумма</span><div class="sbp-val" style="color:var(--accent2)"><span id="rnw-sbp-amount">—</span> ₽ <button class="copy-btn" onclick="copyText(document.getElementById('rnw-sbp-amount').textContent)" title="Копировать">📋</button></div></div>
-          <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="rnw-sbp-comment">Flux —</span> <button class="copy-btn" onclick="copyText(document.getElementById('rnw-sbp-comment').textContent)" title="Копировать">📋</button></div></div>
+          <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="rnw-sbp-comment">PixelMind —</span> <button class="copy-btn" onclick="copyText(document.getElementById('rnw-sbp-comment').textContent)" title="Копировать">📋</button></div></div>
           <div class="sbp-note">⚠️ Обязательно укажи комментарий — так мы найдём твой платёж. После перевода нажми «Я продлил» — подписка активируется после проверки администратором.</div>
         </div>
         <button class="upg-btn upg-btn-blue" style="background:linear-gradient(135deg,#7c3aed,#a855f7);box-shadow:0 4px 18px rgba(168,85,247,0.35)" id="rnw-paid-btn" onclick="confirmRenewal()">✅ Я продлил</button>
@@ -655,7 +655,7 @@ header {
   <div id="chat-area">
     <div class="empty-chat" id="empty-state">
       <div class="big-icon">⚡</div>
-      <h2>Привет! Я Flux</h2>
+      <h2>Привет! Я PixelMind</h2>
       <p>AI-ассистент готов к общению. Напиши что-нибудь!</p>
     </div>
   </div>
@@ -967,7 +967,7 @@ async function doLogout() {
   currentUsername = '';
   document.getElementById('app-screen').classList.remove('visible');
   document.getElementById('auth-screen').style.display = 'flex';
-  document.getElementById('chat-area').innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я Flux</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
+  document.getElementById('chat-area').innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я PixelMind</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
   switchTab('login');
 }
 
@@ -1051,7 +1051,7 @@ async function loadHistory() {
 async function clearHistory() {
   if (!confirm('Очистить историю текущего чата?')) return;
   await fetch('/app/clear', { method:'POST' });
-  document.getElementById('chat-area').innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я Flux</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
+  document.getElementById('chat-area').innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я PixelMind</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
   toast('История чата очищена', 'ok');
   loadChatList();
 }
@@ -1277,7 +1277,7 @@ async function switchChat(chatId) {
     const area = document.getElementById('chat-area');
     area.innerHTML = '';
     if (!d.history.length) {
-      area.innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я Flux</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
+      area.innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я PixelMind</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
     } else {
       for (const m of d.history) appendMsg(m.role, m.content, m.ts, false);
       area.scrollTop = area.scrollHeight;
@@ -1334,7 +1334,7 @@ async function loadHistoryById(chatId) {
     const area = document.getElementById('chat-area');
     area.innerHTML = '';
     if (!d.history.length) {
-      area.innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я Flux</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
+      area.innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я PixelMind</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
     } else {
       for (const m of d.history) appendMsg(m.role, m.content, m.ts, false);
       area.scrollTop = area.scrollHeight;

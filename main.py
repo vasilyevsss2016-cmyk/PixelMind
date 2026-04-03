@@ -1,5 +1,5 @@
 """
-Flux — AI чат-бот для Telegram + веб-панель администратора.
+PixelMind — AI чат-бот для Telegram + веб-панель администратора.
 """
 
 import os
@@ -45,7 +45,7 @@ except ImportError:
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
-BOT_NAME = "Flux"
+BOT_NAME = "PixelMind"
 AI_MODEL = "stepfun/step-3.5-flash:free"
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
@@ -151,7 +151,7 @@ SYSTEM_PROMPT_CHAT = f"""Ты — {BOT_NAME}, дружелюбный AI-асси
 - Отвечай на русском языке
 - Иногда добавляй лёгкую шутку или иронию — ненавязчиво, без перебора
 - Юмор должен быть уместным и добрым, не пошлым
-- Если спрашивают кто ты — ты Flux, AI-бот для общения
+- Если спрашивают кто ты — ты PixelMind, AI-бот для общения
 - Отвечай не слишком длинно — 2-5 предложений, если не просят подробнее
 - Можешь использовать 1-2 эмодзи если уместно
 - Не добавляй подпись в конце сообщения
@@ -312,16 +312,16 @@ def send_2fa_email(to_email: str, username: str, code: str) -> bool:
         return False
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"Код входа в Flux Admin: {code}"
-        msg["From"] = f"Flux Admin <{SMTP_USER}>"
+        msg["Subject"] = f"Код входа в PixelMind Admin: {code}"
+        msg["From"] = f"PixelMind Admin <{SMTP_USER}>"
         msg["To"] = to_email
 
-        text = f"Твой код подтверждения для входа в Flux Admin: {code}\nКод действует 5 минут."
+        text = f"Твой код подтверждения для входа в PixelMind Admin: {code}\nКод действует 5 минут."
         html = f"""<!DOCTYPE html>
 <html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a">
 <div style="max-width:400px;margin:0 auto;background:rgba(15,24,48,0.97);padding:36px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 20px 60px rgba(0,0,0,.5)">
   <div style="font-size:36px;margin-bottom:8px;text-align:center">⚡</div>
-  <h2 style="color:#5aabff;margin:0 0 4px;font-size:20px;text-align:center">Flux Admin</h2>
+  <h2 style="color:#5aabff;margin:0 0 4px;font-size:20px;text-align:center">PixelMind Admin</h2>
   <p style="color:#7a8aaa;margin:0 0 28px;font-size:13px;text-align:center">Двухфакторная авторизация</p>
   <p style="color:#b0bdd0;margin:0 0 8px;font-size:14px">Привет, <strong style="color:#e8eef8">{username}</strong>! Твой код для входа:</p>
   <div style="background:rgba(90,171,255,0.1);border:2px solid rgba(90,171,255,0.4);border-radius:16px;padding:20px;text-align:center;margin:16px 0 20px">
@@ -353,7 +353,7 @@ def send_2fa_sms(phone: str, code: str) -> bool:
             params={
                 "api_id": SMSRU_API_KEY,
                 "to": phone,
-                "msg": f"Flux Admin код: {code}",
+                "msg": f"PixelMind Admin код: {code}",
                 "json": "1",
             },
             timeout=10,
@@ -376,14 +376,14 @@ def send_invite_email(to_email: str) -> bool:
         return False
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Тебя приглашают в Flux AI — умный Telegram-бот"
-        msg["From"] = f"Flux AI <{SMTP_USER}>"
+        msg["Subject"] = "Тебя приглашают в PixelMind — умный Telegram-бот"
+        msg["From"] = f"PixelMind <{SMTP_USER}>"
         msg["To"] = to_email
 
         text = (
             f"Привет!\n\n"
-            f"Тебя приглашают попробовать Flux — умного AI-бота в Telegram.\n\n"
-            f"Flux умеет:\n"
+            f"Тебя приглашают попробовать PixelMind — умного AI-бота в Telegram.\n\n"
+            f"PixelMind умеет:\n"
             f"• Общаться на любые темы\n"
             f"• Генерировать изображения и видео\n"
             f"• Преобразовывать голос в текст\n"
@@ -396,11 +396,11 @@ def send_invite_email(to_email: str) -> bool:
 <div style="max-width:520px;margin:32px auto;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6)">
   <div style="background:linear-gradient(135deg,#0d1f3c 0%,#1a2d5a 50%,#0f1525 100%);padding:44px 40px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1)">
     <div style="font-size:56px;margin-bottom:12px;filter:drop-shadow(0 0 20px rgba(90,171,255,0.6))">⚡</div>
-    <h1 style="margin:0 0 6px;font-size:32px;font-weight:800;color:#5aabff;letter-spacing:-1px">Flux AI</h1>
+    <h1 style="margin:0 0 6px;font-size:32px;font-weight:800;color:#5aabff;letter-spacing:-1px">PixelMind</h1>
     <p style="margin:0;color:#7a90b0;font-size:15px">Умный ассистент в Telegram</p>
   </div>
   <div style="background:rgba(15,24,48,0.97);padding:36px 40px">
-    <p style="color:#d0ddf0;font-size:16px;margin:0 0 24px;line-height:1.6">Привет! Тебя приглашают попробовать <strong style="color:#5aabff">Flux</strong> — AI-ассистента нового поколения прямо в Telegram.</p>
+    <p style="color:#d0ddf0;font-size:16px;margin:0 0 24px;line-height:1.6">Привет! Тебя приглашают попробовать <strong style="color:#5aabff">PixelMind</strong> — AI-ассистента нового поколения прямо в Telegram.</p>
     <div style="display:grid;gap:12px;margin-bottom:32px">
       <div style="background:rgba(90,171,255,0.08);border:1px solid rgba(90,171,255,0.2);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px">
         <span style="font-size:26px">🎨</span>
@@ -420,7 +420,7 @@ def send_invite_email(to_email: str) -> bool:
       </div>
     </div>
     <a href="{BOT_LINK}" style="display:block;text-align:center;padding:16px 28px;background:linear-gradient(135deg,#5aabff,#3b82f6);color:#fff;text-decoration:none;border-radius:16px;font-weight:700;font-size:17px;box-shadow:0 6px 24px rgba(90,171,255,0.4);letter-spacing:.2px">
-      ⚡ Открыть Flux в Telegram
+      ⚡ Открыть PixelMind в Telegram
     </a>
     <p style="text-align:center;color:#3a4f6a;font-size:12px;margin:28px 0 0;line-height:1.6">
       Это письмо отправлено командой <strong style="color:#5a7aaa">Defa Projects</strong>.<br>
@@ -449,13 +449,13 @@ def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
         return False
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Восстановление доступа — Flux Admin"
-        msg["From"] = f"Flux Admin <{SMTP_USER}>"
+        msg["Subject"] = "Восстановление доступа — PixelMind Admin"
+        msg["From"] = f"PixelMind Admin <{SMTP_USER}>"
         msg["To"] = to_email
 
         text = (
             f"Привет, {username}!\n\n"
-            f"Ты запросил восстановление доступа к Flux Admin.\n"
+            f"Ты запросил восстановление доступа к PixelMind Admin.\n"
             f"Твой логин: {username}\n\n"
             f"Для сброса пароля перейди по ссылке:\n{reset_url}\n\n"
             f"Ссылка действует 30 минут.\n"
@@ -465,7 +465,7 @@ def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
 <html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a;color:#e8eef8">
 <div style="max-width:480px;margin:0 auto;background:rgba(15,24,48,0.95);padding:36px;border-radius:20px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 20px 60px rgba(0,0,0,.5)">
   <div style="font-size:40px;margin-bottom:10px">⚡</div>
-  <h2 style="color:#5aabff;margin:0 0 6px;font-size:22px">Flux Admin</h2>
+  <h2 style="color:#5aabff;margin:0 0 6px;font-size:22px">PixelMind Admin</h2>
   <p style="color:#7a8aaa;margin:0 0 24px;font-size:14px">Восстановление доступа</p>
   <p>Привет, <strong style="color:#e8eef8">{username}</strong>!</p>
   <p style="color:#b0bdd0">Ты запросил восстановление доступа к панели администратора.</p>
@@ -1536,7 +1536,7 @@ def admin_totp_setup():
     secret = pyotp.random_base32()
     TOTP_PENDING[username] = secret
     totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=username, issuer_name="Flux Admin")
+    uri = totp.provisioning_uri(name=username, issuer_name="PixelMind Admin")
     img = qrcode.make(uri)
     buf = io.BytesIO()
     img.save(buf, "PNG")
@@ -2099,7 +2099,7 @@ def startup():
         ka_thread.start()
         logger.info("Keep-alive запущен")
 
-    logger.info(f"⚡ Flux AI Bot | Модель: {AI_MODEL}")
+    logger.info(f"⚡ PixelMind Bot | Модель: {AI_MODEL}")
     logger.info(f"🌐 Админ-панель: https://{REPLIT_URL}/admin")
 
 
@@ -2135,12 +2135,12 @@ def send_web_reg_code(email: str, code: str, username: str) -> bool:
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = f"Ваш код подтверждения — {code}"
-        msg["From"] = f"Flux AI <{SMTP_USER}>"
+        msg["From"] = f"PixelMind <{SMTP_USER}>"
         msg["To"] = email
         html = f"""
 <div style="font-family:-apple-system,sans-serif;max-width:420px;margin:0 auto;background:#0f1525;border-radius:16px;padding:32px;color:#e8eaf6">
   <div style="font-size:40px;text-align:center;margin-bottom:12px">⚡</div>
-  <h2 style="text-align:center;margin:0 0 8px;color:#5aabff">Flux AI</h2>
+  <h2 style="text-align:center;margin:0 0 8px;color:#5aabff">PixelMind</h2>
   <p style="text-align:center;color:#8892b0;margin:0 0 28px">Подтверждение регистрации</p>
   <p style="margin:0 0 16px">Привет, <b>{username}</b>!</p>
   <p style="margin:0 0 20px;color:#8892b0">Ваш код для подтверждения email:</p>
@@ -2654,7 +2654,7 @@ def web_chat_send():
     _ensure_chats(u)
     cid, chat = _active_chat(u)
     history = chat.get("history", [])
-    messages = [{"role": "system", "content": f"Ты — Flux, дружелюбный AI-ассистент. Отвечай на русском языке. Текущая дата: {datetime.now().strftime('%d.%m.%Y')}."}]
+    messages = [{"role": "system", "content": f"Ты — PixelMind, дружелюбный AI-ассистент. Отвечай на русском языке. Текущая дата: {datetime.now().strftime('%d.%m.%Y')}."}]
     for msg in history[-20:]:
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": text})
@@ -2770,7 +2770,7 @@ def web_request_payment():
         "label": label,
         "sbp_phone": SBP_PHONE,
         "sbp_bank": SBP_BANK,
-        "comment": f"Flux {u['username']}"
+        "comment": f"PixelMind {u['username']}"
     })
 
 @app.route("/app/request-renewal", methods=["POST"])
@@ -2811,7 +2811,7 @@ def web_request_renewal():
         "plan": plan,
         "sbp_phone": SBP_PHONE,
         "sbp_bank": SBP_BANK,
-        "comment": f"Flux {u['username']}"
+        "comment": f"PixelMind {u['username']}"
     })
 
 @app.route("/admin/api/web-users")
@@ -3120,7 +3120,7 @@ def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_i
 <html><body style="margin:0;padding:20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a">
 <div style="max-width:660px;margin:0 auto;background:#0f1525;padding:32px;border-radius:16px;border:1px solid #1e2a45;color:#e8eaf6">
   <div style="font-size:36px;text-align:center;margin-bottom:12px">⚡</div>
-  <h2 style="color:#ff6b6b;margin:0 0 4px;font-size:20px;text-align:center">Flux AI — Ошибка</h2>
+  <h2 style="color:#ff6b6b;margin:0 0 4px;font-size:20px;text-align:center">PixelMind — Ошибка</h2>
   <p style="text-align:center;color:#8892b0;margin:0 0 4px;font-size:13px">Источник: <b style="color:#c0c8e0">{source_label}</b></p>
   {"<p style='text-align:center;color:#8892b0;font-size:12px;margin:0 0 24px'>chat_id: " + str(chat_id) + "</p>" if chat_id else "<div style='margin-bottom:24px'></div>"}
   <div style="background:#1e1e32;border-left:4px solid #ff4444;border-radius:8px;padding:14px 18px;margin-bottom:20px">
@@ -3136,14 +3136,14 @@ def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_i
       <a href="{analyze_url}" style="display:inline-block;background:linear-gradient(135deg,#6c63ff,#9b59b6);color:#fff;text-decoration:none;padding:13px 32px;border-radius:10px;font-size:14px;font-weight:700">🤖 Анализ с ИИ (3)</a>
     </td>
   </tr></table>
-  <p style="margin:28px 0 0;color:#555e7a;font-size:12px;text-align:center">Flux AI · Ссылки действительны 24 часа</p>
+  <p style="margin:28px 0 0;color:#555e7a;font-size:12px;text-align:center">PixelMind · Ссылки действительны 24 часа</p>
 </div></body></html>"""
 
         for to_email in recipients:
             try:
                 msg = MIMEMultipart("alternative")
-                msg["Subject"] = f"⚠️ Flux AI — Ошибка [{source_label}]: {error[:70]}"
-                msg["From"] = f"Flux AI <{SMTP_USER}>"
+                msg["Subject"] = f"⚠️ PixelMind — Ошибка [{source_label}]: {error[:70]}"
+                msg["From"] = f"PixelMind <{SMTP_USER}>"
                 msg["To"] = to_email
                 msg.attach(MIMEText(html_body, "html", "utf-8"))
                 with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as srv:
