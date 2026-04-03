@@ -431,6 +431,13 @@ header {
       <button onclick="backToRegister()" style="background:none;border:none;color:var(--text2);font-size:12px;cursor:pointer;padding:4px;text-align:center;width:100%">← Назад</button>
     </div>
 
+    <!-- BLOCKED screen -->
+    <div id="tab-blocked" class="auth-form" style="display:none;text-align:center">
+      <div style="font-size:40px;margin-bottom:10px">🔒</div>
+      <div id="blocked-msg" style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:20px"></div>
+      <div id="blocked-buttons" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
     <div class="back-to-admin">
       <a href="/admin">← Вернуться на страницу входа в панель</a>
     </div>
@@ -890,7 +897,8 @@ async function doLogin() {
   try {
     const r = await fetch('/app/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({login,password:pwd}) });
     const d = await r.json();
-    if (d.ok && d.step === 'verify_email') { showVerifyStep(d.email, d.token, 'email'); }
+    if (d.blocked) { showBlockedScreen(d.error, d.buttons); }
+    else if (d.ok && d.step === 'verify_email') { showVerifyStep(d.email, d.token, 'email'); }
     else if (d.ok && d.require_email) { showAddEmailStep(); }
     else if (d.ok) { enterApp(d.username); }
     else { showErr(errEl, d.error || 'Ошибка'); }
@@ -910,7 +918,8 @@ async function doRegisterNoEmail() {
   try {
     const r = await fetch('/app/register-noemail', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:name, password:pwd}) });
     const d = await r.json();
-    if (d.ok) { enterApp(d.username); toast('Добро пожаловать!', 'ok'); }
+    if (d.blocked) { showBlockedScreen(d.error, d.buttons); }
+    else if (d.ok) { enterApp(d.username); toast('Добро пожаловать!', 'ok'); }
     else { showErr(errEl, d.error || 'Ошибка'); }
   } catch(e) { showErr(errEl, 'Ошибка сети'); }
   btn.disabled = false; btn.textContent = 'Создать аккаунт →';
@@ -944,7 +953,8 @@ async function doRegister() {
   try {
     const r = await fetch('/app/register', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:name,email,password:pwd}) });
     const d = await r.json();
-    if (d.ok && d.step === 'verify') { showVerifyStep(d.email, d.token); }
+    if (d.blocked) { showBlockedScreen(d.error, d.buttons); }
+    else if (d.ok && d.step === 'verify') { showVerifyStep(d.email, d.token); }
     else { showErr(errEl, d.error || 'Ошибка'); }
   } catch(e) { showErr(errEl, 'Ошибка сети'); }
   btn.disabled = false; btn.textContent = 'Получить код →';
@@ -989,6 +999,32 @@ async function doLogout() {
 }
 
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+function showBlockedScreen(msg, buttons) {
+  // hide all auth tabs
+  ['tab-login','tab-register','tab-register-noemail','tab-add-email','tab-verify','tab-blocked'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('blocked-msg').textContent = msg || 'Сервис временно недоступен.';
+  const btnContainer = document.getElementById('blocked-buttons');
+  btnContainer.innerHTML = '';
+  (buttons || []).forEach(b => {
+    if (!b.text || !b.url) return;
+    const a = document.createElement('a');
+    a.href = b.url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = b.text;
+    a.style.cssText = 'display:block;padding:12px 16px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);border-radius:12px;color:var(--accent);font-size:14px;font-weight:600;text-decoration:none;transition:background .2s';
+    a.onmouseover = () => a.style.background = 'rgba(99,102,241,0.28)';
+    a.onmouseout = () => a.style.background = 'rgba(99,102,241,0.15)';
+    btnContainer.appendChild(a);
+  });
+  // hide tabs
+  const tabs = document.querySelector('.auth-tabs');
+  if (tabs) tabs.style.display = 'none';
+  document.getElementById('tab-blocked').style.display = 'block';
+}
 
 let _creditsPollTimer = null;
 let _lastMsgCount = null;

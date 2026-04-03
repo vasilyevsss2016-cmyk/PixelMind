@@ -2140,9 +2140,48 @@ def api_web_block_set():
     if not check_admin_token():
         return jsonify({"ok": False}), 403
     data = request.get_json(silent=True) or {}
-    block = {"enabled": bool(data.get("enabled")), "message": (data.get("message") or "").strip()}
+    raw_buttons = data.get("buttons") or []
+    buttons = [{"text": str(b.get("text","")).strip(), "url": str(b.get("url","")).strip()} for b in raw_buttons if b.get("text")]
+    block = {"enabled": bool(data.get("enabled")), "message": (data.get("message") or "").strip(), "buttons": buttons}
     save_web_block(block)
     return jsonify({"ok": True, **block})
+
+
+@app.route("/admin/api/generate-block-button", methods=["POST"])
+def api_generate_block_button():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    action = (data.get("action") or "").strip()
+    if not text and not action:
+        return jsonify({"ok": False, "error": "empty"}), 400
+    try:
+        resp = http_requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            json={
+                "model": "stepfun/step-3.5-flash:free",
+                "messages": [{
+                    "role": "user",
+                    "content": (
+                        f"Для кнопки с текстом «{text}» и описанием действия «{action}» — "
+                        f"сгенерируй подходящую ссылку (URL). "
+                        f"Если это Telegram — верни ссылку вида https://t.me/..., "
+                        f"если email — mailto:..., если сайт — https://... "
+                        f"Верни ТОЛЬКО ссылку, без кавычек, без пояснений."
+                    )
+                }],
+                "max_tokens": 80,
+            },
+            timeout=15
+        )
+        url = resp.json()["choices"][0]["message"]["content"].strip().strip('"').strip("'")
+        if not url.startswith(("http", "mailto", "tg:")):
+            url = "https://" + url.lstrip("/")
+        return jsonify({"ok": True, "url": url})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 def startup():
@@ -2211,7 +2250,7 @@ def check_web_block():
     b = load_web_block()
     if b.get("enabled"):
         msg = b.get("message") or "Извините, сервис временно недоступен. Мы уже работаем над устранением проблемы, это займёт совсем немного времени."
-        return jsonify({"ok": False, "blocked": True, "error": msg}), 403
+        return jsonify({"ok": False, "blocked": True, "error": msg, "buttons": b.get("buttons", [])}), 403
     return None
 
 def web_hash_pwd(pwd: str) -> str:
