@@ -2464,10 +2464,12 @@ async function saveWebBlock() {
       _wbGeneratedMsg = finalMsg;
       document.getElementById('wb-preview').textContent = finalMsg;
     } catch(e) {
-      msgEl.style.color = 'var(--danger)';
-      msgEl.textContent = 'Ошибка генерации';
-      btn.disabled = false; btn.innerHTML = '✅ Заблокировать';
-      return;
+      // Если ИИ недоступен — используем запасной текст
+      finalMsg = problem
+        ? `Извините, у нас временные неполадки в ${problem}. Мы уже работаем над устранением, это займёт совсем немного времени.`
+        : 'Извините, сервис временно недоступен. Мы работаем над устранением проблемы, это очень скоро.';
+      _wbGeneratedMsg = finalMsg;
+      document.getElementById('wb-preview').textContent = finalMsg;
     }
   }
 

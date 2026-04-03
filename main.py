@@ -2261,7 +2261,12 @@ def get_web_user_id():
 
 @app.route("/app")
 def web_chat_page():
-    return render_template("web_chat.html")
+    b = load_web_block()
+    if b.get("enabled"):
+        msg = b.get("message") or "Извините, сервис временно недоступен."
+        buttons = b.get("buttons", [])
+        return render_template("web_chat.html", blocked=True, block_msg=msg, block_buttons=buttons)
+    return render_template("web_chat.html", blocked=False, block_msg="", block_buttons=[])
 
 def send_web_reg_code(email: str, code: str, username: str) -> bool:
     try:
@@ -2287,6 +2292,15 @@ def send_web_reg_code(email: str, code: str, username: str) -> bool:
     except Exception as e:
         logger.error(f"Ошибка отправки email регистрации: {e}")
         return False
+
+@app.route("/app/status", methods=["GET"])
+def web_app_status():
+    b = load_web_block()
+    if b.get("enabled"):
+        msg = b.get("message") or "Извините, сервис временно недоступен. Мы уже работаем над устранением проблемы, это займёт совсем немного времени."
+        return jsonify({"ok": True, "blocked": True, "error": msg, "buttons": b.get("buttons", [])})
+    return jsonify({"ok": True, "blocked": False})
+
 
 @app.route("/app/register-noemail", methods=["POST"])
 def web_register_noemail():

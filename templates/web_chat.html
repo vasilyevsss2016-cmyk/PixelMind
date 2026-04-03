@@ -378,13 +378,13 @@ header {
     <div class="auth-title">PixelMind</div>
     <div class="auth-sub">Общайся с AI без Telegram</div>
 
-    <div class="auth-tabs">
+    <div class="auth-tabs" {% if blocked %}style="display:none"{% endif %}>
       <button class="auth-tab active" onclick="switchTab('login')">Войти</button>
       <button class="auth-tab" onclick="switchTab('register')">Регистрация</button>
     </div>
 
     <!-- LOGIN -->
-    <div id="tab-login" class="auth-form">
+    <div id="tab-login" class="auth-form" {% if blocked %}style="display:none"{% endif %}>
       <input class="auth-input" id="l-login" type="text" placeholder="Логин или Email" autocomplete="username">
       <input class="auth-input" id="l-pwd" type="password" placeholder="Пароль" autocomplete="current-password">
       <div class="auth-error" id="l-err"></div>
@@ -432,10 +432,17 @@ header {
     </div>
 
     <!-- BLOCKED screen -->
-    <div id="tab-blocked" class="auth-form" style="display:none;text-align:center">
+    <div id="tab-blocked" class="auth-form" style="display:{% if blocked %}block{% else %}none{% endif %};text-align:center">
       <div style="font-size:40px;margin-bottom:10px">🔒</div>
-      <div id="blocked-msg" style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:20px"></div>
-      <div id="blocked-buttons" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="blocked-msg" style="font-size:14px;color:var(--text2);line-height:1.6;margin-bottom:20px">{{ block_msg }}</div>
+      <div id="blocked-buttons" style="display:flex;flex-direction:column;gap:8px">
+        {% for btn in block_buttons %}
+        <a href="{{ btn.url }}" target="_blank" rel="noopener noreferrer"
+           style="display:block;padding:12px 16px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);border-radius:12px;color:var(--accent);font-size:14px;font-weight:600;text-decoration:none;">
+          {{ btn.text }}
+        </a>
+        {% endfor %}
+      </div>
     </div>
 
     <div class="back-to-admin">
@@ -701,6 +708,15 @@ function _getAudioCtx() {
   return _audioCtx;
 }
 document.addEventListener('click', () => { try { _getAudioCtx(); } catch(e){} }, { once: true });
+
+// Проверяем блокировку при загрузке страницы
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const r = await fetch('/app/status');
+    const d = await r.json();
+    if (d.blocked) showBlockedScreen(d.error, d.buttons);
+  } catch(e) {}
+});
 
 let regToken = '';
 let verifyMode = 'reg'; // 'reg' | 'email'
