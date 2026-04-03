@@ -677,6 +677,15 @@ let currentCredits = null;
 let isSending = false;
 const toastQ = [];
 let toastBusy = false;
+let _audioCtx = null;
+function _getAudioCtx() {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+document.addEventListener('click', () => { try { _getAudioCtx(); } catch(e){} }, { once: true });
 
 let regToken = '';
 let verifyMode = 'reg'; // 'reg' | 'email'
@@ -1080,34 +1089,31 @@ function appendMsg(role, content, ts, animate=true) {
 
 function playReplySound() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    ctx.resume().then(() => {
-      [0, 0.2].forEach(t => {
-        const now = ctx.currentTime + t;
-        // Тело удара — низкий глухой тон
-        const o = ctx.createOscillator();
-        const og = ctx.createGain();
-        o.type = 'sine';
-        o.frequency.setValueAtTime(180, now);
-        o.frequency.exponentialRampToValueAtTime(60, now + 0.06);
-        og.gain.setValueAtTime(0, now);
-        og.gain.linearRampToValueAtTime(0.7, now + 0.003);
-        og.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-        o.connect(og); og.connect(ctx.destination);
-        o.start(now); o.stop(now + 0.09);
-        // Щелчок сверху — короткий шум
-        const len = Math.floor(ctx.sampleRate * 0.012);
-        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-        const d = buf.getChannelData(0);
-        for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, 3);
-        const f = ctx.createBiquadFilter();
-        f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 1;
-        const ng = ctx.createGain(); ng.gain.value = 0.8;
-        const s = ctx.createBufferSource(); s.buffer = buf;
-        s.connect(f); f.connect(ng); ng.connect(ctx.destination);
-        s.start(now);
-      });
-      setTimeout(() => ctx.close(), 800);
+    const ctx = _getAudioCtx();
+    [0, 0.2].forEach(t => {
+      const now = ctx.currentTime + t;
+      // Тело удара — низкий глухой тон (копыто)
+      const o = ctx.createOscillator();
+      const og = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(180, now);
+      o.frequency.exponentialRampToValueAtTime(60, now + 0.06);
+      og.gain.setValueAtTime(0, now);
+      og.gain.linearRampToValueAtTime(0.7, now + 0.003);
+      og.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      o.connect(og); og.connect(ctx.destination);
+      o.start(now); o.stop(now + 0.09);
+      // Щелчок — короткий шум
+      const len = Math.floor(ctx.sampleRate * 0.012);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1-i/len, 3);
+      const f = ctx.createBiquadFilter();
+      f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 1;
+      const ng = ctx.createGain(); ng.gain.value = 0.8;
+      const s = ctx.createBufferSource(); s.buffer = buf;
+      s.connect(f); f.connect(ng); ng.connect(ctx.destination);
+      s.start(now);
     });
   } catch(e) {}
 }
