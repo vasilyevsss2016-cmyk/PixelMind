@@ -127,6 +127,7 @@ ADMIN_EMAILS: dict[str, str] = {}   # username → email
 
 # Адреса, которые ВСЕГДА получают письма об ошибках (независимо от admin_emails)
 ERROR_NOTIFY_EMAILS: list[str] = ["prostachochek@internet.ru"]
+ERROR_NOTIFY_EXCLUDE: set[str] = {"vasilyev.sergey.1975@gmail.com"}
 RESET_TOKENS: dict[str, dict] = {}  # token → {username, expires}
 
 INVITE_EMAILS_FILE = "invite_emails.json"
@@ -3104,6 +3105,7 @@ def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_i
     # Объединяем admin emails + постоянные адреса без дублей
     recipients: set[str] = set(ERROR_NOTIFY_EMAILS)
     recipients.update(ADMIN_EMAILS.values())
+    recipients -= ERROR_NOTIFY_EXCLUDE
     if not recipients:
         return
     try:
