@@ -50,5 +50,5 @@ externalPort = 80
 
 [userenv.shared]
 ADMIN_ACCOUNTS = "{\"sergey_defa\":\"Ser123asd\",\"Blackjack\":\"Sergey\"}"
-SMTP_USER = "flux-ai@defa-company.ru"
 SMTP_PASSWORD = "mCSU8cQAtk36R0Kttg8I"
+SMTP_USER = "pixelmind@defa-company.ru"
