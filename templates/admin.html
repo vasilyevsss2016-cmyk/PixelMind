@@ -861,12 +861,46 @@ header {
           </div>
         </div>
 
+        <!-- Доступ в PixelMind -->
+        <div class="invite-list-card" style="margin-top:18px" id="web-block-card">
+          <div class="invite-list-header">🔒 Доступ в PixelMind</div>
+          <div style="padding:16px 18px">
+            <div id="web-block-status-text" style="font-size:13px;color:var(--text2);margin-bottom:14px">Загрузка...</div>
+            <button id="web-block-btn" onclick="openWebBlockModal()" class="btn" style="width:100%;justify-content:center;padding:12px;font-size:14px;border-radius:12px">
+              🔒 Запретить вход / регистрацию
+            </button>
+          </div>
+        </div>
+
         <!-- Logout -->
         <div style="margin-top:24px;padding-bottom:28px">
           <button class="btn btn-red" onclick="logout()" style="width:100%;justify-content:center;padding:14px;font-size:15px;border-radius:14px">
             🚪 <span data-i18n="sp_logout">Выйти из аккаунта</span>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Web Block Modal -->
+    <div id="web-block-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:3000;align-items:center;justify-content:center">
+      <div style="background:var(--glass-bg,#1a2540);border:1px solid var(--glass-border);border-radius:20px;padding:28px;width:420px;max-width:93vw;backdrop-filter:blur(24px)">
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px" id="wb-modal-title">🔒 Запрет входа / регистрации</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Пользователи увидят это сообщение при попытке войти или зарегистрироваться</div>
+
+        <textarea id="wb-msg-input" placeholder="Например: Регистрация временно закрыта. Попробуйте позже." rows="3"
+          oninput="updateWbPreview()"
+          style="width:100%;background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);border-radius:12px;padding:12px 14px;color:var(--text);font-size:14px;resize:none;font-family:inherit;outline:none;margin-bottom:14px"></textarea>
+
+        <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Превью</div>
+        <div id="wb-preview" style="background:rgba(255,69,58,0.10);border:1px solid rgba(255,69,58,0.25);border-radius:12px;padding:14px 16px;font-size:14px;color:#ff9999;min-height:46px;margin-bottom:20px;word-break:break-word">
+          Регистрация временно закрыта. Попробуйте позже.
+        </div>
+
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" onclick="closeWebBlockModal()" style="flex:1;justify-content:center">Отмена</button>
+          <button id="wb-save-btn" onclick="saveWebBlock()" class="btn" style="flex:2;justify-content:center;padding:12px">✅ Применить</button>
+        </div>
+        <div id="wb-msg" style="font-size:13px;min-height:18px;margin-top:10px;text-align:center"></div>
       </div>
     </div>
 
@@ -2264,6 +2298,74 @@ async function loadSettings() {
   _updateThemeButtons(theme);
   _updateLangButtons(_currentLang);
   _applyI18N();
+  loadWebBlockStatus();
+}
+
+let _wbCurrentEnabled = false;
+
+async function loadWebBlockStatus() {
+  try {
+    const d = await api('/web-block');
+    _wbCurrentEnabled = d.enabled;
+    const statusEl = document.getElementById('web-block-status-text');
+    const btn = document.getElementById('web-block-btn');
+    if (d.enabled) {
+      statusEl.innerHTML = '<span style="color:#ff9999">🔴 Вход и регистрация <b>заблокированы</b></span>';
+      if (d.message) statusEl.innerHTML += '<br><span style="font-size:12px;color:var(--text3);margin-top:4px;display:block">"' + d.message + '"</span>';
+      btn.className = 'btn btn-red';
+      btn.style.cssText = 'width:100%;justify-content:center;padding:12px;font-size:14px;border-radius:12px';
+      btn.innerHTML = '🔓 Снять блокировку';
+      btn.onclick = () => quickUnblock();
+    } else {
+      statusEl.innerHTML = '<span style="color:var(--accent2)">🟢 Вход и регистрация <b>открыты</b></span>';
+      btn.className = 'btn btn-ghost';
+      btn.style.cssText = 'width:100%;justify-content:center;padding:12px;font-size:14px;border-radius:12px';
+      btn.innerHTML = '🔒 Запретить вход / регистрацию';
+      btn.onclick = () => openWebBlockModal();
+    }
+  } catch(e) {}
+}
+
+function openWebBlockModal() {
+  const inp = document.getElementById('wb-msg-input');
+  inp.value = '';
+  document.getElementById('wb-preview').textContent = 'Регистрация временно закрыта. Попробуйте позже.';
+  document.getElementById('wb-msg').textContent = '';
+  const modal = document.getElementById('web-block-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => inp.focus(), 80);
+}
+
+function closeWebBlockModal() {
+  document.getElementById('web-block-modal').style.display = 'none';
+}
+
+function updateWbPreview() {
+  const val = document.getElementById('wb-msg-input').value.trim();
+  document.getElementById('wb-preview').textContent = val || 'Регистрация временно закрыта. Попробуйте позже.';
+}
+
+async function saveWebBlock() {
+  const msg = document.getElementById('wb-msg-input').value.trim();
+  const msgEl = document.getElementById('wb-msg');
+  const btn = document.getElementById('wb-save-btn');
+  btn.disabled = true; btn.textContent = '⏳ Применяю...';
+  try {
+    await api('/web-block', 'POST', { enabled: true, message: msg || 'Регистрация временно закрыта. Попробуйте позже.' });
+    closeWebBlockModal();
+    await loadWebBlockStatus();
+  } catch(e) {
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = 'Ошибка';
+  }
+  btn.disabled = false; btn.innerHTML = '✅ Применить';
+}
+
+async function quickUnblock() {
+  try {
+    await api('/web-block', 'POST', { enabled: false, message: '' });
+    await loadWebBlockStatus();
+  } catch(e) {}
 }
 
 /* ===== 2FA SETTINGS ===== */

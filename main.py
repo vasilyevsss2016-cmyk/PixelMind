@@ -2092,6 +2092,22 @@ def api_invite_reset():
     return jsonify({"ok": True})
 
 
+@app.route("/admin/api/web-block", methods=["GET"])
+def api_web_block_get():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    return jsonify({"ok": True, **load_web_block()})
+
+@app.route("/admin/api/web-block", methods=["POST"])
+def api_web_block_set():
+    if not check_admin_token():
+        return jsonify({"ok": False}), 403
+    data = request.get_json(silent=True) or {}
+    block = {"enabled": bool(data.get("enabled")), "message": (data.get("message") or "").strip()}
+    save_web_block(block)
+    return jsonify({"ok": True, **block})
+
+
 def startup():
     if not BOT_TOKEN:
         logger.error("❌ Не указан BOT_TOKEN — добавь его в Secrets")
@@ -2126,6 +2142,7 @@ def startup():
 
 # ============ ВЕБ-ЧАТ ============
 WEB_USERS_FILE = "web_users.json"
+WEB_BLOCK_FILE = "web_block.json"
 WEB_CHAT_HISTORIES: dict[str, list] = {}  # in-memory per session
 WEB_PENDING_REG: dict[str, dict] = {}   # token → {username, email, password_hash, code, expires}
 WEB_EMAIL_VERIFY: dict[str, dict] = {}  # token → {uid, email, username, code, expires, resend_at}
@@ -2141,6 +2158,24 @@ def load_web_users() -> dict:
 def save_web_users(data: dict):
     with open(WEB_USERS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+
+def load_web_block() -> dict:
+    try:
+        with open(WEB_BLOCK_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"enabled": False, "message": ""}
+
+def save_web_block(data: dict):
+    with open(WEB_BLOCK_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def check_web_block():
+    b = load_web_block()
+    if b.get("enabled"):
+        msg = b.get("message") or "Вход и регистрация временно закрыты."
+        return jsonify({"ok": False, "blocked": True, "error": msg}), 403
+    return None
 
 def web_hash_pwd(pwd: str) -> str:
     return hashlib.sha256(pwd.encode()).hexdigest()
@@ -2179,6 +2214,8 @@ def send_web_reg_code(email: str, code: str, username: str) -> bool:
 
 @app.route("/app/register-noemail", methods=["POST"])
 def web_register_noemail():
+    blocked = check_web_block()
+    if blocked: return blocked
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
@@ -2215,6 +2252,8 @@ def web_register_noemail():
 
 @app.route("/app/register", methods=["POST"])
 def web_register():
+    blocked = check_web_block()
+    if blocked: return blocked
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     email = (data.get("email") or "").strip().lower()
@@ -2300,6 +2339,8 @@ def web_resend_code():
 
 @app.route("/app/login", methods=["POST"])
 def web_login():
+    blocked = check_web_block()
+    if blocked: return blocked
     data = request.get_json(silent=True) or {}
     login_val = (data.get("login") or "").strip().lower()
     password = data.get("password") or ""
