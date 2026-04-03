@@ -5,6 +5,12 @@
       "first_name": "Сергей Васильев",
       "last_name": "",
       "name": "Сергей Васильев"
+    },
+    "999999999": {
+      "username": "testuser",
+      "first_name": "Test",
+      "last_name": "",
+      "name": "Test"
     }
   },
   "message_count": 0,
