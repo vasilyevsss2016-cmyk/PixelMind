@@ -1082,18 +1082,17 @@ function appendMsg(role, content, ts, animate=true) {
 function playReplySound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const g = ctx.createGain();
-    g.connect(ctx.destination);
-    [[0, 880, 0.18], [0.12, 1100, 0.13], [0.22, 1320, 0.08]].forEach(([t, f, v]) => {
+    [[0, 1046], [0.18, 1318]].forEach(([t, freq]) => {
       const o = ctx.createOscillator();
-      const og = ctx.createGain();
-      o.connect(og); og.connect(g);
-      o.type = 'sine'; o.frequency.value = f;
-      og.gain.setValueAtTime(0, ctx.currentTime + t);
-      og.gain.linearRampToValueAtTime(v, ctx.currentTime + t + 0.04);
-      og.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = 'sine';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0, ctx.currentTime + t);
+      g.gain.linearRampToValueAtTime(0.22, ctx.currentTime + t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.28);
       o.start(ctx.currentTime + t);
-      o.stop(ctx.currentTime + t + 0.35);
+      o.stop(ctx.currentTime + t + 0.3);
     });
     setTimeout(() => ctx.close(), 1000);
   } catch(e) {}
