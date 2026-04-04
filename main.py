@@ -14,6 +14,8 @@ import queue
 import random
 import secrets
 import smtplib
+import imaplib
+import email as email_lib
 import tempfile
 import threading
 import time
@@ -129,6 +131,12 @@ ADMIN_EMAILS: dict[str, str] = {}   # username → email
 ERROR_NOTIFY_EMAILS: list[str] = ["prostachochek@internet.ru"]
 ERROR_NOTIFY_EXCLUDE: set[str] = {"vasilyev.sergey.1975@gmail.com", "vasilyev.sss.2016@icloud.com"}
 RESET_TOKENS: dict[str, dict] = {}  # token → {username, expires}
+
+# Автопроверка платежей через IMAP
+PAYMENT_EMAIL_USER = os.environ.get("PAYMENT_EMAIL_USER", "")
+PAYMENT_EMAIL_PASS = os.environ.get("PAYMENT_EMAIL_PASS", "")
+PAYMENT_IMAP_HOST  = "imap.internet.ru"
+PAYMENT_IMAP_PORT  = 993
 
 INVITE_EMAILS_FILE = "invite_emails.json"
 INVITE_EMAILS: list[dict] = []      # [{email, added, sent, sent_at}]
@@ -2316,6 +2324,11 @@ def startup():
         ka_thread.start()
         logger.info("Keep-alive запущен")
 
+    # Автопроверка платежей через IMAP
+    if PAYMENT_EMAIL_USER and PAYMENT_EMAIL_PASS:
+        threading.Thread(target=_payment_checker_loop, daemon=True).start()
+        logger.info(f"💳 AutoPay checker запущен ({PAYMENT_EMAIL_USER})")
+
     logger.info(f"⚡ PixelMind Bot | Модель: {AI_MODEL}")
     logger.info(f"🌐 Админ-панель: https://{REPLIT_URL}/admin")
 
@@ -3379,6 +3392,15 @@ def admin_test_error_email():
     return jsonify({"ok": True, "msg": "Тестовое письмо отправлено всем администраторам"})
 
 
+@app.route("/admin/check-payments", methods=["POST"])
+def admin_check_payments():
+    """Ручная принудительная проверка входящих писем от Т-Банка."""
+    if not check_admin_token():
+        return jsonify({"ok": False, "error": "Нет доступа"}), 403
+    threading.Thread(target=check_payment_emails, daemon=True).start()
+    return jsonify({"ok": True, "msg": "Проверка запущена — результат появится в платежах через ~10 сек"})
+
+
 @app.route("/app/clear", methods=["POST"])
 def web_clear_history():
     uid = get_web_user_id()
@@ -3699,6 +3721,178 @@ def error_unhandled(e):
     if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
         return jsonify({"ok": False, "error": str(e), "traceback": tb[-2000:]}), 500
     return _render_error_page(500, "Необработанная ошибка", str(e), tb)
+
+
+# ============ АВТОПРОВЕРКА ПЛАТЕЖЕЙ ЧЕРЕЗ IMAP ============
+
+def _parse_tbank_amount(text: str) -> float | None:
+    """Извлекает сумму перевода из текста уведомления Т-Банка."""
+    patterns = [
+        r'получен[оа]?\s+(\d[\d\s]*[\.,]\d{2})\s*(?:руб|₽|RUB)',
+        r'зачислен[оа]?\s+(\d[\d\s]*[\.,]\d{2})\s*(?:руб|₽|RUB)',
+        r'перевод[аовеи]*\s+(\d[\d\s]*[\.,]\d{2})\s*(?:руб|₽|RUB)',
+        r'(\d[\d\s]*[\.,]\d{2})\s*(?:руб|₽|RUB)',
+    ]
+    for pat in patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            raw = m.group(1).replace(' ', '').replace(',', '.')
+            try:
+                return float(raw)
+            except ValueError:
+                pass
+    return None
+
+def _parse_tbank_comment(text: str) -> str:
+    """Извлекает комментарий/назначение платежа из уведомления Т-Банка."""
+    patterns = [
+        r'(?:комментарий|назначение|сообщение|comment)[:\s]+([^\n\r]{2,80})',
+        r'PixelMind\s+[\w\-]+',
+    ]
+    for pat in patterns:
+        m = re.search(pat, text, re.IGNORECASE)
+        if m:
+            return m.group(0).strip() if pat.endswith(r'[\w\-]+') else m.group(1).strip()
+    return ""
+
+def _get_email_text(msg) -> str:
+    """Получает текст из email-сообщения (text/plain и text/html)."""
+    parts = []
+    if msg.is_multipart():
+        for part in msg.walk():
+            ct = part.get_content_type()
+            if ct in ("text/plain", "text/html"):
+                charset = part.get_content_charset() or "utf-8"
+                try:
+                    parts.append(part.get_payload(decode=True).decode(charset, errors="replace"))
+                except Exception:
+                    pass
+    else:
+        charset = msg.get_content_charset() or "utf-8"
+        try:
+            parts.append(msg.get_payload(decode=True).decode(charset, errors="replace"))
+        except Exception:
+            pass
+    return "\n".join(parts)
+
+def check_payment_emails():
+    """
+    Подключается к IMAP ящику pixelmind.pay@internet.ru,
+    ищет уведомления о входящих переводах от Т-Банка и автоматически
+    подтверждает соответствующие платежи (по сумме и комментарию).
+    """
+    if not PAYMENT_EMAIL_USER or not PAYMENT_EMAIL_PASS:
+        return
+
+    try:
+        mail = imaplib.IMAP4_SSL(PAYMENT_IMAP_HOST, PAYMENT_IMAP_PORT, timeout=15)
+        mail.login(PAYMENT_EMAIL_USER, PAYMENT_EMAIL_PASS)
+        mail.select("INBOX")
+
+        # Ищем письма за последние 7 дней от Т-Банка
+        from datetime import timedelta
+        since = (datetime.now() - timedelta(days=7)).strftime("%d-%b-%Y")
+        _, data = mail.search(None, f'(SINCE {since})')
+        mail_ids = data[0].split() if data[0] else []
+
+        payments = load_web_payments()
+        users    = load_web_users()
+        changed  = False
+
+        for mid in mail_ids:
+            _, raw = mail.fetch(mid, "(RFC822)")
+            if not raw or not raw[0]:
+                continue
+            msg = email_lib.message_from_bytes(raw[0][1])
+            sender  = msg.get("From", "").lower()
+            subject = msg.get("Subject", "").lower()
+
+            # Фильтр: только уведомления Т-Банка о поступлениях
+            is_tbank = any(x in sender for x in ["tinkoff", "tbank", "t-bank", "noreply@tinkoff", "no-reply@tbank"])
+            is_incoming = any(x in subject for x in ["зачислен", "получен", "перевод", "поступл"])
+            if not (is_tbank or is_incoming):
+                continue
+
+            body = _get_email_text(msg)
+            full_text = subject + "\n" + body
+            amount = _parse_tbank_amount(full_text)
+            comment = _parse_tbank_comment(full_text).lower()
+
+            if amount is None:
+                continue
+
+            # Ищем pending-платёж с совпадающей суммой
+            for pid, p in payments.items():
+                if p.get("status") != "pending":
+                    continue
+                expected_amount = float(p.get("amount_rub", 0))
+                if abs(amount - expected_amount) > 0.5:
+                    continue
+
+                # Проверяем комментарий (необязательно, но повышает точность)
+                expected_comment = f"pixelmind {p.get('username', '')}".lower()
+                comment_ok = (not comment) or (expected_comment in comment) or ("pixelmind" in comment)
+                if not comment_ok:
+                    continue
+
+                # Подтверждаем платёж
+                u = users.get(p["uid"])
+                if u:
+                    from datetime import timedelta as _td
+                    cur = u.get("credits", 0)
+                    if cur != -1:
+                        u["credits"] = cur + p.get("credits_to_add", 0)
+                    ptype = p.get("type")
+                    if ptype in ("core", "pro"):
+                        u["plan"] = ptype
+                        u["plan_expires"] = (datetime.now() + _td(days=365)).isoformat()
+                    elif ptype == "renewal":
+                        plan = p.get("plan", u.get("plan", "free"))
+                        u["plan"] = plan
+                        old_exp = u.get("plan_expires")
+                        try:
+                            base = datetime.fromisoformat(old_exp) if old_exp else datetime.now()
+                            if base < datetime.now():
+                                base = datetime.now()
+                        except Exception:
+                            base = datetime.now()
+                        u["plan_expires"] = (base + _td(days=365)).isoformat()
+
+                p["status"]      = "approved"
+                p["approved_at"] = datetime.now().isoformat()
+                p["approved_by"] = "auto_email"
+                changed = True
+                logger.info(f"[AutoPay] Платёж {pid} автоподтверждён ({amount}₽ от Т-Банка)")
+
+                user_email = p.get("email", "")
+                if user_email:
+                    threading.Thread(
+                        target=send_payment_receipt_email,
+                        args=(user_email, p.get("username", ""), p.get("type", ""),
+                              p.get("label", ""), p.get("credits_to_add", 0), p.get("amount_rub", 0)),
+                        daemon=True
+                    ).start()
+                break  # один платёж — одно письмо
+
+        if changed:
+            save_web_payments(payments)
+            save_web_users(users)
+
+        mail.logout()
+
+    except Exception as e:
+        logger.warning(f"[AutoPay] Ошибка проверки почты: {e}")
+
+
+def _payment_checker_loop():
+    """Фоновый поток: проверяет почту каждые 2 минуты."""
+    time.sleep(30)  # небольшая задержка при старте
+    while True:
+        try:
+            check_payment_emails()
+        except Exception as e:
+            logger.warning(f"[AutoPay loop] {e}")
+        time.sleep(120)
 
 
 # Запускается и при gunicorn, и при python main.py

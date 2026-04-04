@@ -802,8 +802,9 @@ header {
         <div class="invite-header-card">
           <h2>💳 Платежи веб-чата</h2>
           <p>Заявки на пополнение баланса и подписки от пользователей веб-чата. Одобряй или отклоняй платежи вручную после проверки СБП-перевода.</p>
-          <div style="display:flex;gap:10px;margin-top:12px">
+          <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
             <button class="btn btn-ghost" onclick="loadPayments()">🔄 Обновить</button>
+            <button class="btn btn-ghost" id="check-pay-btn" onclick="checkPaymentsNow()" style="background:rgba(52,208,88,0.12);border-color:rgba(52,208,88,0.3);color:var(--accent2)">📬 Проверить почту сейчас</button>
           </div>
         </div>
         <div class="invite-list-card">
@@ -2834,6 +2835,19 @@ async function rejectPayment(pid) {
   const d = await api('/web-payments/' + pid + '/reject', 'POST', {});
   if (d.ok) { toast('Платёж отклонён','success'); loadPayments(); }
   else toast(d.error || 'Ошибка','error');
+}
+
+async function checkPaymentsNow() {
+  const btn = document.getElementById('check-pay-btn');
+  btn.disabled = true; btn.textContent = '⏳ Проверяю почту...';
+  const d = await api('/check-payments', 'POST', {});
+  btn.disabled = false; btn.innerHTML = '📬 Проверить почту сейчас';
+  if (d.ok) {
+    toast(d.msg || 'Проверка запущена', 'success');
+    setTimeout(loadPayments, 12000); // обновим список через 12 сек
+  } else {
+    toast(d.error || 'Ошибка', 'error');
+  }
 }
 
 /* ===== WEB USERS CREDITS ===== */
