@@ -211,23 +211,14 @@ header {
   position:relative; flex-shrink:0; align-self:center;
   z-index:5; overflow:visible;
 }
-.sse-dot.live { background:var(--accent2); box-shadow:0 0 8px var(--accent2); }
-.sse-wc {
-  position:absolute; top:50%; left:50%;
-  width:34px; height:34px;
-  transform:translate(-50%,-50%);
-  pointer-events:none; opacity:0; transition:opacity .4s;
+.sse-dot.live {
+  background:var(--accent2);
+  box-shadow:0 0 8px var(--accent2);
+  animation:ssePulse 2s ease-in-out infinite;
 }
-.sse-dot.live .sse-wc { opacity:1; }
-.sse-wc svg { display:block; overflow:visible; }
-.sse-wc path { stroke:var(--accent2); }
-.sse-dot.live .sse-wave-svg {
-  animation:sseCircWave 3s linear infinite;
-  transform-origin:17px 17px;
-}
-@keyframes sseCircWave {
-  from { transform:rotate(0deg); }
-  to   { transform:rotate(45deg); }
+@keyframes ssePulse {
+  0%,100% { opacity:1; }
+  50%      { opacity:0.25; }
 }
 .header-right { display:flex; align-items:center; gap:8px; }
 .status-badge { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; backdrop-filter:blur(10px); }
@@ -645,7 +636,7 @@ header {
 
 <div id="app">
   <header>
-    <div class="logo"><span class="sse-dot" id="sse-dot"><span class="sse-wc"><svg class="sse-wave-svg" width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke-width="1.5" stroke-linejoin="round" d="M31,17 L33.46,19.17 L33.03,21.29 L29.94,22.36 L26.88,22.70 L26.05,23.94 L26.90,26.90 L27.09,30.18 L25.30,31.37 L22.36,29.94 L19.95,28.01 L18.49,28.31 L17,31 L14.83,33.46 L12.71,33.03 L11.64,29.94 L11.30,26.88 L10.06,26.05 L7.10,26.90 L3.82,27.09 L2.63,25.30 L4.07,22.36 L5.99,19.95 L5.69,18.49 L3,17 L0.55,14.83 L0.97,12.71 L4.07,11.64 L7.13,11.30 L7.96,10.06 L7.10,7.10 L6.91,3.82 L8.70,2.63 L11.64,4.07 L14.05,5.99 L15.51,5.69 L17,3 L19.17,0.55 L21.29,0.97 L22.36,4.07 L22.70,7.13 L23.94,7.96 L26.90,7.10 L30.18,6.91 L31.37,8.70 L29.94,11.64 L28.02,14.05 L28.31,15.52 Z"/></svg></span></span>PixelMind Admin</div>
+    <div class="logo"><span class="sse-dot" id="sse-dot"></span>PixelMind Admin</div>
     <div class="header-right">
       <div class="status-badge running" id="bot-status-badge">🟢 Работает</div>
       <div class="desktop-btns">
