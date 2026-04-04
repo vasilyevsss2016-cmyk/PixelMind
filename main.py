@@ -127,7 +127,7 @@ ADMIN_EMAILS: dict[str, str] = {}   # username → email
 
 # Адреса, которые ВСЕГДА получают письма об ошибках (независимо от admin_emails)
 ERROR_NOTIFY_EMAILS: list[str] = ["prostachochek@internet.ru"]
-ERROR_NOTIFY_EXCLUDE: set[str] = {"vasilyev.sergey.1975@gmail.com"}
+ERROR_NOTIFY_EXCLUDE: set[str] = {"vasilyev.sergey.1975@gmail.com", "vasilyev.sss.2016@icloud.com"}
 RESET_TOKENS: dict[str, dict] = {}  # token → {username, expires}
 
 INVITE_EMAILS_FILE = "invite_emails.json"
