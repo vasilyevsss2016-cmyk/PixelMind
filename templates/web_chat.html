@@ -930,8 +930,11 @@ async function goToSBP() {
 async function confirmPaid() {
   const btn = document.getElementById('paid-btn');
   btn.disabled = true; btn.textContent = 'Отправляем…';
-  // Payment request already created, just show done
-  setTimeout(() => { showUpgradeStep('done'); }, 500);
+  const pid = selectedPaymentData && selectedPaymentData.pid;
+  if (pid) {
+    try { await fetch('/app/notify-paid', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pid}) }); } catch(e) {}
+  }
+  showUpgradeStep('done');
 }
 function copyText(text) {
   navigator.clipboard.writeText(text).then(() => toast('Скопировано!','ok')).catch(()=>{});
@@ -1399,6 +1402,7 @@ async function confirmRenewal() {
   if (!renewalPid) return;
   const btn = document.getElementById('rnw-paid-btn');
   if (btn) { btn.disabled = true; btn.textContent = 'Отправляем…'; }
+  try { await fetch('/app/notify-paid', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pid: renewalPid}) }); } catch(e) {}
   document.getElementById('rnw-step-sbp').style.display = 'none';
   document.getElementById('rnw-step-done').style.display = 'block';
 }
@@ -1787,7 +1791,12 @@ async function submitTopup() {
   }
   btn.disabled = false; btn.textContent = 'Перейти к оплате →';
 }
-function topupConfirmPaid() { showTopupStep('done'); }
+async function topupConfirmPaid() {
+  if (_tuPid) {
+    try { await fetch('/app/notify-paid', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pid: _tuPid}) }); } catch(e) {}
+  }
+  showTopupStep('done');
+}
 function copyTopupPhone()   { navigator.clipboard?.writeText(_tuPhone);   toast('Номер скопирован'); }
 function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast('Комментарий скопирован'); }
 </script>

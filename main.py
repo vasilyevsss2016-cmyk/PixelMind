@@ -548,6 +548,99 @@ def send_payment_receipt_email(to_email: str, username: str, ptype: str, label: 
         return False
 
 
+def send_payment_notify_to_admin(pid: str, username: str, user_email: str,
+                                  ptype: str, label: str, amount_rub: float) -> bool:
+    """Отправляет красивую заявку администратору когда пользователь нажал «Я оплатил»."""
+    if not SMTP_USER or not SMTP_PASSWORD:
+        return False
+    try:
+        admin_email = "prostachochek@internet.ru"
+        date_str = datetime.now().strftime("%d.%m.%Y в %H:%M")
+        amount_str = f"{amount_rub:,.0f}".replace(",", " ")
+        type_icons = {"core": "🌟", "pro": "💎", "credits": "⚡", "renewal": "🔄"}
+        icon = type_icons.get(ptype, "💳")
+        type_labels = {"core": "Подписка Core", "pro": "Подписка Pro",
+                       "credits": "Пополнение кредитов", "renewal": "Продление подписки"}
+        type_label = type_labels.get(ptype, label)
+        admin_url = f"https://{REPLIT_URL}/admin"
+        subject = f"{icon} Новая заявка на оплату — {username} ({amount_str} ₽)"
+        text = (
+            f"Новая заявка на оплату PixelMind\n\n"
+            f"Пользователь: {username}\n"
+            f"Email: {user_email or '—'}\n"
+            f"Тип: {type_label}\n"
+            f"Тариф: {label}\n"
+            f"Сумма: {amount_str} ₽\n"
+            f"ID платежа: {pid}\n"
+            f"Дата заявки: {date_str}\n\n"
+            f"Подтвердить: {admin_url}"
+        )
+        html = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a">
+<div style="max-width:500px;margin:32px auto;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+  <div style="background:linear-gradient(135deg,#0d1f3c 0%,#162040 50%,#0f1525 100%);padding:36px 36px 28px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.08)">
+    <div style="font-size:48px;margin-bottom:10px;filter:drop-shadow(0 0 24px rgba(90,171,255,0.6))">{icon}</div>
+    <h1 style="margin:0 0 4px;font-size:22px;font-weight:800;color:#e8eef8;letter-spacing:-0.5px">Новая заявка на оплату</h1>
+    <p style="margin:0;color:#7a90b0;font-size:13px">PixelMind — требует подтверждения</p>
+  </div>
+  <div style="background:rgba(13,20,40,0.98);padding:28px 32px">
+    <div style="background:rgba(255,221,0,0.06);border:1px solid rgba(255,221,0,0.2);border-radius:14px;padding:18px 20px;margin-bottom:20px">
+      <p style="margin:0 0 4px;font-size:11px;color:#7a90b0;text-transform:uppercase;letter-spacing:1px">Пользователь</p>
+      <p style="margin:0;font-size:20px;font-weight:800;color:#ffdd00">{username}</p>
+      {"<p style='margin:4px 0 0;font-size:12px;color:#7a90b0'>" + user_email + "</p>" if user_email else ""}
+    </div>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px 20px;margin-bottom:20px">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr>
+          <td style="color:#6a7f9a;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">Тип платежа</td>
+          <td style="color:#e8eef8;text-align:right;font-weight:600;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">{type_label}</td>
+        </tr>
+        <tr>
+          <td style="color:#6a7f9a;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">Тариф / пакет</td>
+          <td style="color:#e8eef8;text-align:right;font-weight:600;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">{label}</td>
+        </tr>
+        <tr>
+          <td style="color:#6a7f9a;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">Сумма к получению</td>
+          <td style="color:#34d058;text-align:right;font-weight:800;font-size:16px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">{amount_str} ₽</td>
+        </tr>
+        <tr>
+          <td style="color:#6a7f9a;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">Дата заявки</td>
+          <td style="color:#e8eef8;text-align:right;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">{date_str}</td>
+        </tr>
+        <tr>
+          <td style="color:#6a7f9a;padding:6px 0">ID платежа</td>
+          <td style="color:#4a5f7a;text-align:right;font-size:11px;font-family:monospace;padding:6px 0">{pid}</td>
+        </tr>
+      </table>
+    </div>
+    <div style="background:rgba(255,165,0,0.06);border:1px solid rgba(255,165,0,0.2);border-radius:12px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#ffb347;line-height:1.5">
+      ⚠️ Проверь входящий перевод в Т-Банке и подтверди платёж в панели администратора.
+    </div>
+    <a href="{admin_url}" style="display:block;text-align:center;padding:15px 24px;background:linear-gradient(135deg,#22a74a,#34d058);color:#fff;text-decoration:none;border-radius:14px;font-weight:800;font-size:15px;box-shadow:0 6px 20px rgba(52,208,88,0.4);letter-spacing:0.3px">
+      ✅ Открыть панель и подтвердить
+    </a>
+    <p style="text-align:center;color:#2a3f5a;font-size:11px;margin:20px 0 0;line-height:1.6">
+      Автоматическое уведомление — <strong style="color:#3a5a8a">PixelMind</strong> by Defa Projects
+    </p>
+  </div>
+</div>
+</body></html>"""
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"PixelMind Payments <{SMTP_USER}>"
+        msg["To"] = admin_email
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_USER, admin_email, msg.as_string())
+        logger.info(f"📧 Заявка об оплате отправлена на {admin_email} (pid={pid}, user={username})")
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки заявки администратору: {e}")
+        return False
+
+
 def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
     if not SMTP_USER or not SMTP_PASSWORD:
         logger.error("SMTP не настроен — нет SMTP_USER или SMTP_PASSWORD")
@@ -3133,6 +3226,31 @@ def web_request_renewal():
         "sbp_bank": SBP_BANK,
         "comment": f"PixelMind {u['username']}"
     })
+
+@app.route("/app/notify-paid", methods=["POST"])
+def web_notify_paid():
+    """Пользователь нажал «Я оплатил» — отправляем заявку администратору на почту."""
+    data = request.get_json(silent=True) or {}
+    pid = (data.get("pid") or "").strip()
+    if not pid:
+        return jsonify({"ok": False, "error": "Нет pid"}), 400
+    payments = load_web_payments()
+    p = payments.get(pid)
+    if not p:
+        return jsonify({"ok": False, "error": "Платёж не найден"}), 404
+    # Помечаем что пользователь подтвердил оплату
+    if p.get("status") == "pending":
+        p["user_confirmed_at"] = datetime.now().isoformat()
+        save_web_payments(payments)
+    # Отправляем заявку администратору в фоне
+    threading.Thread(
+        target=send_payment_notify_to_admin,
+        args=(pid, p.get("username", ""), p.get("email", ""),
+              p.get("type", ""), p.get("label", ""), p.get("amount_rub", 0)),
+        daemon=True
+    ).start()
+    return jsonify({"ok": True})
+
 
 @app.route("/admin/api/web-users")
 def admin_api_web_users():
