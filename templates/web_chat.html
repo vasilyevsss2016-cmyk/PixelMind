@@ -350,6 +350,9 @@ header {
 .sbp-qr { text-align:center; margin:14px 0 4px; }
 .sbp-qr img { width:154px; height:154px; border-radius:14px; border:2px solid rgba(52,208,88,0.3); background:#0f1117; display:block; margin:0 auto; }
 .sbp-qr-hint { font-size:11px; color:var(--text2); margin-top:7px; }
+.sbp-qr-label { display:inline-block; font-size:10px; font-weight:700; background:rgba(255,221,0,0.12); color:#ffdd00; border:1px solid rgba(255,221,0,0.25); border-radius:6px; padding:2px 8px; margin-bottom:6px; letter-spacing:.4px; }
+.sbp-or { font-size:11px; color:var(--text3); margin:10px 0 6px; display:flex; align-items:center; gap:8px; }
+.sbp-or::before,.sbp-or::after { content:''; flex:1; height:1px; background:var(--glass-border); }
 
 .upg-btn {
   width:100%; padding:13px; border-radius:12px; font-size:14px; font-weight:700;
@@ -505,8 +508,11 @@ header {
         <div class="sbp-row"><span>Сумма</span><span class="sbp-val" style="color:var(--accent2);font-size:16px" id="tu-sbp-sum">—</span></div>
         <div class="sbp-row"><span>Комментарий</span><span class="sbp-val"><span id="tu-sbp-comment">—</span><button class="copy-btn" onclick="copyTopupComment()" title="Копировать">📋</button></span></div>
         <div class="sbp-qr">
-          <img id="tu-sbp-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=%2B79819694398&color=34d058&bgcolor=0f1117&margin=15" alt="QR СБП">
-          <div class="sbp-qr-hint">📷 Сканируй камерой — СБП перевод в Т-Банк</div>
+          <div class="sbp-qr-label">СКАНИРУЙ В Т-БАНКЕ</div>
+          <img id="tu-sbp-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fwww.tinkoff.ru%2Frm%2Fr_CTvdMKuZlI.CWdifqAhHU%2Fmiyrd9457&color=34d058&bgcolor=0f1117&margin=15" alt="QR Т-Банк">
+          <div class="sbp-qr-hint">📷 Наведи камеру — откроется перевод в Т-Банк</div>
+          <div class="sbp-or">или</div>
+          <div class="sbp-qr-hint">Другие банки — переводи по номеру СБП выше</div>
         </div>
         <div class="sbp-note">⚠ Укажите комментарий при переводе. После оплаты нажмите кнопку ниже — администратор подтвердит платёж.</div>
       </div>
@@ -620,8 +626,11 @@ header {
           <div class="sbp-row"><span>Сумма</span><div class="sbp-val" style="color:var(--accent2)"><span id="sbp-amount-val">—</span> ₽ <button class="copy-btn" onclick="copyText(document.getElementById('sbp-amount-val').textContent)" title="Копировать">📋</button></div></div>
           <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="sbp-comment-val">PixelMind —</span> <button class="copy-btn" onclick="copyText(document.getElementById('sbp-comment-val').textContent)" title="Копировать">📋</button></div></div>
           <div class="sbp-qr">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=%2B79819694398&color=34d058&bgcolor=0f1117&margin=15" alt="QR СБП">
-            <div class="sbp-qr-hint">📷 Сканируй — откроется оплата в банковском приложении</div>
+            <div class="sbp-qr-label">СКАНИРУЙ В Т-БАНКЕ</div>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fwww.tinkoff.ru%2Frm%2Fr_CTvdMKuZlI.CWdifqAhHU%2Fmiyrd9457&color=34d058&bgcolor=0f1117&margin=15" alt="QR Т-Банк">
+            <div class="sbp-qr-hint">📷 Наведи камеру — откроется перевод в Т-Банк</div>
+            <div class="sbp-or">или</div>
+            <div class="sbp-qr-hint">Другие банки — переводи по номеру СБП выше</div>
           </div>
           <div class="sbp-note">⚠️ Обязательно укажи комментарий — так мы найдём твой платёж. После перевода нажми «Я оплатил», кредиты добавятся после проверки администратором.</div>
         </div>
@@ -680,8 +689,11 @@ header {
           <div class="sbp-row"><span>Сумма</span><div class="sbp-val" style="color:var(--accent2)"><span id="rnw-sbp-amount">—</span> ₽ <button class="copy-btn" onclick="copyText(document.getElementById('rnw-sbp-amount').textContent)" title="Копировать">📋</button></div></div>
           <div class="sbp-row"><span>Комментарий</span><div class="sbp-val"><span id="rnw-sbp-comment">PixelMind —</span> <button class="copy-btn" onclick="copyText(document.getElementById('rnw-sbp-comment').textContent)" title="Копировать">📋</button></div></div>
           <div class="sbp-qr">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=%2B79819694398&color=34d058&bgcolor=0f1117&margin=15" alt="QR СБП">
-            <div class="sbp-qr-hint">📷 Сканируй — откроется оплата в банковском приложении</div>
+            <div class="sbp-qr-label">СКАНИРУЙ В Т-БАНКЕ</div>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https%3A%2F%2Fwww.tinkoff.ru%2Frm%2Fr_CTvdMKuZlI.CWdifqAhHU%2Fmiyrd9457&color=34d058&bgcolor=0f1117&margin=15" alt="QR Т-Банк">
+            <div class="sbp-qr-hint">📷 Наведи камеру — откроется перевод в Т-Банк</div>
+            <div class="sbp-or">или</div>
+            <div class="sbp-qr-hint">Другие банки — переводи по номеру СБП выше</div>
           </div>
           <div class="sbp-note">⚠️ Обязательно укажи комментарий — так мы найдём твой платёж. После перевода нажми «Я продлил» — подписка активируется после проверки администратором.</div>
         </div>
