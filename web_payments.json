@@ -11,18 +11,5 @@
     "created_at": "2026-03-29T15:38:02.794559",
     "approved_at": "2026-03-29T15:39:24.681956",
     "approved_by": "f3e13711"
-  },
-  "9831d46ed4ca3ab64ff7": {
-    "uid": "ccb3e1610ccd81bfa5d2890d224e6378",
-    "username": "Юрий",
-    "email": "urec-9126@mail.ru",
-    "type": "credits",
-    "label": "20 кредитов",
-    "amount_rub": 300,
-    "credits_to_add": 20,
-    "status": "approved",
-    "created_at": "2026-03-29T16:51:40.319492",
-    "approved_at": "2026-03-29T16:51:54.569136",
-    "approved_by": "55d521aa"
   }
 }
