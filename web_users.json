@@ -57,7 +57,7 @@
     "email_verified": false,
     "email_required_after": "2026-04-05T15:37:14.572577",
     "created_at": "2026-03-29T15:37:14.572587",
-    "credits": -1,
+    "credits": 0,
     "plan": "free",
     "plan_expires": null,
     "chats": {
@@ -203,7 +203,7 @@
     "password_hash": "20a9dc8ed83889fe8dbc2b710ec65e34d778a2eda794f46742af5291fd5faaf3",
     "email_verified": true,
     "created_at": "2026-03-29T16:50:15.944061",
-    "credits": 100,
+    "credits": -1,
     "chats": {
       "342b2f51-cc59-4030-aab3-e80721ba47a1": {
         "name": "Помоги подняться по карьерной ле…",
@@ -229,6 +229,8 @@
         "updated_at": "2026-03-29T16:54:28.488005"
       }
     },
-    "active_chat_id": "342b2f51-cc59-4030-aab3-e80721ba47a1"
+    "active_chat_id": "342b2f51-cc59-4030-aab3-e80721ba47a1",
+    "plan": "free",
+    "plan_expires": null
   }
 }

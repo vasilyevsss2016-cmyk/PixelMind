@@ -443,6 +443,103 @@ def send_invite_email(to_email: str) -> bool:
         return False
 
 
+def send_payment_receipt_email(to_email: str, username: str, ptype: str, label: str,
+                               credits_to_add: int, amount_rub: float) -> bool:
+    """Отправляет чек об успешном пополнении/подписке пользователю."""
+    if not SMTP_USER or not SMTP_PASSWORD or not to_email:
+        return False
+    try:
+        is_sub = ptype in ("core", "pro", "renewal")
+        plan_names = {"core": "Core", "pro": "Pro", "renewal": "Renewal"}
+
+        if is_sub:
+            subject = f"✅ Подписка {plan_names.get(ptype, label)} активирована — PixelMind"
+            icon = "🚀"
+            title_color = "#a78bfa"
+            action_line = f"Подписка <strong style=\"color:#a78bfa\">{label}</strong> активирована на&nbsp;1&nbsp;год."
+            credits_line = (
+                f"<div style=\"background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.25);"
+                f"border-radius:12px;padding:14px 18px;margin:18px 0;font-size:13px;color:#b0bdd0\">"
+                f"Начислено кредитов: <strong style=\"color:#e8eef8;font-size:15px\">"
+                f"{credits_to_add:,}</strong></div>"
+            ) if credits_to_add > 0 else ""
+        else:
+            subject = f"✅ Баланс пополнен на {credits_to_add} кредитов — PixelMind"
+            icon = "⚡"
+            title_color = "#5aabff"
+            action_line = f"Ваш баланс пополнен на <strong style=\"color:#5aabff\">{credits_to_add}&nbsp;кредитов</strong>."
+            credits_line = ""
+
+        date_str = datetime.now().strftime("%d.%m.%Y в %H:%M")
+        amount_str = f"{amount_rub:,.0f}".replace(",", " ")
+
+        text = (
+            f"Привет, {username}!\n\n"
+            f"Платёж подтверждён.\n"
+            f"{'Подписка' if is_sub else 'Баланс'}: {label}\n"
+            f"Сумма: {amount_str} ₽\n"
+            f"Дата: {date_str}\n\n"
+            f"Спасибо, что выбираешь PixelMind!\n— Команда Defa Projects"
+        )
+        html = f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e1a">
+<div style="max-width:480px;margin:32px auto;border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.6)">
+  <div style="background:linear-gradient(135deg,#0d1f3c 0%,#1a2d5a 50%,#0f1525 100%);padding:40px 36px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.1)">
+    <div style="font-size:52px;margin-bottom:10px;filter:drop-shadow(0 0 20px rgba(90,171,255,0.5))">{icon}</div>
+    <h1 style="margin:0 0 4px;font-size:26px;font-weight:800;color:{title_color};letter-spacing:-0.5px">PixelMind</h1>
+    <p style="margin:0;color:#7a90b0;font-size:14px">Подтверждение платежа</p>
+  </div>
+  <div style="background:rgba(15,24,48,0.97);padding:32px 36px">
+    <p style="color:#d0ddf0;font-size:15px;margin:0 0 18px;line-height:1.6">
+      Привет, <strong style="color:#e8eef8">{username}</strong>! {action_line}
+    </p>
+    {credits_line}
+    <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:18px 20px;margin:18px 0">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <tr>
+          <td style="color:#6a7f9a;padding:5px 0">Тариф / пакет</td>
+          <td style="color:#e8eef8;text-align:right;font-weight:600">{label}</td>
+        </tr>
+        <tr>
+          <td style="color:#6a7f9a;padding:5px 0">Сумма</td>
+          <td style="color:#e8eef8;text-align:right;font-weight:600">{amount_str} ₽</td>
+        </tr>
+        <tr>
+          <td style="color:#6a7f9a;padding:5px 0">Дата</td>
+          <td style="color:#e8eef8;text-align:right">{date_str}</td>
+        </tr>
+        <tr>
+          <td style="color:#6a7f9a;padding:5px 0">Статус</td>
+          <td style="color:#34d058;text-align:right;font-weight:700">✅ Оплачено</td>
+        </tr>
+      </table>
+    </div>
+    <a href="https://{REPLIT_URL}/app" style="display:block;text-align:center;padding:14px 24px;background:linear-gradient(135deg,#5aabff,#3b82f6);color:#fff;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;box-shadow:0 6px 20px rgba(90,171,255,0.35);margin-top:24px">
+      ⚡ Открыть PixelMind Web
+    </a>
+    <p style="text-align:center;color:#3a4f6a;font-size:11px;margin:24px 0 0;line-height:1.6">
+      Это автоматическое письмо от <strong style="color:#5a7aaa">Defa Projects</strong>.<br>
+      Если это не вы — обратитесь в поддержку.
+    </p>
+  </div>
+</div>
+</body></html>"""
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"PixelMind <{SMTP_USER}>"
+        msg["To"] = to_email
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        logger.info(f"Чек об оплате отправлен на {to_email} ({username}, {label})")
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка отправки чека на {to_email}: {e}")
+        return False
+
+
 def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
     if not SMTP_USER or not SMTP_PASSWORD:
         logger.error("SMTP не настроен — нет SMTP_USER или SMTP_PASSWORD")
@@ -3077,6 +3174,15 @@ def _do_approve_payment(pid):
                 base = datetime.now()
             u["plan_expires"] = (base + timedelta(days=365)).isoformat()
         save_web_users(users)
+        # Отправляем чек на почту пользователя
+        user_email = p.get("email", "")
+        if user_email:
+            threading.Thread(
+                target=send_payment_receipt_email,
+                args=(user_email, p.get("username", ""), p.get("type", ""),
+                      p.get("label", ""), p.get("credits_to_add", 0), p.get("amount_rub", 0)),
+                daemon=True
+            ).start()
     p["status"] = "approved"
     p["approved_at"] = datetime.now().isoformat()
     p["approved_by"] = request.headers.get("X-Admin-Token", "?")[:8]
