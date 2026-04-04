@@ -3031,6 +3031,55 @@ def web_request_payment():
         "comment": f"PixelMind {u['username']}"
     })
 
+@app.route("/app/topup", methods=["POST"])
+def web_topup():
+    """Пополнение сервисов по логину+паролю без активной сессии."""
+    data = request.get_json(silent=True) or {}
+    login_val = (data.get("login") or "").strip().lower()
+    password  = data.get("password") or ""
+    ptype     = data.get("type")          # "core"|"pro"|"credits"
+    amount_credits = 0
+    try:
+        amount_credits = int(data.get("amount_credits", 0))
+    except (ValueError, TypeError):
+        pass
+    if not login_val or not password:
+        return jsonify({"ok": False, "error": "Введите логин и пароль"}), 400
+    users = load_web_users()
+    found_uid, u = None, None
+    for uid, usr in users.items():
+        if (usr.get("email") or "").lower() == login_val or usr["username"].lower() == login_val:
+            found_uid, u = uid, usr
+            break
+    if not u or u.get("password_hash") != web_hash_pwd(password):
+        return jsonify({"ok": False, "error": "Неверный логин или пароль"}), 401
+    if ptype == "core":
+        amount_rub = PLAN_PRICE["core"]; credits_to_add = PLAN_CREDITS["core"]; label = "Core (1 год)"
+    elif ptype == "pro":
+        amount_rub = PLAN_PRICE["pro"];  credits_to_add = PLAN_CREDITS["pro"];  label = "Pro (1 год)"
+    elif ptype == "credits":
+        if amount_credits < 1:
+            return jsonify({"ok": False, "error": "Укажите количество кредитов"}), 400
+        amount_rub = amount_credits * CREDIT_PRICE; credits_to_add = amount_credits; label = f"{amount_credits} кредитов"
+    else:
+        return jsonify({"ok": False, "error": "Выберите что пополнить"}), 400
+    pid = secrets.token_hex(10)
+    payments = load_web_payments()
+    payments[pid] = {
+        "uid": found_uid, "username": u["username"], "email": u.get("email", ""),
+        "type": ptype, "label": label, "amount_rub": amount_rub,
+        "credits_to_add": credits_to_add, "status": "pending",
+        "created_at": datetime.now().isoformat(), "source": "topup_form"
+    }
+    save_web_payments(payments)
+    return jsonify({
+        "ok": True, "pid": pid, "username": u["username"],
+        "amount_rub": amount_rub, "label": label,
+        "sbp_phone": SBP_PHONE, "sbp_bank": SBP_BANK,
+        "comment": f"PixelMind {u['username']}"
+    })
+
+
 @app.route("/app/request-renewal", methods=["POST"])
 def web_request_renewal():
     uid = get_web_user_id()

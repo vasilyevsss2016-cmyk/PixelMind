@@ -448,6 +448,73 @@ header {
     <div class="back-to-admin">
       <a href="/admin">← Вернуться на страницу входа в панель</a>
     </div>
+    <div style="margin-top:14px;text-align:center">
+      <button onclick="openTopup()" style="background:rgba(52,208,88,0.10);border:1px solid rgba(52,208,88,0.28);color:var(--accent2);font-size:13px;font-weight:600;padding:10px 20px;border-radius:12px;cursor:pointer;transition:all .2s;width:100%" onmouseover="this.style.background='rgba(52,208,88,0.18)'" onmouseout="this.style.background='rgba(52,208,88,0.10)'">
+        💳 Пополнение сервисов
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPUP MODAL (доступен до входа) -->
+<div class="modal-overlay" id="topup-modal" onclick="if(event.target===this)closeTopup()">
+  <div class="modal-box" style="max-width:420px">
+
+    <!-- Step: form -->
+    <div id="topup-step-form">
+      <button class="modal-close" onclick="closeTopup()">✕</button>
+      <div class="modal-title">💳 Пополнение сервисов</div>
+      <div class="modal-sub">Введите данные аккаунта и выберите что пополнить</div>
+
+      <input class="auth-input" id="tu-login" type="text" placeholder="Логин или Email" autocomplete="username" style="margin-bottom:10px">
+      <input class="auth-input" id="tu-pwd" type="password" placeholder="Пароль" autocomplete="current-password" style="margin-bottom:10px">
+
+      <div style="margin-bottom:10px">
+        <select id="tu-type" onchange="onTopupTypeChange()" style="width:100%;padding:11px 14px;border-radius:12px;font-size:14px;background:rgba(255,255,255,0.07);border:1px solid var(--glass-border);color:var(--text);outline:none;cursor:pointer;appearance:none;-webkit-appearance:none">
+          <option value="">— Выберите что пополнить —</option>
+          <option value="core">🔵 Core подписка (1 год) — 550 ₽</option>
+          <option value="pro">🟣 Pro подписка (1 год) — 1 100 ₽</option>
+          <option value="credits">⚡ Кредиты (15 ₽ за кредит)</option>
+        </select>
+      </div>
+
+      <div id="tu-credits-row" style="display:none;margin-bottom:10px">
+        <div class="credit-custom-row">
+          <input type="number" id="tu-credits-amt" min="1" max="100000" placeholder="Количество кредитов" oninput="updateTopupPrice()">
+          <span id="tu-price-label" style="min-width:70px;text-align:right;font-weight:600;color:var(--accent2)">— ₽</span>
+        </div>
+      </div>
+
+      <div class="auth-error" id="tu-err" style="margin-bottom:8px"></div>
+      <button class="upg-btn upg-btn-blue" id="tu-submit-btn" onclick="submitTopup()">Перейти к оплате →</button>
+      <button class="upg-btn upg-btn-ghost" onclick="closeTopup()">Отмена</button>
+    </div>
+
+    <!-- Step: SBP -->
+    <div id="topup-step-sbp" style="display:none">
+      <button class="modal-close" onclick="closeTopup()">✕</button>
+      <div class="modal-title">Оплата через СБП</div>
+      <div class="modal-sub" id="tu-sbp-desc">Переведите сумму по СБП</div>
+      <div class="sbp-box" style="margin-top:16px">
+        <div class="sbp-title">📱 Перевод через СБП</div>
+        <div class="sbp-row"><span>Банк</span><span class="sbp-val" id="tu-sbp-bank">—</span></div>
+        <div class="sbp-row"><span>Номер</span><span class="sbp-val"><span id="tu-sbp-phone">—</span><button class="copy-btn" onclick="copyTopupPhone()" title="Копировать">📋</button></span></div>
+        <div class="sbp-row"><span>Сумма</span><span class="sbp-val" style="color:var(--accent2);font-size:16px" id="tu-sbp-sum">—</span></div>
+        <div class="sbp-row"><span>Комментарий</span><span class="sbp-val"><span id="tu-sbp-comment">—</span><button class="copy-btn" onclick="copyTopupComment()" title="Копировать">📋</button></span></div>
+        <div class="sbp-note">⚠ Укажите комментарий при переводе. После оплаты нажмите кнопку ниже — администратор подтвердит платёж.</div>
+      </div>
+      <button class="upg-btn upg-btn-blue" onclick="topupConfirmPaid()" style="background:linear-gradient(135deg,#34d058,#22a74a);box-shadow:0 4px 16px rgba(52,208,88,0.35)">✅ Я оплатил</button>
+      <button class="upg-btn upg-btn-ghost" onclick="showTopupStep('form')">← Назад</button>
+    </div>
+
+    <!-- Step: done -->
+    <div id="topup-step-done" style="display:none;text-align:center;padding:12px 0">
+      <div style="font-size:48px;margin-bottom:12px">⏳</div>
+      <div class="modal-title" style="margin-bottom:8px">Платёж отправлен</div>
+      <div class="modal-sub" style="margin-bottom:24px">Администратор проверит перевод и начислит <span id="tu-done-label" style="color:var(--accent2)"></span>. Обычно это занимает до 30 минут.</div>
+      <button class="upg-btn upg-btn-blue" onclick="closeTopup()">Хорошо</button>
+    </div>
+
   </div>
 </div>
 
@@ -1625,6 +1692,81 @@ async function resendChangeEmailCode() {
     btn.disabled = false;
   }
 }
+
+// ===== ТОПАП / ПОПОЛНЕНИЕ СЕРВИСОВ =====
+let _tuPid = '', _tuComment = '', _tuPhone = '';
+
+function openTopup() {
+  document.getElementById('tu-login').value = '';
+  document.getElementById('tu-pwd').value = '';
+  document.getElementById('tu-type').value = '';
+  document.getElementById('tu-credits-amt').value = '';
+  document.getElementById('tu-price-label').textContent = '— ₽';
+  document.getElementById('tu-credits-row').style.display = 'none';
+  document.getElementById('tu-err').textContent = '';
+  showTopupStep('form');
+  document.getElementById('topup-modal').classList.add('visible');
+}
+function closeTopup() {
+  document.getElementById('topup-modal').classList.remove('visible');
+}
+function showTopupStep(step) {
+  ['form','sbp','done'].forEach(s =>
+    document.getElementById('topup-step-' + s).style.display = s === step ? '' : 'none'
+  );
+}
+function onTopupTypeChange() {
+  const v = document.getElementById('tu-type').value;
+  document.getElementById('tu-credits-row').style.display = v === 'credits' ? '' : 'none';
+  document.getElementById('tu-credits-amt').value = '';
+  document.getElementById('tu-price-label').textContent = '— ₽';
+}
+function updateTopupPrice() {
+  const n = parseInt(document.getElementById('tu-credits-amt').value) || 0;
+  document.getElementById('tu-price-label').textContent = n > 0 ? (n * 15) + ' ₽' : '— ₽';
+}
+async function submitTopup() {
+  const btn = document.getElementById('tu-submit-btn');
+  const errEl = document.getElementById('tu-err');
+  errEl.textContent = '';
+  const login = document.getElementById('tu-login').value.trim();
+  const pwd   = document.getElementById('tu-pwd').value;
+  const type  = document.getElementById('tu-type').value;
+  const amt   = parseInt(document.getElementById('tu-credits-amt').value) || 0;
+  if (!login || !pwd)   { errEl.textContent = 'Введите логин и пароль'; return; }
+  if (!type)            { errEl.textContent = 'Выберите что пополнить'; return; }
+  if (type === 'credits' && amt < 1) { errEl.textContent = 'Укажите количество кредитов'; return; }
+  btn.disabled = true; btn.textContent = 'Подождите...';
+  try {
+    const r = await fetch('/app/topup', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ login, password: pwd, type, amount_credits: amt })
+    });
+    const d = await r.json();
+    if (!d.ok) {
+      errEl.textContent = d.error || 'Ошибка';
+      btn.disabled = false; btn.textContent = 'Перейти к оплате →';
+      return;
+    }
+    _tuPid     = d.pid;
+    _tuPhone   = d.sbp_phone;
+    _tuComment = d.comment;
+    document.getElementById('tu-sbp-bank').textContent    = d.sbp_bank;
+    document.getElementById('tu-sbp-phone').textContent   = d.sbp_phone;
+    document.getElementById('tu-sbp-sum').textContent     = d.amount_rub + ' ₽';
+    document.getElementById('tu-sbp-comment').textContent = d.comment;
+    document.getElementById('tu-sbp-desc').textContent    =
+      `Пополнение аккаунта ${d.username}: ${d.label}`;
+    document.getElementById('tu-done-label').textContent  = d.label;
+    showTopupStep('sbp');
+  } catch(e) {
+    errEl.textContent = 'Ошибка соединения';
+  }
+  btn.disabled = false; btn.textContent = 'Перейти к оплате →';
+}
+function topupConfirmPaid() { showTopupStep('done'); }
+function copyTopupPhone()   { navigator.clipboard?.writeText(_tuPhone);   toast('Номер скопирован'); }
+function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast('Комментарий скопирован'); }
 </script>
 <script>
 if ('serviceWorker' in navigator) {
