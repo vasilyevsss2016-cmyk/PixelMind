@@ -212,23 +212,18 @@ header {
   z-index:5; overflow:visible;
 }
 .sse-dot.live { background:var(--accent2); box-shadow:0 0 8px var(--accent2); }
-.sse-dot.live::before,
-.sse-dot.live::after {
-  content:''; position:absolute;
-  width:8px; height:8px;
-  top:50%; left:50%;
-  border-radius:50%;
-  border:1.5px solid var(--accent2);
-  opacity:0;
-  transform:translate(-50%,-50%) scale(1);
-  animation:ssePing 2s linear infinite;
-  pointer-events:none; z-index:5;
+.sse-wc {
+  position:absolute; left:12px; top:50%; transform:translateY(-50%);
+  width:56px; height:10px; overflow:hidden;
+  pointer-events:none; opacity:0; transition:opacity .4s;
 }
-.sse-dot.live::after { animation-delay:1s; }
-@keyframes ssePing {
-  0%   { transform:translate(-50%,-50%) scale(1);   opacity:0;   }
-  7%   { opacity:0.75; }
-  100% { transform:translate(-50%,-50%) scale(4.4); opacity:0;   }
+.sse-dot.live .sse-wc { opacity:1; }
+.sse-wc svg { display:block; overflow:visible; }
+.sse-wc path { stroke:var(--accent2); }
+.sse-dot.live .sse-wc svg { animation:sseWave 1.4s linear infinite; }
+@keyframes sseWave {
+  0%   { transform:translateX(0); }
+  100% { transform:translateX(-50%); }
 }
 .header-right { display:flex; align-items:center; gap:8px; }
 .status-badge { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; backdrop-filter:blur(10px); }
@@ -646,7 +641,7 @@ header {
 
 <div id="app">
   <header>
-    <div class="logo"><span class="sse-dot" id="sse-dot"></span>PixelMind Admin</div>
+    <div class="logo"><span class="sse-dot" id="sse-dot"><span class="sse-wc"><svg width="112" height="10" viewBox="0 0 112 10" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M0,5 Q7,1 14,5 Q21,9 28,5 Q35,1 42,5 Q49,9 56,5 Q63,1 70,5 Q77,9 84,5 Q91,1 98,5 Q105,9 112,5"/></svg></span></span>PixelMind Admin</div>
     <div class="header-right">
       <div class="status-badge running" id="bot-status-badge">🟢 Работает</div>
       <div class="desktop-btns">
