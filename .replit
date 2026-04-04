@@ -13,7 +13,7 @@ requiredFiles = [".replit", "replit.nix"]
 
 [deployment]
 run = ["gunicorn", "--workers", "1", "--threads", "64", "--timeout", "0", "--bind", "0.0.0.0:5000", "--reuse-port", "main:app"]
-deploymentTarget = "autoscale"
+deploymentTarget = "vm"
 
 [agent]
 expertMode = true
