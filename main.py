@@ -3356,6 +3356,27 @@ def web_voice_chat():
     return jsonify({"ok": True, "answer": answer, "credits": u.get("credits", credits)})
 
 
+@app.route("/app/voice-tts", methods=["POST"])
+def web_voice_tts():
+    """Синтез речи через edge-tts — возвращает MP3 аудио."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    if not EDGE_TTS_AVAILABLE:
+        return jsonify({"ok": False, "error": "TTS недоступен"}), 503
+    data = request.get_json(silent=True) or {}
+    text = (data.get("text") or "").strip()
+    if not text:
+        return jsonify({"ok": False, "error": "Нет текста"}), 400
+    # Ограничиваем длину чтобы не генерировать огромные файлы
+    text = text[:600]
+    audio_bytes = synthesize_voice(text)
+    if not audio_bytes:
+        return jsonify({"ok": False, "error": "Ошибка синтеза речи"}), 500
+    return Response(audio_bytes, mimetype="audio/mpeg",
+                    headers={"Cache-Control": "no-store"})
+
+
 @app.route("/app/homework-ask", methods=["POST"])
 def web_homework_ask():
     """AI-помощник с домашним заданием — с пошаговыми объяснениями."""

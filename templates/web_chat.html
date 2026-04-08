@@ -2212,7 +2212,8 @@ let voiceOpen = false;
 let voiceMuted = false;
 let voiceCamStream = null;
 let voiceCamEnabled = false;
-let voiceLastFrame = null;   // последний base64 кадр для отправки AI
+let voiceLastFrame = null;
+let voiceAudioEl = null;    // текущий Audio-элемент с озвучкой
 
 async function openVoiceChat() {
   if (voiceOpen) return;
@@ -2240,7 +2241,7 @@ function closeVoiceChat() {
   if (rec) { try { rec.stop(); } catch(e) {} }
 
   if (voiceAnimFrame) { cancelAnimationFrame(voiceAnimFrame); voiceAnimFrame = null; }
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  _stopVoiceAudio();
   if (voiceSendTimeout) { clearTimeout(voiceSendTimeout); voiceSendTimeout = null; }
   voiceLastTranscript = '';
 
@@ -2381,8 +2382,8 @@ function startVoiceRecognition() {
         if (t.length >= 2) { hasAny = true; break; }
       }
       if (hasAny) {
-        // Перебиваем — останавливаем TTS и переходим в режим слушания
-        window.speechSynthesis.cancel();
+        // Перебиваем — останавливаем аудио и переходим в режим слушания
+        _stopVoiceAudio();
         voiceLastTranscript = '';
         setVoiceState('listening');
         // Продолжаем обработку результата ниже
@@ -2454,40 +2455,41 @@ async function sendVoiceMessage(text) {
   } catch(e) { setVoiceState('listening'); toast('Ошибка соединения', 'err'); }
 }
 
-function speakVoiceResponse(text) {
-  if (!window.speechSynthesis) { setVoiceState('listening'); return; }
-  window.speechSynthesis.cancel();
+function _stopVoiceAudio() {
+  if (voiceAudioEl) {
+    voiceAudioEl.pause();
+    try { URL.revokeObjectURL(voiceAudioEl.src); } catch(e) {}
+    voiceAudioEl = null;
+  }
+}
+
+async function speakVoiceResponse(text) {
+  _stopVoiceAudio();
   setVoiceState('speaking');
-
-  const doSpeak = () => {
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.lang = 'ru-RU'; utt.rate = 1.05; utt.pitch = 1.0;
-    const voices = window.speechSynthesis.getVoices();
-    const ru = voices.find(v => v.lang && v.lang.startsWith('ru'));
-    if (ru) utt.voice = ru;
-    utt.onend = () => { if (voiceOpen) setVoiceState('listening'); };
-    utt.onerror = (e) => { if (voiceOpen) setVoiceState('listening'); };
-    // Фикс Chrome: иногда speechSynthesis зависает, мониторим
-    window.speechSynthesis.speak(utt);
-    // Chrome bug: resume если вдруг suspended
-    const watchdog = setInterval(() => {
-      if (!voiceOpen || voiceState !== 'speaking') { clearInterval(watchdog); return; }
-      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-    }, 5000);
-  };
-
-  // Небольшая задержка после cancel() — фикс Chrome
-  setTimeout(() => {
-    if (window.speechSynthesis.getVoices().length > 0) {
-      doSpeak();
-    } else {
-      window.speechSynthesis.addEventListener('voiceschanged', function onVC() {
-        window.speechSynthesis.removeEventListener('voiceschanged', onVC);
-        doSpeak();
-      });
-      doSpeak(); // всё равно пробуем
-    }
-  }, 120);
+  try {
+    const r = await fetch('/app/voice-tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!r.ok) { setVoiceState('listening'); return; }
+    const blob = await r.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    voiceAudioEl = audio;
+    audio.onended = () => {
+      voiceAudioEl = null;
+      URL.revokeObjectURL(url);
+      if (voiceOpen) setVoiceState('listening');
+    };
+    audio.onerror = () => {
+      voiceAudioEl = null;
+      if (voiceOpen) setVoiceState('listening');
+    };
+    await audio.play();
+  } catch(e) {
+    setVoiceState('listening');
+  }
 }
 
 function setVoiceState(s) {
