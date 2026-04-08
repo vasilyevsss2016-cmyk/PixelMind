@@ -3317,7 +3317,7 @@ def web_voice_chat():
     last_err = None
     for model in models_to_try:
         try:
-            resp = requests.post(
+            resp = http_requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
                 json={"model": model, "messages": [
@@ -3385,7 +3385,7 @@ def web_homework_ask():
                 {"role": "user", "content": question}
             ]
             model = AI_MODEL
-        resp = requests.post(
+        resp = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
             json={"model": model, "messages": messages, "max_tokens": 2000},
@@ -3426,7 +3426,7 @@ def web_analyze_image():
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
         ]}]
-        resp = requests.post(
+        resp = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
             json={"model": VISION_MODEL, "messages": messages, "max_tokens": 1000},
