@@ -57,7 +57,7 @@ body.theme-light .user-item:hover { background:rgba(0,0,0,0.03); }
 body.theme-light .invite-list-card { background:rgba(255,255,255,0.72); border-color:rgba(0,0,0,0.07); }
 body.theme-light .invite-header-card { background:rgba(255,255,255,0.78); border-color:rgba(0,0,0,0.07); }
 body.theme-light .invite-list-header { border-bottom-color:rgba(0,0,0,0.06); }
-body.theme-light #invite-panel, body.theme-light #payments-panel, body.theme-light #settings-panel { background:rgba(228,237,250,0.55); }
+body.theme-light #invite-panel, body.theme-light #payments-panel, body.theme-light #settings-panel, body.theme-light #anydesk-panel { background:rgba(228,237,250,0.55); }
 body.theme-light #profile-panel { background:rgba(228,237,250,0.55); }
 body.theme-light .profile-card { background:rgba(255,255,255,0.8); border-color:rgba(0,0,0,0.07); }
 body.theme-light .profile-stat { background:rgba(0,0,0,0.03); border-color:rgba(0,0,0,0.07); }
@@ -468,7 +468,7 @@ header {
 }
 
 /* ===== INVITE PANEL ===== */
-#invite-panel, #payments-panel, #settings-panel {
+#invite-panel, #payments-panel, #settings-panel, #anydesk-panel {
   flex:1; display:none; flex-direction:column; overflow-y:auto; -webkit-overflow-scrolling:touch;
   background:rgba(8,14,28,0.4);
 }
@@ -683,6 +683,7 @@ header {
     <button class="tab-btn" onclick="switchTab('invite')" id="tab-invite">📨 Email-рассылка</button>
     <button class="tab-btn" onclick="switchTab('payments')" id="tab-payments">💳 Платежи</button>
     <button class="tab-btn" onclick="switchTab('settings')" id="tab-settings">⚙️ Настройки</button>
+    <button class="tab-btn" onclick="switchTab('anydesk')" id="tab-anydesk" style="display:none">🖥 AnyDesk</button>
   </div>
 
   <div class="main" id="main-area">
@@ -1022,6 +1023,65 @@ header {
     </div>
   </div>
 
+    <!-- AnyDesk panel -->
+    <div id="anydesk-panel" style="display:none">
+      <div class="invite-content" style="max-width:540px">
+        <div class="invite-header-card">
+          <h2>🖥 AnyDesk — Удалённое подключение</h2>
+          <p style="margin-top:8px;line-height:1.6">Введи AnyDesk ID устройства пользователя и нажми «Подключиться». На устройстве пользователя <b>должно быть открыто приложение AnyDesk</b> и он должен <b>принять запрос на подключение</b> вручную.</p>
+        </div>
+
+        <!-- Правила -->
+        <div class="invite-list-card" style="border-left:3px solid var(--warn)">
+          <div class="invite-list-header" style="color:var(--warn)">⚠️ Правила использования</div>
+          <div style="padding:12px 16px;font-size:13px;line-height:1.8;color:var(--text2)">
+            1. Подключение <b>только с явного согласия пользователя</b><br>
+            2. Запрещено просматривать личные файлы без разрешения<br>
+            3. Запрещено устанавливать программы без ведома пользователя<br>
+            4. Сессия только для помощи — не для сбора данных<br>
+            5. Использование в рамках законодательства РФ
+          </div>
+        </div>
+
+        <!-- Форма подключения -->
+        <div class="invite-list-card">
+          <div class="invite-list-header">Подключиться к устройству</div>
+          <div style="padding:16px">
+            <div style="margin-bottom:12px">
+              <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:6px">AnyDesk ID пользователя</label>
+              <input type="text" id="anydesk-id-input" placeholder="Например: 123 456 789"
+                style="width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text);font-size:16px;letter-spacing:2px;outline:none"
+                oninput="this.value=this.value.replace(/[^0-9 ]/g,'')"
+                onkeydown="if(event.key==='Enter')connectAnyDesk()"
+                onfocus="this.style.borderColor='rgba(90,171,255,.45)'"
+                onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-blue btn-lg" onclick="connectAnyDesk()" style="flex:1;min-width:160px">
+                🚀 Подключиться
+              </button>
+              <button class="btn btn-ghost btn-lg" onclick="document.getElementById('anydesk-id-input').value=''" style="flex:0">
+                🗑
+              </button>
+            </div>
+            <div id="anydesk-status" style="margin-top:10px;font-size:13px;min-height:20px;color:var(--accent2)"></div>
+          </div>
+        </div>
+
+        <!-- Журнал сессий -->
+        <div class="invite-list-card" style="margin-top:2px">
+          <div class="invite-list-header" style="display:flex;justify-content:space-between;align-items:center">
+            <span>📋 Журнал подключений</span>
+            <button class="btn btn-ghost" style="font-size:12px;padding:3px 10px" onclick="clearAnydeskLog()">Очистить</button>
+          </div>
+          <div id="anydesk-log" style="padding:0 16px 12px;max-height:220px;overflow-y:auto">
+            <div class="invite-empty">Нет подключений</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   <!-- Mobile bottom nav -->
   <div id="bottom-nav">
     <button class="nav-btn active" onclick="mobileTab('chats')" id="nav-chats">
@@ -1048,6 +1108,9 @@ header {
     </button>
     <button class="nav-btn" id="nav-add-account" onclick="openAddAccount()" style="display:none">
       <span class="nav-icon">➕</span><span>Аккаунт</span>
+    </button>
+    <button class="nav-btn" id="nav-anydesk" onclick="mobileTab('anydesk')" style="display:none">
+      <span class="nav-icon">🖥</span><span>AnyDesk</span>
     </button>
     <button class="nav-btn bot-on" id="nav-bot" onclick="mobileToggleBot()">
       <span class="nav-icon" id="nav-bot-icon">🟢</span>
@@ -1465,6 +1528,8 @@ async function showApp() {
   document.getElementById('nav-invite').style.display = saDisplay;
   document.getElementById('tab-payments').style.display = saDisplay;
   document.getElementById('nav-payments').style.display = saDisplay;
+  document.getElementById('tab-anydesk').style.display = isSuperAdmin ? '' : 'none';
+  document.getElementById('nav-anydesk').style.display = isSuperAdmin ? '' : 'none';
   // Имя аккаунта в дропдауне
   const letter = (currentUsername || 'A')[0].toUpperCase();
   document.getElementById('menu-account-name').textContent = currentUsername || '—';
@@ -1488,12 +1553,14 @@ function _applyTabLayout(tab) {
   const isInvite = tab === 'invite';
   const isPayments = tab === 'payments';
   const isSettings = tab === 'settings';
+  const isAnydesk = tab === 'anydesk';
   document.getElementById('sidebar-chats').style.display = isChats ? 'flex' : 'none';
   document.getElementById('sidebar-users').style.display = isUsers ? 'flex' : 'none';
   document.getElementById('chat-panel').style.display = isChats ? 'flex' : 'none';
   document.getElementById('invite-panel').style.display = isInvite ? 'flex' : 'none';
   document.getElementById('payments-panel').style.display = isPayments ? 'flex' : 'none';
   document.getElementById('settings-panel').style.display = isSettings ? 'flex' : 'none';
+  document.getElementById('anydesk-panel').style.display = isAnydesk ? 'flex' : 'none';
   // На вкладке users: web-chat-panel основная, profile-panel — только для TG-пользователей
   if (isUsers) {
     const showProfile = !!selectedProfileId && !selectedWebUid;
@@ -1508,7 +1575,7 @@ function _applyTabLayout(tab) {
 function switchTab(tab) {
   currentTab = tab;
   _applyTabLayout(tab);
-  ['chats','users','invite','payments','settings'].forEach(t => {
+  ['chats','users','invite','payments','settings','anydesk'].forEach(t => {
     const tb = document.getElementById('tab-'+t);
     if (tb) tb.className = 'tab-btn' + (t===tab ? ' active' : '');
   });
@@ -1516,13 +1583,14 @@ function switchTab(tab) {
   if (tab === 'invite') loadInviteList();
   if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
   if (tab === 'settings') loadSettings();
+  if (tab === 'anydesk') loadAnydeskLog();
 }
 
 function mobileTab(tab) {
   currentTab = tab;
   document.getElementById('main-area').classList.remove('panel-open');
   _applyTabLayout(tab);
-  ['chats','users','invite','payments','settings'].forEach(t => {
+  ['chats','users','invite','payments','settings','anydesk'].forEach(t => {
     const nb = document.getElementById('nav-'+t);
     if (nb) nb.className = 'nav-btn' + (t===tab ? ' active' : '');
   });
@@ -1530,6 +1598,7 @@ function mobileTab(tab) {
   if (tab === 'invite') loadInviteList();
   if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
   if (tab === 'settings') loadSettings();
+  if (tab === 'anydesk') loadAnydeskLog();
 }
 
 function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
@@ -2318,6 +2387,55 @@ function _applyI18N() {
     const key = el.dataset.i18n;
     if (t[key] !== undefined) el.textContent = t[key];
   });
+}
+
+// ===== ANYDESK =====
+const ANYDESK_LOG_KEY = 'pixelmind_anydesk_log';
+
+function connectAnyDesk() {
+  const raw = document.getElementById('anydesk-id-input').value.trim();
+  const id = raw.replace(/\s+/g, '');
+  const statusEl = document.getElementById('anydesk-status');
+  if (!id || id.length < 6) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = '❌ Введи корректный AnyDesk ID (минимум 6 цифр)';
+    return;
+  }
+  // Открываем AnyDesk через deeplink
+  const link = 'anydesk://' + id;
+  window.open(link, '_blank');
+  statusEl.style.color = 'var(--accent2)';
+  statusEl.textContent = '✅ Запрос отправлен — жди подтверждения от пользователя в AnyDesk';
+  // Записываем в журнал
+  const log = JSON.parse(localStorage.getItem(ANYDESK_LOG_KEY) || '[]');
+  log.unshift({ id: raw, ts: new Date().toLocaleString('ru-RU') });
+  if (log.length > 50) log.pop();
+  localStorage.setItem(ANYDESK_LOG_KEY, JSON.stringify(log));
+  loadAnydeskLog();
+  setTimeout(() => { statusEl.textContent = ''; }, 5000);
+}
+
+function loadAnydeskLog() {
+  const log = JSON.parse(localStorage.getItem(ANYDESK_LOG_KEY) || '[]');
+  const box = document.getElementById('anydesk-log');
+  if (!log.length) { box.innerHTML = '<div class="invite-empty">Нет подключений</div>'; return; }
+  box.innerHTML = log.map(e => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06);gap:12px">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);letter-spacing:1px">🖥 ${e.id}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px">${e.ts}</div>
+      </div>
+      <button class="btn btn-ghost" style="font-size:12px;padding:4px 12px;white-space:nowrap"
+        onclick="document.getElementById('anydesk-id-input').value='${e.id.replace(/'/g,"\\'")}';connectAnyDesk()">
+        🔁 Снова
+      </button>
+    </div>`).join('');
+}
+
+function clearAnydeskLog() {
+  if (!confirm('Очистить журнал подключений?')) return;
+  localStorage.removeItem(ANYDESK_LOG_KEY);
+  loadAnydeskLog();
 }
 
 async function loadSettings() {
