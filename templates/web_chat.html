@@ -612,6 +612,7 @@ header {
         <div class="user-avatar" id="user-avatar-letter">?</div>
         <span class="uname" id="header-username"></span>
       </div>
+      <button class="hdr-btn hdr-btn-ghost" onclick="openSupportModal()" title="Удалённая поддержка" style="font-size:17px">🖥</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openVoiceChat()" title="Голосовой чат" style="font-size:17px">🎙</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openHomework()" title="Помощь с ДЗ" style="font-size:17px">📚</button>
@@ -829,6 +830,48 @@ header {
       <button class="send-btn" id="send-btn" onclick="sendMsg()">➤</button>
     </div>
     <div class="input-hint">Enter — отправить &nbsp;·&nbsp; Shift+Enter — новая строка</div>
+  </div>
+</div>
+
+<!-- SUPPORT REQUEST MODAL -->
+<div class="modal-overlay" id="support-modal" onclick="if(event.target===this)closeSupportModal()">
+  <div class="modal-box" style="max-width:420px">
+    <button class="modal-close" onclick="closeSupportModal()">✕</button>
+    <div class="modal-title">🖥 Запрос удалённой поддержки</div>
+    <div class="modal-sub">Администратор подключится к твоему компьютеру через AnyDesk и поможет решить проблему</div>
+
+    <div style="background:rgba(255,179,64,0.1);border:1px solid rgba(255,179,64,0.25);border-radius:10px;padding:12px 14px;margin:14px 0;font-size:13px;color:#ffb340;line-height:1.6">
+      ⚠️ Администратор подключится <b>только с твоего разрешения</b>. Ты увидишь запрос в своём AnyDesk и должен будешь <b>принять его вручную</b>.
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Твой AnyDesk ID *</label>
+        <input id="sup-anydesk-id" type="text" placeholder="Например: 123 456 789"
+          style="width:100%;padding:11px 13px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text);font-size:15px;letter-spacing:1px;outline:none"
+          oninput="this.value=this.value.replace(/[^0-9 ]/g,'')"
+          onfocus="this.style.borderColor='rgba(90,171,255,.45)'"
+          onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+        <div style="font-size:12px;color:var(--text2);margin-top:4px">Открой AnyDesk на своём устройстве — ID написан по центру</div>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Опиши проблему</label>
+        <textarea id="sup-description" placeholder="Что нужно сделать?" rows="3"
+          style="width:100%;padding:11px 13px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text);font-size:13px;resize:vertical;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='rgba(90,171,255,.45)'"
+          onblur="this.style.borderColor='rgba(255,255,255,0.12)'"></textarea>
+      </div>
+    </div>
+
+    <div id="sup-err" style="font-size:13px;color:var(--danger);min-height:18px;margin-top:6px"></div>
+    <div id="sup-ok" style="display:none;text-align:center;padding:16px;font-size:14px;color:var(--accent2)">
+      ✅ Заявка отправлена! Администратор скоро подключится — жди запрос в AnyDesk.
+    </div>
+
+    <button id="sup-submit-btn" onclick="submitSupportRequest()"
+      style="width:100%;margin-top:14px;padding:13px;border-radius:12px;font-size:14px;font-weight:700;background:var(--accent);border:none;color:#fff;cursor:pointer;transition:opacity .18s">
+      📤 Отправить заявку
+    </button>
   </div>
 </div>
 
@@ -1923,6 +1966,49 @@ async function topupConfirmPaid() {
 }
 function copyTopupPhone()   { navigator.clipboard?.writeText(_tuPhone);   toast('Номер скопирован'); }
 function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast('Комментарий скопирован'); }
+
+// ===== УДАЛЁННАЯ ПОДДЕРЖКА =====
+function openSupportModal() {
+  document.getElementById('support-modal').classList.add('active');
+  document.getElementById('sup-err').textContent = '';
+  document.getElementById('sup-ok').style.display = 'none';
+  document.getElementById('sup-submit-btn').style.display = '';
+  document.getElementById('sup-anydesk-id').value = '';
+  document.getElementById('sup-description').value = '';
+}
+function closeSupportModal() {
+  document.getElementById('support-modal').classList.remove('active');
+}
+async function submitSupportRequest() {
+  const anydesk_id = document.getElementById('sup-anydesk-id').value.trim();
+  const description = document.getElementById('sup-description').value.trim();
+  const errEl = document.getElementById('sup-err');
+  const btn = document.getElementById('sup-submit-btn');
+  errEl.textContent = '';
+  if (!anydesk_id || anydesk_id.replace(/\s/g,'').length < 6) {
+    errEl.textContent = '❌ Введите корректный AnyDesk ID';
+    return;
+  }
+  btn.disabled = true; btn.textContent = 'Отправляем…';
+  try {
+    const r = await fetch('/app/request-support', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ anydesk_id, description })
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('sup-ok').style.display = '';
+      btn.style.display = 'none';
+    } else {
+      errEl.textContent = '❌ ' + (d.error || 'Ошибка');
+      btn.disabled = false; btn.textContent = '📤 Отправить заявку';
+    }
+  } catch(e) {
+    errEl.textContent = '❌ Ошибка соединения';
+    btn.disabled = false; btn.textContent = '📤 Отправить заявку';
+  }
+}
 
 // ===== ГОЛОСОВОЙ ЧАТ =====
 let voiceState = 'idle'; // idle | listening | thinking | speaking

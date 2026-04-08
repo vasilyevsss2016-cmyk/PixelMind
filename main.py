@@ -3227,6 +3227,69 @@ def web_request_renewal():
         "comment": f"PixelMind {u['username']}"
     })
 
+SUPPORT_REQUESTS_FILE = "support_requests.json"
+
+def load_support_requests():
+    if not os.path.exists(SUPPORT_REQUESTS_FILE):
+        return []
+    with open(SUPPORT_REQUESTS_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def save_support_requests(reqs):
+    with open(SUPPORT_REQUESTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(reqs, f, ensure_ascii=False, indent=2)
+
+@app.route("/app/request-support", methods=["POST"])
+def web_request_support():
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Войдите в аккаунт"}), 401
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Нет доступа"}), 401
+    data = request.get_json(silent=True) or {}
+    anydesk_id = (data.get("anydesk_id") or "").strip()
+    description = (data.get("description") or "").strip()
+    if not anydesk_id:
+        return jsonify({"ok": False, "error": "Введите AnyDesk ID"}), 400
+    reqs = load_support_requests()
+    import uuid, datetime
+    req = {
+        "id": str(uuid.uuid4())[:8],
+        "uid": uid,
+        "username": u.get("username", "unknown"),
+        "anydesk_id": anydesk_id,
+        "description": description,
+        "status": "open",
+        "ts": datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+    }
+    reqs.insert(0, req)
+    if len(reqs) > 100:
+        reqs = reqs[:100]
+    save_support_requests(reqs)
+    logger.info(f"[Support] Заявка от {u.get('username')}: AnyDesk {anydesk_id}")
+    return jsonify({"ok": True})
+
+@app.route("/admin/api/support-requests", methods=["GET"])
+def admin_get_support_requests():
+    if not check_admin_token():
+        return jsonify({"ok": False, "error": "Unauthorized"}), 401
+    reqs = load_support_requests()
+    return jsonify({"ok": True, "requests": reqs})
+
+@app.route("/admin/api/support-request/<req_id>/close", methods=["POST"])
+def admin_close_support_request(req_id):
+    if not check_admin_token():
+        return jsonify({"ok": False, "error": "Unauthorized"}), 401
+    reqs = load_support_requests()
+    for r in reqs:
+        if r["id"] == req_id:
+            r["status"] = "closed"
+            break
+    save_support_requests(reqs)
+    return jsonify({"ok": True})
+
 @app.route("/app/voice-chat", methods=["POST"])
 def web_voice_chat():
     """Голосовой чат с AI — короткие разговорные ответы."""

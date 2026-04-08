@@ -1068,13 +1068,24 @@ header {
           </div>
         </div>
 
-        <!-- Журнал сессий -->
+        <!-- Заявки от пользователей -->
         <div class="invite-list-card" style="margin-top:2px">
           <div class="invite-list-header" style="display:flex;justify-content:space-between;align-items:center">
-            <span>📋 Журнал подключений</span>
+            <span>📥 Заявки от пользователей</span>
+            <button class="btn btn-ghost" style="font-size:12px;padding:3px 10px" onclick="loadSupportRequests()">🔄</button>
+          </div>
+          <div id="support-requests-list" style="padding:0 16px 12px;max-height:300px;overflow-y:auto">
+            <div class="invite-empty">Загрузка…</div>
+          </div>
+        </div>
+
+        <!-- Журнал моих подключений -->
+        <div class="invite-list-card" style="margin-top:2px">
+          <div class="invite-list-header" style="display:flex;justify-content:space-between;align-items:center">
+            <span>📋 Журнал моих подключений</span>
             <button class="btn btn-ghost" style="font-size:12px;padding:3px 10px" onclick="clearAnydeskLog()">Очистить</button>
           </div>
-          <div id="anydesk-log" style="padding:0 16px 12px;max-height:220px;overflow-y:auto">
+          <div id="anydesk-log" style="padding:0 16px 12px;max-height:200px;overflow-y:auto">
             <div class="invite-empty">Нет подключений</div>
           </div>
         </div>
@@ -1583,7 +1594,7 @@ function switchTab(tab) {
   if (tab === 'invite') loadInviteList();
   if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
   if (tab === 'settings') loadSettings();
-  if (tab === 'anydesk') loadAnydeskLog();
+  if (tab === 'anydesk') { loadAnydeskLog(); loadSupportRequests(); }
 }
 
 function mobileTab(tab) {
@@ -1598,7 +1609,7 @@ function mobileTab(tab) {
   if (tab === 'invite') loadInviteList();
   if (tab === 'payments') { loadPayments(); loadWebUsersCredits(); }
   if (tab === 'settings') loadSettings();
-  if (tab === 'anydesk') loadAnydeskLog();
+  if (tab === 'anydesk') { loadAnydeskLog(); loadSupportRequests(); }
 }
 
 function openMobilePanel() { if(isMobile()) document.getElementById('main-area').classList.add('panel-open'); }
@@ -2436,6 +2447,64 @@ function clearAnydeskLog() {
   if (!confirm('Очистить журнал подключений?')) return;
   localStorage.removeItem(ANYDESK_LOG_KEY);
   loadAnydeskLog();
+}
+
+async function loadSupportRequests() {
+  const box = document.getElementById('support-requests-list');
+  if (!box) return;
+  box.innerHTML = '<div class="invite-empty">Загрузка…</div>';
+  try {
+    const d = await api('/admin/api/support-requests');
+    if (!d.ok || !d.requests.length) {
+      box.innerHTML = '<div class="invite-empty">Нет заявок</div>';
+      return;
+    }
+    box.innerHTML = d.requests.map(r => {
+      const isOpen = r.status === 'open';
+      return `
+      <div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:700;color:var(--text)">👤 ${r.username}</span>
+              <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${isOpen ? 'rgba(52,208,88,0.15)' : 'rgba(120,120,120,0.15)'};color:${isOpen ? 'var(--accent2)' : 'var(--text3)'};border:1px solid ${isOpen ? 'rgba(52,208,88,0.3)' : 'rgba(120,120,120,0.2)'}">${isOpen ? '● Открыта' : '✓ Закрыта'}</span>
+              <span style="font-size:11px;color:var(--text3)">${r.ts}</span>
+            </div>
+            <div style="margin-top:6px;display:flex;align-items:center;gap:6px">
+              <span style="font-size:15px;font-weight:700;color:var(--accent);letter-spacing:1px">🖥 ${r.anydesk_id}</span>
+              <button class="btn btn-ghost" style="font-size:11px;padding:3px 8px" onclick="navigator.clipboard?.writeText('${r.anydesk_id.replace(/'/g,"\\'")}');toast('ID скопирован')">📋</button>
+            </div>
+            ${r.description ? `<div style="font-size:12px;color:var(--text2);margin-top:4px">💬 ${r.description}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+            ${isOpen ? `
+            <button class="btn btn-blue" style="font-size:12px;padding:6px 12px;white-space:nowrap"
+              onclick="document.getElementById('anydesk-id-input').value='${r.anydesk_id.replace(/'/g,"\\'")}';connectAnyDesk()">
+              🚀 Подключиться
+            </button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:4px 12px;white-space:nowrap"
+              onclick="closeSupportReq('${r.id}')">
+              ✓ Закрыть
+            </button>` : `
+            <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px;white-space:nowrap"
+              onclick="document.getElementById('anydesk-id-input').value='${r.anydesk_id.replace(/'/g,"\\'")}';connectAnyDesk()">
+              🔁 Снова
+            </button>`}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    box.innerHTML = '<div class="invite-empty">Ошибка загрузки</div>';
+  }
+}
+
+async function closeSupportReq(reqId) {
+  try {
+    await api(`/admin/api/support-request/${reqId}/close`, 'POST');
+    loadSupportRequests();
+    toast('Заявка закрыта', 'ok');
+  } catch(e) { toast('Ошибка', 'err'); }
 }
 
 async function loadSettings() {
