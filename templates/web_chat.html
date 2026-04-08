@@ -2138,9 +2138,10 @@ async function submitSupportRequest() {
 // ===== ГОЛОСОВОЙ ЧАТ =====
 let voiceState = 'idle'; // idle | listening | thinking | speaking
 let voiceRecognizer = null;
-let voiceRecogRunning = false;   // true пока recognizer реально слушает
+let voiceRecogRunning = false;
 let voiceAudioCtx = null;
-let voiceMicStream = null;       // сохраняем между сессиями, не останавливаем треки
+let voiceMicStream = null;
+let voiceMicSource = null;   // храним ссылку чтобы GC не уничтожил
 let voiceAnalyser = null;
 let voiceAnimFrame = null;
 let voiceAnimTime = 0;
@@ -2166,48 +2167,66 @@ function closeVoiceChat() {
   voiceState = 'idle';
   voiceRecogRunning = false;
   document.getElementById('voice-screen').classList.remove('active');
+
+  // Останавливаем recognizer
   const rec = voiceRecognizer;
   voiceRecognizer = null;
   if (rec) { try { rec.stop(); } catch(e) {} }
+
+  // Останавливаем анимацию
   if (voiceAnimFrame) { cancelAnimationFrame(voiceAnimFrame); voiceAnimFrame = null; }
+
+  // Останавливаем синтез речи
   if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+  // Сбрасываем таймер
   if (voiceSendTimeout) { clearTimeout(voiceSendTimeout); voiceSendTimeout = null; }
   voiceLastTranscript = '';
+
+  // Останавливаем микрофон и закрываем AudioContext
+  if (voiceMicStream) {
+    voiceMicStream.getTracks().forEach(t => t.stop());
+    voiceMicStream = null;
+  }
+  if (voiceMicSource) { try { voiceMicSource.disconnect(); } catch(e) {} voiceMicSource = null; }
+  if (voiceAudioCtx) { try { voiceAudioCtx.close(); } catch(e) {} voiceAudioCtx = null; }
+  voiceAnalyser = null;
 }
+
 function _resizeVoiceCanvas() {
   const canvas = document.getElementById('voice-canvas');
-  const size = Math.min(window.innerWidth, window.innerHeight - 280);
-  const s = Math.max(220, Math.min(size, 420));
+  const s = Math.max(220, Math.min(Math.min(window.innerWidth * 0.85, window.innerHeight - 300), 420));
   canvas.width = s; canvas.height = s;
   canvas.style.width = s + 'px'; canvas.style.height = s + 'px';
 }
 
 async function initVoiceChat() {
-  // Запрашиваем микрофон только если ещё нет потока
-  if (!voiceMicStream || !voiceMicStream.active) {
-    try {
-      voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch(e) {
-      setVoiceStatus('❌ Разрешите доступ к микрофону в браузере');
-      voiceOpen = false;
-      return;
-    }
+  // Всегда запрашиваем свежий поток микрофона
+  try {
+    voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    let msg = '❌ Разрешите доступ к микрофону в браузере';
+    if (e.name === 'NotFoundError') msg = '❌ Микрофон не найден — подключи его';
+    if (e.name === 'NotAllowedError') msg = '❌ Доступ к микрофону запрещён — разреши в настройках браузера';
+    setVoiceStatus(msg);
+    voiceOpen = false;
+    return;
   }
-  // AudioContext — создаём один раз или если был закрыт
-  if (!voiceAudioCtx || voiceAudioCtx.state === 'closed') {
-    voiceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const source = voiceAudioCtx.createMediaStreamSource(voiceMicStream);
-    voiceAnalyser = voiceAudioCtx.createAnalyser();
-    voiceAnalyser.fftSize = 256;
-    voiceAnalyser.smoothingTimeConstant = 0.8;
-    source.connect(voiceAnalyser);
-  }
+
+  // Создаём AudioContext и подключаем микрофон → analyser
+  voiceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  voiceMicSource = voiceAudioCtx.createMediaStreamSource(voiceMicStream);
+  voiceAnalyser = voiceAudioCtx.createAnalyser();
+  voiceAnalyser.fftSize = 256;
+  voiceAnalyser.smoothingTimeConstant = 0.8;
+  voiceMicSource.connect(voiceAnalyser);
+
   // Разблокируем AudioContext (браузерное ограничение)
   if (voiceAudioCtx.state === 'suspended') {
     await voiceAudioCtx.resume();
   }
-  // Анимация — только если не запущена
-  if (!voiceAnimFrame) startVoiceAnimation();
+
+  startVoiceAnimation();
   startVoiceRecognition();
   setVoiceState('listening');
 }
