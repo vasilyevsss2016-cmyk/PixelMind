@@ -612,6 +612,7 @@ header {
         <div class="user-avatar" id="user-avatar-letter">?</div>
         <span class="uname" id="header-username"></span>
       </div>
+      <button class="hdr-btn hdr-btn-ghost" onclick="openBeAiModal()" title="Будь моей нейросетью" style="font-size:17px">🤖</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openSupportModal()" title="Удалённая поддержка" style="font-size:17px">🖥</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openVoiceChat()" title="Голосовой чат" style="font-size:17px">🎙</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
@@ -830,6 +831,107 @@ header {
       <button class="send-btn" id="send-btn" onclick="sendMsg()">➤</button>
     </div>
     <div class="input-hint">Enter — отправить &nbsp;·&nbsp; Shift+Enter — новая строка</div>
+  </div>
+</div>
+
+<!-- BE-AI MODAL -->
+<div class="modal-overlay" id="beai-modal" onclick="if(event.target===this)closeBeAiModal()">
+  <div class="modal-box" style="max-width:520px;padding:0;overflow:hidden">
+    <!-- Шапка -->
+    <div style="padding:22px 24px 0;position:relative">
+      <button class="modal-close" onclick="closeBeAiModal()">✕</button>
+      <div class="modal-title" style="margin-bottom:4px">🤖 Будь моей нейросетью</div>
+      <div class="modal-sub">Выбери свою роль в разговоре</div>
+      <!-- Вкладки -->
+      <div style="display:flex;gap:4px;margin-top:16px;background:rgba(255,255,255,0.05);border-radius:12px;padding:4px">
+        <button id="beai-tab-ask" onclick="beaiSwitchTab('ask')"
+          style="flex:1;padding:9px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;background:var(--accent);color:#fff">
+          💬 Я спрашиваю
+        </button>
+        <button id="beai-tab-be" onclick="beaiSwitchTab('be')"
+          style="flex:1;padding:9px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:var(--text2)">
+          🧠 Я — нейросеть
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== ВКЛАДКА 1: Я СПРАШИВАЮ ===== -->
+    <div id="beai-panel-ask" style="padding:20px 24px 24px;display:flex;flex-direction:column;gap:12px">
+      <div style="font-size:13px;color:var(--text2);line-height:1.5">
+        Задавай любые вопросы — PixelMind ответит прямо здесь, отдельно от основного чата.
+      </div>
+
+      <div id="beai-ask-log" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;min-height:80px">
+        <div style="text-align:center;color:var(--text3);font-size:13px;padding:20px 0">Задай первый вопрос 👇</div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:flex-end">
+        <textarea id="beai-ask-input" placeholder="Твой вопрос…" rows="2"
+          style="flex:1;padding:11px 13px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text);font-size:13px;resize:none;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='rgba(90,171,255,.45)'"
+          onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();beaiAsk()}"
+        ></textarea>
+        <button onclick="beaiAsk()" id="beai-ask-btn"
+          style="padding:11px 16px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;transition:opacity .18s">
+          ➤
+        </button>
+      </div>
+      <div id="beai-ask-err" style="font-size:12px;color:var(--danger);min-height:16px;margin-top:-6px"></div>
+    </div>
+
+    <!-- ===== ВКЛАДКА 2: Я — НЕЙРОСЕТЬ ===== -->
+    <div id="beai-panel-be" style="padding:20px 24px 24px;display:none;flex-direction:column;gap:14px">
+      <div style="font-size:13px;color:var(--text2);line-height:1.5">
+        Тебе придёт вопрос от «пользователя» — ответь как настоящий AI! Потом PixelMind оценит твой ответ и покажет свой вариант.
+      </div>
+
+      <!-- Тема (опционально) -->
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">Тема вопросов (необязательно)</label>
+        <input id="beai-be-topic" type="text" placeholder="Например: наука, кулинария, программирование…"
+          style="width:100%;padding:10px 13px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text);font-size:13px;outline:none"
+          onfocus="this.style.borderColor='rgba(90,171,255,.45)'"
+          onblur="this.style.borderColor='rgba(255,255,255,0.12)'" />
+      </div>
+
+      <!-- Вопрос от "пользователя" -->
+      <div id="beai-question-box" style="display:none;background:rgba(90,171,255,0.08);border:1px solid rgba(90,171,255,0.2);border-radius:12px;padding:14px 16px">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:.5px">👤 ПОЛЬЗОВАТЕЛЬ СПРАШИВАЕТ:</div>
+        <div id="beai-question-text" style="font-size:14px;color:var(--text);line-height:1.55"></div>
+      </div>
+
+      <!-- Ответ пользователя -->
+      <div id="beai-answer-box" style="display:none">
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">✍️ Твой ответ (как AI):</label>
+        <textarea id="beai-be-answer" placeholder="Введи ответ от имени нейросети…" rows="4"
+          style="width:100%;padding:11px 13px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:var(--text);font-size:13px;resize:vertical;outline:none;font-family:inherit"
+          onfocus="this.style.borderColor='rgba(90,171,255,.45)'"
+          onblur="this.style.borderColor='rgba(255,255,255,0.12)'"></textarea>
+        <button onclick="beaiEvaluate()" id="beai-eval-btn"
+          style="width:100%;margin-top:8px;padding:11px;border-radius:10px;background:linear-gradient(135deg,#a855f7,#6366f1);border:none;color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+          🎯 Оценить мой ответ
+        </button>
+      </div>
+
+      <!-- Фидбек от PixelMind -->
+      <div id="beai-feedback-box" style="display:none;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:12px;padding:14px 16px">
+        <div style="font-size:11px;font-weight:700;color:#a855f7;margin-bottom:8px;letter-spacing:.5px">🤖 ОЦЕНКА PIXELMIND:</div>
+        <div id="beai-feedback-text" style="font-size:13px;color:var(--text);line-height:1.65;white-space:pre-wrap"></div>
+      </div>
+
+      <!-- Кнопки управления -->
+      <div style="display:flex;gap:8px">
+        <button id="beai-get-q-btn" onclick="beaiGetQuestion()"
+          style="flex:1;padding:12px;border-radius:10px;background:var(--accent);border:none;color:#fff;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .18s">
+          🎲 Получить вопрос
+        </button>
+        <button id="beai-next-btn" onclick="beaiNextRound()" style="display:none;flex:1;padding:12px;border-radius:10px;background:rgba(52,208,88,0.15);border:1px solid rgba(52,208,88,0.3);color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer">
+          ➡️ Следующий
+        </button>
+      </div>
+      <div id="beai-be-err" style="font-size:12px;color:var(--danger);min-height:16px;margin-top:-8px"></div>
+    </div>
   </div>
 </div>
 
@@ -1966,6 +2068,173 @@ async function topupConfirmPaid() {
 }
 function copyTopupPhone()   { navigator.clipboard?.writeText(_tuPhone);   toast('Номер скопирован'); }
 function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast('Комментарий скопирован'); }
+
+// ===== BE-AI MODAL =====
+let _beaiCurrentTab = 'ask';
+let _beaiCurrentQuestion = '';
+
+function openBeAiModal() {
+  document.getElementById('beai-modal').classList.add('active');
+  beaiSwitchTab('ask');
+}
+function closeBeAiModal() {
+  document.getElementById('beai-modal').classList.remove('active');
+}
+function beaiSwitchTab(tab) {
+  _beaiCurrentTab = tab;
+  const isAsk = tab === 'ask';
+  document.getElementById('beai-panel-ask').style.display = isAsk ? 'flex' : 'none';
+  document.getElementById('beai-panel-be').style.display  = isAsk ? 'none' : 'flex';
+  document.getElementById('beai-tab-ask').style.background = isAsk ? 'var(--accent)' : 'transparent';
+  document.getElementById('beai-tab-ask').style.color      = isAsk ? '#fff' : 'var(--text2)';
+  document.getElementById('beai-tab-be').style.background  = isAsk ? 'transparent' : 'linear-gradient(135deg,#a855f7,#6366f1)';
+  document.getElementById('beai-tab-be').style.color       = isAsk ? 'var(--text2)' : '#fff';
+}
+
+// --- Вкладка 1: Я СПРАШИВАЮ ---
+let _beaiAskLog = [];
+async function beaiAsk() {
+  const inp = document.getElementById('beai-ask-input');
+  const q = inp.value.trim();
+  const errEl = document.getElementById('beai-ask-err');
+  const btn = document.getElementById('beai-ask-btn');
+  errEl.textContent = '';
+  if (!q) return;
+  // рендерим вопрос пользователя
+  const log = document.getElementById('beai-ask-log');
+  if (_beaiAskLog.length === 0) log.innerHTML = '';
+  _beaiAskLog.push({role:'user', text:q});
+  beaiRenderAskLog();
+  inp.value = '';
+  btn.disabled = true;
+  // добавляем пузырь "думаю..."
+  const thinkId = 'beai-think-' + Date.now();
+  log.insertAdjacentHTML('beforeend',
+    `<div id="${thinkId}" style="display:flex;gap:8px;align-items:flex-start">
+       <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🤖</div>
+       <div style="background:rgba(90,171,255,0.1);border:1px solid rgba(90,171,255,0.15);border-radius:12px;border-top-left-radius:4px;padding:10px 13px;max-width:85%;font-size:13px;color:var(--text2)">Думаю<span class="dots">...</span></div>
+     </div>`);
+  log.scrollTop = log.scrollHeight;
+  const historyPayload = _beaiAskLog.slice(0,-1).map(m => ({
+    role: m.role === 'ai' ? 'assistant' : 'user',
+    content: m.text
+  }));
+  try {
+    const r = await fetch('/app/be-ai/ask', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question: q, history: historyPayload})
+    });
+    const d = await r.json();
+    document.getElementById(thinkId)?.remove();
+    if (d.ok) {
+      _beaiAskLog.push({role:'ai', text: d.reply});
+      beaiRenderAskLog();
+      if (d.credits !== undefined) updateCreditsDisplay(d.credits);
+    } else {
+      errEl.textContent = '❌ ' + (d.error || 'Ошибка');
+    }
+  } catch(e) {
+    document.getElementById(thinkId)?.remove();
+    errEl.textContent = '❌ Ошибка соединения';
+  }
+  btn.disabled = false;
+  log.scrollTop = log.scrollHeight;
+}
+function beaiRenderAskLog() {
+  const log = document.getElementById('beai-ask-log');
+  log.innerHTML = _beaiAskLog.map(m => {
+    if (m.role === 'user') return `
+      <div style="display:flex;gap:8px;align-items:flex-start;flex-direction:row-reverse">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">👤</div>
+        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;border-top-right-radius:4px;padding:10px 13px;max-width:85%;font-size:13px;color:var(--text);white-space:pre-wrap">${escHtml(m.text)}</div>
+      </div>`;
+    return `
+      <div style="display:flex;gap:8px;align-items:flex-start">
+        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🤖</div>
+        <div style="background:rgba(90,171,255,0.1);border:1px solid rgba(90,171,255,0.15);border-radius:12px;border-top-left-radius:4px;padding:10px 13px;max-width:85%;font-size:13px;color:var(--text);white-space:pre-wrap">${escHtml(m.text)}</div>
+      </div>`;
+  }).join('');
+  log.scrollTop = log.scrollHeight;
+}
+function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// --- Вкладка 2: Я — НЕЙРОСЕТЬ ---
+async function beaiGetQuestion() {
+  const btn = document.getElementById('beai-get-q-btn');
+  const errEl = document.getElementById('beai-be-err');
+  const topic = document.getElementById('beai-be-topic').value.trim();
+  errEl.textContent = '';
+  btn.disabled = true; btn.textContent = '⏳ Генерирую…';
+  // сбрасываем предыдущее состояние
+  document.getElementById('beai-feedback-box').style.display = 'none';
+  document.getElementById('beai-answer-box').style.display = 'none';
+  document.getElementById('beai-next-btn').style.display = 'none';
+  document.getElementById('beai-be-answer').value = '';
+  try {
+    const r = await fetch('/app/be-ai/question', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({topic})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      _beaiCurrentQuestion = d.question;
+      document.getElementById('beai-question-text').textContent = d.question;
+      document.getElementById('beai-question-box').style.display = '';
+      document.getElementById('beai-answer-box').style.display = '';
+      if (d.credits !== undefined) updateCreditsDisplay(d.credits);
+      btn.textContent = '🎲 Новый вопрос';
+    } else {
+      errEl.textContent = '❌ ' + (d.error || 'Ошибка');
+      btn.textContent = '🎲 Получить вопрос';
+    }
+  } catch(e) {
+    errEl.textContent = '❌ Ошибка соединения';
+    btn.textContent = '🎲 Получить вопрос';
+  }
+  btn.disabled = false;
+}
+async function beaiEvaluate() {
+  const answer = document.getElementById('beai-be-answer').value.trim();
+  const errEl = document.getElementById('beai-be-err');
+  const btn = document.getElementById('beai-eval-btn');
+  errEl.textContent = '';
+  if (!answer) { errEl.textContent = '❌ Введи свой ответ'; return; }
+  if (!_beaiCurrentQuestion) { errEl.textContent = '❌ Сначала получи вопрос'; return; }
+  btn.disabled = true; btn.textContent = '⏳ Оцениваю…';
+  try {
+    const r = await fetch('/app/be-ai/evaluate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question: _beaiCurrentQuestion, user_answer: answer})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      document.getElementById('beai-feedback-text').textContent = d.feedback;
+      document.getElementById('beai-feedback-box').style.display = '';
+      document.getElementById('beai-next-btn').style.display = '';
+      btn.style.display = 'none';
+      if (d.credits !== undefined) updateCreditsDisplay(d.credits);
+    } else {
+      errEl.textContent = '❌ ' + (d.error || 'Ошибка');
+    }
+  } catch(e) {
+    errEl.textContent = '❌ Ошибка соединения';
+  }
+  btn.disabled = false; btn.textContent = '🎯 Оценить мой ответ';
+}
+function beaiNextRound() {
+  _beaiCurrentQuestion = '';
+  document.getElementById('beai-question-box').style.display = 'none';
+  document.getElementById('beai-answer-box').style.display = 'none';
+  document.getElementById('beai-feedback-box').style.display = 'none';
+  document.getElementById('beai-next-btn').style.display = 'none';
+  document.getElementById('beai-eval-btn').style.display = '';
+  document.getElementById('beai-eval-btn').disabled = false;
+  document.getElementById('beai-eval-btn').textContent = '🎯 Оценить мой ответ';
+  document.getElementById('beai-be-answer').value = '';
+  document.getElementById('beai-be-err').textContent = '';
+  document.getElementById('beai-get-q-btn').textContent = '🎲 Получить вопрос';
+}
 
 // ===== УДАЛЁННАЯ ПОДДЕРЖКА =====
 function openSupportModal() {
