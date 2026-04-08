@@ -377,17 +377,31 @@ header {
   .credits-badge span.cr-label { display:none; }
 }
 
-/* ===== VOICE CHAT MODAL ===== */
-#voice-modal .modal-box { max-width:400px; text-align:center; }
-#voice-canvas { display:block; margin:0 auto; border-radius:50%; }
-.voice-status-text { font-size:15px; font-weight:600; margin:10px 0 4px; min-height:24px; }
-.voice-user-interim { font-size:13px; color:var(--accent); font-style:italic; min-height:20px; margin-bottom:8px; opacity:.85; }
-#voice-log { max-height:150px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding:6px 2px; margin:8px 0; }
-.voice-msg { font-size:13px; padding:8px 12px; border-radius:11px; text-align:left; line-height:1.5; }
-.voice-msg-user { align-self:flex-end; background:rgba(90,171,255,0.14); border:1px solid rgba(90,171,255,0.22); color:var(--text); border-bottom-right-radius:3px; max-width:88%; }
-.voice-msg-bot { align-self:flex-start; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text2); border-bottom-left-radius:3px; max-width:88%; }
-.voice-end-btn { width:100%; padding:13px; border-radius:12px; font-size:14px; font-weight:700; background:rgba(255,69,58,0.18); border:1px solid rgba(255,69,58,0.35); color:#ff6b63; cursor:pointer; transition:all .18s; margin-top:10px; }
-.voice-end-btn:hover { background:rgba(255,69,58,0.28); }
+/* ===== VOICE CHAT FULLSCREEN ===== */
+#voice-screen {
+  position:fixed; inset:0; z-index:2000;
+  background: radial-gradient(ellipse at center, #0d1224 0%, #07080f 100%);
+  display:none; flex-direction:column; align-items:center; justify-content:space-between;
+  padding: 24px 20px 32px;
+  overflow:hidden;
+}
+#voice-screen.active { display:flex; }
+#voice-canvas { display:block; flex-shrink:0; }
+.voice-status-text { font-size:16px; font-weight:700; min-height:26px; color:var(--text); letter-spacing:.3px; }
+.voice-user-interim { font-size:14px; color:var(--accent); font-style:italic; min-height:22px; opacity:.9; max-width:480px; text-align:center; }
+#voice-log {
+  width:100%; max-width:540px; max-height:180px; overflow-y:auto;
+  display:flex; flex-direction:column; gap:7px; padding:6px 0;
+}
+.voice-msg { font-size:14px; padding:9px 14px; border-radius:14px; text-align:left; line-height:1.55; }
+.voice-msg-user { align-self:flex-end; background:rgba(90,171,255,0.15); border:1px solid rgba(90,171,255,0.25); color:var(--text); border-bottom-right-radius:3px; max-width:86%; }
+.voice-msg-bot { align-self:flex-start; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--text2); border-bottom-left-radius:3px; max-width:86%; }
+.voice-end-btn {
+  padding:15px 48px; border-radius:50px; font-size:15px; font-weight:700;
+  background:rgba(255,69,58,0.2); border:1.5px solid rgba(255,69,58,0.45);
+  color:#ff6b63; cursor:pointer; transition:all .2s; letter-spacing:.3px;
+}
+.voice-end-btn:hover { background:rgba(255,69,58,0.35); transform:scale(1.04); }
 
 /* ===== CAMERA MODAL ===== */
 #camera-modal .modal-box { max-width:480px; padding:0; overflow:hidden; }
@@ -612,7 +626,6 @@ header {
         <div class="user-avatar" id="user-avatar-letter">?</div>
         <span class="uname" id="header-username"></span>
       </div>
-      <button class="hdr-btn hdr-btn-ghost" onclick="openBeAiModal()" title="Будь моей нейросетью" style="font-size:17px">🤖</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openSupportModal()" title="Удалённая поддержка" style="font-size:17px">🖥</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openVoiceChat()" title="Голосовой чат" style="font-size:17px">🎙</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
@@ -834,8 +847,8 @@ header {
   </div>
 </div>
 
-<!-- BE-AI MODAL -->
-<div class="modal-overlay" id="beai-modal" onclick="if(event.target===this)closeBeAiModal()">
+<!-- _BEAI_REMOVED -->
+<div style="display:none" id="beai-modal" onclick="if(event.target===this)closeBeAiModal()">
   <div class="modal-box" style="max-width:520px;padding:0;overflow:hidden">
     <!-- Шапка -->
     <div style="padding:22px 24px 0;position:relative">
@@ -977,18 +990,28 @@ header {
   </div>
 </div>
 
-<!-- VOICE CHAT MODAL -->
-<div class="modal-overlay" id="voice-modal" onclick="if(event.target===this)closeVoiceChat()">
-  <div class="modal-box">
-    <button class="modal-close" onclick="closeVoiceChat()">✕</button>
-    <div class="modal-title" style="margin-bottom:2px">🎙 Голосовой чат</div>
-    <div class="modal-sub">Просто говори — PixelMind слышит и отвечает</div>
-    <div class="voice-status-text" id="voice-status">Инициализация…</div>
-    <canvas id="voice-canvas" width="280" height="280"></canvas>
-    <div class="voice-user-interim" id="voice-user-text"></div>
-    <div id="voice-log"></div>
-    <button class="voice-end-btn" onclick="closeVoiceChat()">🔴 Завершить разговор</button>
+<!-- VOICE CHAT FULLSCREEN -->
+<div id="voice-screen">
+  <!-- Шапка -->
+  <div style="width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.3px">🎙 Голосовой чат</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px">Говори — PixelMind слышит и отвечает</div>
+    </div>
+    <div class="voice-status-text" id="voice-status" style="margin:0"></div>
   </div>
+
+  <!-- Визуализатор (canvas заполняет доступное пространство) -->
+  <canvas id="voice-canvas"></canvas>
+
+  <!-- Текущая речь -->
+  <div class="voice-user-interim" id="voice-user-text"></div>
+
+  <!-- Лог сообщений -->
+  <div id="voice-log" style="width:100%;max-width:540px"></div>
+
+  <!-- Кнопка завершения -->
+  <button class="voice-end-btn" onclick="closeVoiceChat()">🔴 Завершить разговор</button>
 </div>
 
 <!-- CAMERA MODAL -->
@@ -2069,173 +2092,6 @@ async function topupConfirmPaid() {
 function copyTopupPhone()   { navigator.clipboard?.writeText(_tuPhone);   toast('Номер скопирован'); }
 function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast('Комментарий скопирован'); }
 
-// ===== BE-AI MODAL =====
-let _beaiCurrentTab = 'ask';
-let _beaiCurrentQuestion = '';
-
-function openBeAiModal() {
-  document.getElementById('beai-modal').classList.add('active');
-  beaiSwitchTab('ask');
-}
-function closeBeAiModal() {
-  document.getElementById('beai-modal').classList.remove('active');
-}
-function beaiSwitchTab(tab) {
-  _beaiCurrentTab = tab;
-  const isAsk = tab === 'ask';
-  document.getElementById('beai-panel-ask').style.display = isAsk ? 'flex' : 'none';
-  document.getElementById('beai-panel-be').style.display  = isAsk ? 'none' : 'flex';
-  document.getElementById('beai-tab-ask').style.background = isAsk ? 'var(--accent)' : 'transparent';
-  document.getElementById('beai-tab-ask').style.color      = isAsk ? '#fff' : 'var(--text2)';
-  document.getElementById('beai-tab-be').style.background  = isAsk ? 'transparent' : 'linear-gradient(135deg,#a855f7,#6366f1)';
-  document.getElementById('beai-tab-be').style.color       = isAsk ? 'var(--text2)' : '#fff';
-}
-
-// --- Вкладка 1: Я СПРАШИВАЮ ---
-let _beaiAskLog = [];
-async function beaiAsk() {
-  const inp = document.getElementById('beai-ask-input');
-  const q = inp.value.trim();
-  const errEl = document.getElementById('beai-ask-err');
-  const btn = document.getElementById('beai-ask-btn');
-  errEl.textContent = '';
-  if (!q) return;
-  // рендерим вопрос пользователя
-  const log = document.getElementById('beai-ask-log');
-  if (_beaiAskLog.length === 0) log.innerHTML = '';
-  _beaiAskLog.push({role:'user', text:q});
-  beaiRenderAskLog();
-  inp.value = '';
-  btn.disabled = true;
-  // добавляем пузырь "думаю..."
-  const thinkId = 'beai-think-' + Date.now();
-  log.insertAdjacentHTML('beforeend',
-    `<div id="${thinkId}" style="display:flex;gap:8px;align-items:flex-start">
-       <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🤖</div>
-       <div style="background:rgba(90,171,255,0.1);border:1px solid rgba(90,171,255,0.15);border-radius:12px;border-top-left-radius:4px;padding:10px 13px;max-width:85%;font-size:13px;color:var(--text2)">Думаю<span class="dots">...</span></div>
-     </div>`);
-  log.scrollTop = log.scrollHeight;
-  const historyPayload = _beaiAskLog.slice(0,-1).map(m => ({
-    role: m.role === 'ai' ? 'assistant' : 'user',
-    content: m.text
-  }));
-  try {
-    const r = await fetch('/app/be-ai/ask', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({question: q, history: historyPayload})
-    });
-    const d = await r.json();
-    document.getElementById(thinkId)?.remove();
-    if (d.ok) {
-      _beaiAskLog.push({role:'ai', text: d.reply});
-      beaiRenderAskLog();
-      if (d.credits !== undefined) updateCreditsDisplay(d.credits);
-    } else {
-      errEl.textContent = '❌ ' + (d.error || 'Ошибка');
-    }
-  } catch(e) {
-    document.getElementById(thinkId)?.remove();
-    errEl.textContent = '❌ Ошибка соединения';
-  }
-  btn.disabled = false;
-  log.scrollTop = log.scrollHeight;
-}
-function beaiRenderAskLog() {
-  const log = document.getElementById('beai-ask-log');
-  log.innerHTML = _beaiAskLog.map(m => {
-    if (m.role === 'user') return `
-      <div style="display:flex;gap:8px;align-items:flex-start;flex-direction:row-reverse">
-        <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">👤</div>
-        <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;border-top-right-radius:4px;padding:10px 13px;max-width:85%;font-size:13px;color:var(--text);white-space:pre-wrap">${escHtml(m.text)}</div>
-      </div>`;
-    return `
-      <div style="display:flex;gap:8px;align-items:flex-start">
-        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🤖</div>
-        <div style="background:rgba(90,171,255,0.1);border:1px solid rgba(90,171,255,0.15);border-radius:12px;border-top-left-radius:4px;padding:10px 13px;max-width:85%;font-size:13px;color:var(--text);white-space:pre-wrap">${escHtml(m.text)}</div>
-      </div>`;
-  }).join('');
-  log.scrollTop = log.scrollHeight;
-}
-function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-// --- Вкладка 2: Я — НЕЙРОСЕТЬ ---
-async function beaiGetQuestion() {
-  const btn = document.getElementById('beai-get-q-btn');
-  const errEl = document.getElementById('beai-be-err');
-  const topic = document.getElementById('beai-be-topic').value.trim();
-  errEl.textContent = '';
-  btn.disabled = true; btn.textContent = '⏳ Генерирую…';
-  // сбрасываем предыдущее состояние
-  document.getElementById('beai-feedback-box').style.display = 'none';
-  document.getElementById('beai-answer-box').style.display = 'none';
-  document.getElementById('beai-next-btn').style.display = 'none';
-  document.getElementById('beai-be-answer').value = '';
-  try {
-    const r = await fetch('/app/be-ai/question', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({topic})
-    });
-    const d = await r.json();
-    if (d.ok) {
-      _beaiCurrentQuestion = d.question;
-      document.getElementById('beai-question-text').textContent = d.question;
-      document.getElementById('beai-question-box').style.display = '';
-      document.getElementById('beai-answer-box').style.display = '';
-      if (d.credits !== undefined) updateCreditsDisplay(d.credits);
-      btn.textContent = '🎲 Новый вопрос';
-    } else {
-      errEl.textContent = '❌ ' + (d.error || 'Ошибка');
-      btn.textContent = '🎲 Получить вопрос';
-    }
-  } catch(e) {
-    errEl.textContent = '❌ Ошибка соединения';
-    btn.textContent = '🎲 Получить вопрос';
-  }
-  btn.disabled = false;
-}
-async function beaiEvaluate() {
-  const answer = document.getElementById('beai-be-answer').value.trim();
-  const errEl = document.getElementById('beai-be-err');
-  const btn = document.getElementById('beai-eval-btn');
-  errEl.textContent = '';
-  if (!answer) { errEl.textContent = '❌ Введи свой ответ'; return; }
-  if (!_beaiCurrentQuestion) { errEl.textContent = '❌ Сначала получи вопрос'; return; }
-  btn.disabled = true; btn.textContent = '⏳ Оцениваю…';
-  try {
-    const r = await fetch('/app/be-ai/evaluate', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({question: _beaiCurrentQuestion, user_answer: answer})
-    });
-    const d = await r.json();
-    if (d.ok) {
-      document.getElementById('beai-feedback-text').textContent = d.feedback;
-      document.getElementById('beai-feedback-box').style.display = '';
-      document.getElementById('beai-next-btn').style.display = '';
-      btn.style.display = 'none';
-      if (d.credits !== undefined) updateCreditsDisplay(d.credits);
-    } else {
-      errEl.textContent = '❌ ' + (d.error || 'Ошибка');
-    }
-  } catch(e) {
-    errEl.textContent = '❌ Ошибка соединения';
-  }
-  btn.disabled = false; btn.textContent = '🎯 Оценить мой ответ';
-}
-function beaiNextRound() {
-  _beaiCurrentQuestion = '';
-  document.getElementById('beai-question-box').style.display = 'none';
-  document.getElementById('beai-answer-box').style.display = 'none';
-  document.getElementById('beai-feedback-box').style.display = 'none';
-  document.getElementById('beai-next-btn').style.display = 'none';
-  document.getElementById('beai-eval-btn').style.display = '';
-  document.getElementById('beai-eval-btn').disabled = false;
-  document.getElementById('beai-eval-btn').textContent = '🎯 Оценить мой ответ';
-  document.getElementById('beai-be-answer').value = '';
-  document.getElementById('beai-be-err').textContent = '';
-  document.getElementById('beai-get-q-btn').textContent = '🎲 Получить вопрос';
-}
-
 // ===== УДАЛЁННАЯ ПОДДЕРЖКА =====
 function openSupportModal() {
   document.getElementById('support-modal').classList.add('active');
@@ -2295,28 +2151,35 @@ let voiceOpen = false;
 async function openVoiceChat() {
   if (voiceOpen) return;
   voiceOpen = true;
-  document.getElementById('voice-modal').classList.add('active');
+  const screen = document.getElementById('voice-screen');
+  screen.classList.add('active');
   document.getElementById('voice-log').innerHTML = '';
   document.getElementById('voice-user-text').textContent = '';
   voiceLastTranscript = '';
   setVoiceStatus('🎤 Запуск…');
+  // Подстраиваем размер canvas под экран
+  _resizeVoiceCanvas();
   await initVoiceChat();
 }
 function closeVoiceChat() {
   voiceOpen = false;
   voiceState = 'idle';
   voiceRecogRunning = false;
-  document.getElementById('voice-modal').classList.remove('active');
-  // Правильно останавливаем recognizer — сначала обнуляем переменную, потом stop()
-  // чтобы onend не попытался перезапустить
+  document.getElementById('voice-screen').classList.remove('active');
   const rec = voiceRecognizer;
   voiceRecognizer = null;
   if (rec) { try { rec.stop(); } catch(e) {} }
   if (voiceAnimFrame) { cancelAnimationFrame(voiceAnimFrame); voiceAnimFrame = null; }
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   if (voiceSendTimeout) { clearTimeout(voiceSendTimeout); voiceSendTimeout = null; }
-  // Сбрасываем транскрипт
   voiceLastTranscript = '';
+}
+function _resizeVoiceCanvas() {
+  const canvas = document.getElementById('voice-canvas');
+  const size = Math.min(window.innerWidth, window.innerHeight - 280);
+  const s = Math.max(220, Math.min(size, 420));
+  canvas.width = s; canvas.height = s;
+  canvas.style.width = s + 'px'; canvas.style.height = s + 'px';
 }
 
 async function initVoiceChat() {
@@ -2335,8 +2198,13 @@ async function initVoiceChat() {
     voiceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const source = voiceAudioCtx.createMediaStreamSource(voiceMicStream);
     voiceAnalyser = voiceAudioCtx.createAnalyser();
-    voiceAnalyser.fftSize = 128;
+    voiceAnalyser.fftSize = 256;
+    voiceAnalyser.smoothingTimeConstant = 0.8;
     source.connect(voiceAnalyser);
+  }
+  // Разблокируем AudioContext (браузерное ограничение)
+  if (voiceAudioCtx.state === 'suspended') {
+    await voiceAudioCtx.resume();
   }
   // Анимация — только если не запущена
   if (!voiceAnimFrame) startVoiceAnimation();
@@ -2464,8 +2332,9 @@ function startVoiceAnimation() {
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   const cx = W/2, cy = H/2;
-  const BARS = 72, BASE_R = 88;
-  const dataArr = new Uint8Array(64);
+  const BARS = 72;
+  const BASE_R = Math.round(W * 0.30);  // 30% от размера canvas
+  const dataArr = new Uint8Array(128);
 
   function draw(ts) {
     voiceAnimFrame = requestAnimationFrame(draw);
@@ -2515,7 +2384,8 @@ function startVoiceAnimation() {
       } else {
         amp = 0.04;
       }
-      const len = amp * 65 + 7;
+      const maxLen = W * 0.22;
+      const len = amp * maxLen + W * 0.025;
       const x1 = cx + Math.cos(angle) * BASE_R;
       const y1 = cy + Math.sin(angle) * BASE_R;
       const x2 = cx + Math.cos(angle) * (BASE_R + len);
