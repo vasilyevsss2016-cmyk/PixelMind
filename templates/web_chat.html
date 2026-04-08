@@ -1927,58 +1927,80 @@ function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast(
 // ===== ГОЛОСОВОЙ ЧАТ =====
 let voiceState = 'idle'; // idle | listening | thinking | speaking
 let voiceRecognizer = null;
+let voiceRecogRunning = false;   // true пока recognizer реально слушает
 let voiceAudioCtx = null;
-let voiceMicStream = null;
+let voiceMicStream = null;       // сохраняем между сессиями, не останавливаем треки
 let voiceAnalyser = null;
 let voiceAnimFrame = null;
 let voiceAnimTime = 0;
 let voiceSendTimeout = null;
 let voiceLastTranscript = '';
+let voiceOpen = false;
 
 async function openVoiceChat() {
+  if (voiceOpen) return;
+  voiceOpen = true;
   document.getElementById('voice-modal').classList.add('active');
   document.getElementById('voice-log').innerHTML = '';
   document.getElementById('voice-user-text').textContent = '';
   voiceLastTranscript = '';
-  setVoiceStatus('🎤 Запуск микрофона…');
+  setVoiceStatus('🎤 Запуск…');
   await initVoiceChat();
 }
 function closeVoiceChat() {
+  voiceOpen = false;
   document.getElementById('voice-modal').classList.remove('active');
-  stopVoiceChat();
+  // Останавливаем распознавание и синтез, но НЕ освобождаем микрофон (чтобы не спрашивал заново)
+  if (voiceRecognizer) { voiceRecognizer = null; }
+  if (voiceAnimFrame) { cancelAnimationFrame(voiceAnimFrame); voiceAnimFrame = null; }
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  if (voiceSendTimeout) { clearTimeout(voiceSendTimeout); voiceSendTimeout = null; }
+  voiceState = 'idle';
+  voiceRecogRunning = false;
 }
+
 async function initVoiceChat() {
-  try {
-    voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  // Запрашиваем микрофон только если ещё нет потока
+  if (!voiceMicStream || !voiceMicStream.active) {
+    try {
+      voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch(e) {
+      setVoiceStatus('❌ Разрешите доступ к микрофону в браузере');
+      voiceOpen = false;
+      return;
+    }
+  }
+  // AudioContext — создаём один раз или если был закрыт
+  if (!voiceAudioCtx || voiceAudioCtx.state === 'closed') {
     voiceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const source = voiceAudioCtx.createMediaStreamSource(voiceMicStream);
     voiceAnalyser = voiceAudioCtx.createAnalyser();
     voiceAnalyser.fftSize = 128;
     source.connect(voiceAnalyser);
-  } catch(e) {
-    setVoiceStatus('❌ Нет доступа к микрофону — разрешите в браузере');
-    return;
   }
+  // Анимация — только если не запущена
+  if (!voiceAnimFrame) startVoiceAnimation();
   startVoiceRecognition();
-  startVoiceAnimation();
   setVoiceState('listening');
 }
-function stopVoiceChat() {
-  if (voiceRecognizer) { try { voiceRecognizer.stop(); } catch(e) {} voiceRecognizer = null; }
-  if (voiceMicStream) { voiceMicStream.getTracks().forEach(t => t.stop()); voiceMicStream = null; }
-  if (voiceAudioCtx) { try { voiceAudioCtx.close(); } catch(e) {} voiceAudioCtx = null; }
-  if (voiceAnimFrame) { cancelAnimationFrame(voiceAnimFrame); voiceAnimFrame = null; }
-  if (window.speechSynthesis) window.speechSynthesis.cancel();
-  if (voiceSendTimeout) { clearTimeout(voiceSendTimeout); voiceSendTimeout = null; }
-  voiceState = 'idle'; voiceAnalyser = null;
-}
+
 function startVoiceRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) { setVoiceStatus('❌ Браузер не поддерживает голосовой ввод (попробуй Chrome)'); return; }
+  if (!SR) { setVoiceStatus('❌ Голосовой ввод не поддерживается — используй Chrome'); return; }
+
+  // Не создаём новый если уже есть
+  if (voiceRecognizer) {
+    if (!voiceRecogRunning) { try { voiceRecognizer.start(); } catch(e) {} }
+    return;
+  }
+
   voiceRecognizer = new SR();
   voiceRecognizer.continuous = true;
   voiceRecognizer.interimResults = true;
   voiceRecognizer.lang = 'ru-RU';
+
+  voiceRecognizer.onstart = () => { voiceRecogRunning = true; };
+
   voiceRecognizer.onresult = (e) => {
     if (voiceState !== 'listening') return;
     let interim = '', finalText = '';
@@ -1986,20 +2008,37 @@ function startVoiceRecognition() {
       if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
       else interim += e.results[i][0].transcript;
     }
-    const display = finalText || interim;
-    document.getElementById('voice-user-text').textContent = display;
+    document.getElementById('voice-user-text').textContent = finalText || interim;
     if (finalText) {
       voiceLastTranscript += finalText;
       if (voiceSendTimeout) clearTimeout(voiceSendTimeout);
       voiceSendTimeout = setTimeout(() => {
-        if (voiceLastTranscript.trim()) sendVoiceMessage(voiceLastTranscript.trim());
+        const txt = voiceLastTranscript.trim();
+        if (txt) sendVoiceMessage(txt);
       }, 900);
     }
   };
-  voiceRecognizer.onerror = (e) => { if (e.error === 'not-allowed') setVoiceStatus('❌ Нет доступа к микрофону'); };
-  voiceRecognizer.onend = () => { if (voiceState === 'listening' && voiceRecognizer) { try { voiceRecognizer.start(); } catch(e) {} } };
+
+  voiceRecognizer.onerror = (e) => {
+    voiceRecogRunning = false;
+    if (e.error === 'not-allowed') { setVoiceStatus('❌ Доступ к микрофону запрещён'); return; }
+    // При других ошибках — перезапускаем если в режиме слушания
+    if (voiceState === 'listening' && voiceRecognizer) {
+      setTimeout(() => { try { voiceRecognizer.start(); } catch(e2) {} }, 300);
+    }
+  };
+
+  voiceRecognizer.onend = () => {
+    voiceRecogRunning = false;
+    // Перезапускаем только если чат открыт И мы в режиме слушания
+    if (voiceOpen && voiceState === 'listening' && voiceRecognizer) {
+      setTimeout(() => { try { voiceRecognizer.start(); } catch(e) {} }, 200);
+    }
+  };
+
   try { voiceRecognizer.start(); } catch(e) {}
 }
+
 async function sendVoiceMessage(text) {
   if (!text || voiceState !== 'listening') return;
   voiceLastTranscript = '';
@@ -2013,26 +2052,40 @@ async function sendVoiceMessage(text) {
       addVoiceMsg(d.answer, 'bot');
       if (d.credits !== undefined) updateCreditsDisplay(d.credits);
       speakVoiceResponse(d.answer);
-    } else { setVoiceState('listening'); toast(d.error || 'Ошибка', 'err'); }
+    } else {
+      setVoiceState('listening');
+      toast(d.error || 'Ошибка', 'err');
+    }
   } catch(e) { setVoiceState('listening'); toast('Ошибка соединения', 'err'); }
 }
+
 function speakVoiceResponse(text) {
   if (!window.speechSynthesis) { setVoiceState('listening'); return; }
   window.speechSynthesis.cancel();
   setVoiceState('speaking');
   const utt = new SpeechSynthesisUtterance(text);
   utt.lang = 'ru-RU'; utt.rate = 1.05; utt.pitch = 1.0;
-  const voices = window.speechSynthesis.getVoices();
-  const ru = voices.find(v => v.lang.startsWith('ru'));
-  if (ru) utt.voice = ru;
-  utt.onend = () => setVoiceState('listening');
-  utt.onerror = () => setVoiceState('listening');
-  window.speechSynthesis.speak(utt);
+  // Загружаем голоса (может понадобиться дождаться)
+  const trySpeak = () => {
+    const voices = window.speechSynthesis.getVoices();
+    const ru = voices.find(v => v.lang.startsWith('ru'));
+    if (ru) utt.voice = ru;
+    utt.onend = () => setVoiceState('listening');
+    utt.onerror = () => setVoiceState('listening');
+    window.speechSynthesis.speak(utt);
+  };
+  if (window.speechSynthesis.getVoices().length > 0) trySpeak();
+  else { window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; trySpeak(); }; trySpeak(); }
 }
+
 function setVoiceState(s) {
   voiceState = s;
   const map = { idle:'💤 Ожидание', listening:'🎤 Говори…', thinking:'🤔 Думаю…', speaking:'🔊 Отвечаю…' };
   setVoiceStatus(map[s] || s);
+  // Когда возвращаемся в режим слушания — перезапускаем распознавание если оно встало
+  if (s === 'listening' && voiceOpen && voiceRecognizer && !voiceRecogRunning) {
+    setTimeout(() => { try { voiceRecognizer.start(); } catch(e) {} }, 250);
+  }
 }
 function setVoiceStatus(t) { const el = document.getElementById('voice-status'); if(el) el.textContent = t; }
 function addVoiceMsg(text, role) {
