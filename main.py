@@ -3227,6 +3227,49 @@ def web_request_renewal():
         "comment": f"PixelMind {u['username']}"
     })
 
+@app.route("/app/voice-chat", methods=["POST"])
+def web_voice_chat():
+    """Голосовой чат с AI — короткие разговорные ответы."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Войдите в аккаунт"}), 401
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Нет доступа"}), 401
+    credits = u.get("credits", 0)
+    if credits == 0:
+        return jsonify({"ok": False, "error": "Недостаточно кредитов"}), 402
+    data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    if not message:
+        return jsonify({"ok": False, "error": "Пустое сообщение"}), 400
+    VOICE_SYSTEM = (
+        "Ты PixelMind — голосовой AI-ассистент. Отвечай коротко, разговорно и по-дружески. "
+        "Максимум 2-3 предложения. Без списков, без markdown. Только живая речь. Отвечай на русском."
+    )
+    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
+            json={"model": AI_MODEL, "messages": [
+                {"role": "system", "content": VOICE_SYSTEM},
+                {"role": "user", "content": message}
+            ], "max_tokens": 200},
+            timeout=30
+        )
+        resp.raise_for_status()
+        answer = resp.json()["choices"][0]["message"]["content"]
+        if credits != -1:
+            u["credits"] = max(0, credits - 1)
+            save_web_users(users)
+        return jsonify({"ok": True, "answer": answer, "credits": u.get("credits", credits)})
+    except Exception as e:
+        logger.error(f"voice-chat error: {e}")
+        return jsonify({"ok": False, "error": "Ошибка AI"}), 500
+
+
 @app.route("/app/homework-ask", methods=["POST"])
 def web_homework_ask():
     """AI-помощник с домашним заданием — с пошаговыми объяснениями."""
