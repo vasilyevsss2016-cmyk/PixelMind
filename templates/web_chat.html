@@ -377,74 +377,103 @@ header {
   .credits-badge span.cr-label { display:none; }
 }
 
-/* ===== VOICE CHAT FULLSCREEN ===== */
+/* ===== VOICE CHAT FULLSCREEN (ChatGPT-style) ===== */
 #voice-screen {
   position:fixed; inset:0; z-index:2000;
-  background: #070810;
+  background:#0a0a10;
   display:none; flex-direction:column; align-items:center;
-  padding: 0; overflow:hidden;
+  overflow:hidden;
 }
 #voice-screen.active { display:flex; }
 
-/* Шапка */
-#voice-header {
-  width:100%; padding:18px 22px 14px;
+/* Топ-бар */
+#voice-topbar {
+  width:100%; padding:16px 20px 0;
   display:flex; align-items:center; justify-content:space-between;
   flex-shrink:0;
-  background:linear-gradient(180deg,rgba(7,8,16,1) 60%,rgba(7,8,16,0) 100%);
 }
+#voice-topbar-title {
+  font-size:15px; font-weight:700; color:rgba(255,255,255,0.45); letter-spacing:.3px;
+}
+#voice-close-btn {
+  width:36px; height:36px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.5);
+  display:flex; align-items:center; justify-content:center; transition:all .18s;
+}
+#voice-close-btn:hover { background:rgba(255,255,255,0.14); color:#fff; }
+
+/* Центральная зона с анимацией */
+#voice-center {
+  flex:1; width:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:18px;
+  min-height:0; padding:0 20px;
+}
+#voice-canvas { display:block; flex-shrink:0; }
+
+/* Статус */
+#voice-status {
+  font-size:15px; font-weight:500; color:rgba(255,255,255,0.55);
+  letter-spacing:.3px; min-height:24px; text-align:center;
+}
+.voice-user-interim {
+  font-size:14px; color:rgba(255,255,255,0.75); font-style:italic;
+  min-height:20px; max-width:500px; text-align:center; line-height:1.5;
+}
+
+/* Лог диалога */
+#voice-log {
+  width:100%; max-width:520px; max-height:180px; overflow-y:auto;
+  display:flex; flex-direction:column; gap:6px; padding:0 20px;
+  flex-shrink:0;
+}
+.voice-msg { font-size:13px; padding:8px 13px; border-radius:14px; line-height:1.5; }
+.voice-msg-user { align-self:flex-end; background:rgba(90,171,255,0.14); color:rgba(255,255,255,0.85); border-bottom-right-radius:3px; max-width:82%; }
+.voice-msg-bot  { align-self:flex-start; background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.65); border-bottom-left-radius:3px; max-width:82%; }
 
 /* Камера */
 #voice-cam-wrap {
-  width:100%; max-width:540px; flex-shrink:0;
-  display:none; position:relative; border-radius:16px; overflow:hidden;
-  background:#000; max-height:220px;
+  width:calc(100% - 40px); max-width:460px; flex-shrink:0;
+  display:none; position:relative; border-radius:14px; overflow:hidden;
+  background:#000; max-height:180px;
 }
 #voice-cam-wrap.active { display:block; }
-#voice-cam-video { width:100%; height:220px; object-fit:cover; display:block; }
+#voice-cam-video { width:100%; height:180px; object-fit:cover; display:block; }
 #voice-cam-badge {
   position:absolute; top:8px; left:8px;
-  background:rgba(255,59,48,0.85); color:#fff; font-size:11px; font-weight:700;
-  padding:3px 8px; border-radius:20px; letter-spacing:.5px;
+  background:rgba(220,38,38,0.85); color:#fff; font-size:10px; font-weight:700;
+  padding:2px 7px; border-radius:20px; letter-spacing:.6px;
 }
 
-/* Лог */
-#voice-log {
-  width:100%; max-width:540px; flex:1; overflow-y:auto;
-  display:flex; flex-direction:column; gap:7px; padding:10px 20px;
-  min-height:0;
+/* Нижние кнопки */
+#voice-controls {
+  width:100%; flex-shrink:0; padding:16px 20px 36px;
+  display:flex; align-items:center; justify-content:center; gap:20px;
 }
-.voice-msg { font-size:14px; padding:9px 14px; border-radius:14px; text-align:left; line-height:1.55; }
-.voice-msg-user { align-self:flex-end; background:rgba(90,171,255,0.15); border:1px solid rgba(90,171,255,0.25); color:var(--text); border-bottom-right-radius:3px; max-width:86%; }
-.voice-msg-bot { align-self:flex-start; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--text2); border-bottom-left-radius:3px; max-width:86%; }
-
-/* Нижняя панель */
-#voice-bottom {
-  width:100%; flex-shrink:0; padding:0 20px 32px;
-  display:flex; flex-direction:column; align-items:center; gap:12px;
-  background:linear-gradient(0deg,rgba(7,8,16,1) 70%,rgba(7,8,16,0) 100%);
-}
-
-/* Радиальный визуализатор */
-#voice-canvas { display:block; flex-shrink:0; }
-
-/* Текст распознавания */
-.voice-user-interim { font-size:14px; color:var(--accent); font-style:italic; min-height:20px; opacity:.9; max-width:500px; text-align:center; }
-
-/* Кнопки управления */
-#voice-controls { display:flex; gap:12px; align-items:center; justify-content:center; }
 .voice-ctrl-btn {
-  width:52px; height:52px; border-radius:50%; border:none; cursor:pointer;
-  display:flex; align-items:center; justify-content:center; font-size:20px;
-  transition:all .2s; flex-shrink:0;
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .2s; flex-shrink:0; border-radius:50%;
 }
-.voice-ctrl-btn.cam  { background:rgba(90,171,255,0.15); border:1.5px solid rgba(90,171,255,0.3); color:#5aabff; }
-.voice-ctrl-btn.cam.on { background:rgba(90,171,255,0.3); border-color:rgba(90,171,255,0.6); }
-.voice-ctrl-btn.mute { background:rgba(255,255,255,0.08); border:1.5px solid rgba(255,255,255,0.15); color:var(--text2); }
-.voice-ctrl-btn.mute.on { background:rgba(255,69,58,0.2); border-color:rgba(255,69,58,0.4); color:#ff6b63; }
-.voice-ctrl-btn.end  { width:64px; height:64px; font-size:22px; background:rgba(255,69,58,0.2); border:1.5px solid rgba(255,69,58,0.4); color:#ff6b63; }
-.voice-ctrl-btn:hover { transform:scale(1.08); }
-.voice-status-text { font-size:14px; font-weight:600; min-height:22px; color:var(--text3); letter-spacing:.2px; }
+.voice-ctrl-btn.cam {
+  width:54px; height:54px;
+  background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.6);
+}
+.voice-ctrl-btn.cam.on { background:rgba(90,171,255,0.22); color:#7ec8ff; }
+.voice-ctrl-btn.end {
+  width:70px; height:70px;
+  background:#e53935; color:#fff;
+  box-shadow:0 4px 24px rgba(229,57,53,0.45);
+}
+.voice-ctrl-btn.end:hover { background:#c62828; transform:scale(1.06); }
+.voice-ctrl-btn.mute {
+  width:54px; height:54px;
+  background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.6);
+}
+.voice-ctrl-btn.mute.on { background:rgba(229,57,53,0.22); color:#ff7b76; }
+.voice-ctrl-btn.cam:hover, .voice-ctrl-btn.mute:hover { background:rgba(255,255,255,0.14); color:#fff; }
+
+/* SVG иконки кнопок */
+.voice-ctrl-btn svg { pointer-events:none; }
 
 /* ===== CAMERA MODAL ===== */
 #camera-modal .modal-box { max-width:480px; padding:0; overflow:hidden; }
@@ -884,7 +913,11 @@ header {
   <div id="input-area">
     <div class="input-row">
       <textarea id="msg-input" placeholder="Напиши сообщение…" rows="1" onkeydown="inputKeydown(event)" oninput="autoResize(this)"></textarea>
-      <button class="send-btn" id="send-btn" onclick="sendMsg()">➤</button>
+      <button class="send-btn" id="send-btn" onclick="sendMsg()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
     </div>
     <div class="input-hint">Enter — отправить &nbsp;·&nbsp; Shift+Enter — новая строка</div>
   </div>
@@ -1036,41 +1069,55 @@ header {
 <!-- VOICE CHAT FULLSCREEN -->
 <div id="voice-screen">
 
-  <!-- Шапка -->
-  <div id="voice-header">
-    <div>
-      <div style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.3px">🎙 Голосовой чат</div>
-      <div class="voice-status-text" id="voice-status">Инициализация…</div>
-    </div>
-    <div style="font-size:12px;color:var(--text3);text-align:right;max-width:140px;line-height:1.4">
-      Говори — PixelMind слышит и отвечает вслух
-    </div>
+  <!-- Топ-бар -->
+  <div id="voice-topbar">
+    <span id="voice-topbar-title">PixelMind Voice</span>
+    <button id="voice-close-btn" onclick="closeVoiceChat()" title="Закрыть">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
   </div>
 
+  <!-- Центральная зона: анимация -->
+  <div id="voice-center">
+    <canvas id="voice-canvas"></canvas>
+    <div id="voice-status">Инициализация…</div>
+    <div class="voice-user-interim" id="voice-user-text"></div>
+  </div>
+
+  <!-- Лог диалога -->
+  <div id="voice-log"></div>
+
   <!-- Камера AI-видение -->
-  <div id="voice-cam-wrap" style="margin:0 20px 12px">
+  <div id="voice-cam-wrap">
     <video id="voice-cam-video" autoplay playsinline muted></video>
-    <div id="voice-cam-badge">● LIVE · AI видит</div>
+    <div id="voice-cam-badge">LIVE · AI видит</div>
     <canvas id="voice-cam-canvas" style="display:none"></canvas>
   </div>
 
-  <!-- Лог сообщений -->
-  <div id="voice-log"></div>
-
-  <!-- Нижняя панель -->
-  <div id="voice-bottom">
-    <!-- Волна (Gemini-стиль) -->
-    <canvas id="voice-canvas"></canvas>
-
-    <!-- Текст распознавания -->
-    <div class="voice-user-interim" id="voice-user-text"></div>
-
-    <!-- Кнопки управления -->
-    <div id="voice-controls">
-      <button class="voice-ctrl-btn cam" id="voice-cam-btn" onclick="toggleVoiceCam()" title="Камера для AI">📷</button>
-      <button class="voice-ctrl-btn end" onclick="closeVoiceChat()" title="Завершить">🔴</button>
-      <button class="voice-ctrl-btn mute" id="voice-mute-btn" onclick="toggleVoiceMute()" title="Микрофон">🎤</button>
-    </div>
+  <!-- Кнопки управления -->
+  <div id="voice-controls">
+    <!-- Камера -->
+    <button class="voice-ctrl-btn cam" id="voice-cam-btn" onclick="toggleVoiceCam()" title="Камера для AI">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+      </svg>
+    </button>
+    <!-- Завершить -->
+    <button class="voice-ctrl-btn end" onclick="closeVoiceChat()" title="Завершить">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.5 0 1 .4 1 1V20c0 .5-.5 1-1 1C10.6 21 3 13.4 3 4c0-.5.4-1 1-1h3.5c.5 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/>
+      </svg>
+    </button>
+    <!-- Мут -->
+    <button class="voice-ctrl-btn mute" id="voice-mute-btn" onclick="toggleVoiceMute()" title="Микрофон">
+      <svg id="voice-mute-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+        <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+      </svg>
+    </button>
   </div>
 
 </div>
@@ -1127,7 +1174,9 @@ header {
         <textarea id="hw-input" placeholder="Напиши задачу…" rows="2"
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendHomework()}"
           oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
-        <button class="hw-send-btn" id="hw-send-btn" onclick="sendHomework()">➤</button>
+        <button class="hw-send-btn" id="hw-send-btn" onclick="sendHomework()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
       </div>
       <input type="file" id="hw-file-input" accept="image/*" capture="environment" style="display:none" onchange="hwFileSelected(this)">
     </div>
@@ -2219,7 +2268,7 @@ async function openVoiceChat() {
   if (voiceOpen) return;
   voiceOpen = true;
   voiceMuted = false;
-  document.getElementById('voice-mute-btn').textContent = '🎤';
+  document.getElementById('voice-mute-btn').innerHTML = _SVG_MIC_ON;
   document.getElementById('voice-mute-btn').classList.remove('on');
   document.getElementById('voice-screen').classList.add('active');
   document.getElementById('voice-log').innerHTML = '';
@@ -2309,7 +2358,6 @@ async function _startVoiceCam() {
   voiceCamEnabled = true;
   document.getElementById('voice-cam-wrap').classList.add('active');
   document.getElementById('voice-cam-btn').classList.add('on');
-  document.getElementById('voice-cam-btn').textContent = '📷';
   // Захватываем кадры каждые 4 секунды
   voiceCamStream._captureInterval = setInterval(_captureVoiceCamFrame, 4000);
   _captureVoiceCamFrame();
@@ -2338,19 +2386,21 @@ function _captureVoiceCamFrame() {
 }
 
 // ---- МУТ ----
+const _SVG_MIC_ON  = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
+const _SVG_MIC_OFF = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
+
 function toggleVoiceMute() {
   voiceMuted = !voiceMuted;
   const btn = document.getElementById('voice-mute-btn');
   if (voiceMuted) {
-    // Останавливаем все аудио-треки
     if (voiceMicStream) voiceMicStream.getAudioTracks().forEach(t => { t.enabled = false; });
     if (voiceRecognizer && voiceRecogRunning) { try { voiceRecognizer.stop(); } catch(e) {} }
-    btn.textContent = '🔇';
+    btn.innerHTML = _SVG_MIC_OFF;
     btn.classList.add('on');
     setVoiceStatus('Микрофон выключен');
   } else {
     if (voiceMicStream) voiceMicStream.getAudioTracks().forEach(t => { t.enabled = true; });
-    btn.textContent = '🎤';
+    btn.innerHTML = _SVG_MIC_ON;
     btn.classList.remove('on');
     setVoiceState('listening');
   }
@@ -2494,7 +2544,7 @@ async function speakVoiceResponse(text) {
 
 function setVoiceState(s) {
   voiceState = s;
-  const map = { idle:'💤 Ожидание', listening:'🎤 Говори…', thinking:'🤔 Думаю…', speaking:'🔊 Отвечаю…' };
+  const map = { idle:'Ожидание', listening:'Говори…', thinking:'Думаю…', speaking:'Отвечаю…' };
   setVoiceStatus(map[s] || s);
   // Когда возвращаемся в режим слушания — перезапускаем распознавание если оно встало
   if (s === 'listening' && voiceOpen && voiceRecognizer && !voiceRecogRunning) {
