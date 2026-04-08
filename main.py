@@ -3227,6 +3227,105 @@ def web_request_renewal():
         "comment": f"PixelMind {u['username']}"
     })
 
+@app.route("/app/homework-ask", methods=["POST"])
+def web_homework_ask():
+    """AI-помощник с домашним заданием — с пошаговыми объяснениями."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Войдите в аккаунт"}), 401
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Нет доступа"}), 401
+    credits = u.get("credits", 0)
+    if credits == 0:
+        return jsonify({"ok": False, "error": "Недостаточно кредитов. Пополните баланс."}), 402
+    data = request.get_json(silent=True) or {}
+    question = (data.get("question") or "").strip()
+    image_b64 = (data.get("image_b64") or "").strip()
+    if not question and not image_b64:
+        return jsonify({"ok": False, "error": "Введите вопрос или прикрепите фото"}), 400
+    HOMEWORK_SYSTEM = (
+        "Ты умный учебный ассистент PixelMind. Помогаешь школьникам и студентам разобраться с домашними заданиями. "
+        "Объясняй решения пошагово, понятным языком. Не просто давай ответ — объясни как к нему прийти. "
+        "Для математики показывай все шаги вычислений. Для языков объясняй правила. "
+        "Пиши кратко но ясно. Используй эмодзи для структуры. Отвечай на русском языке."
+    )
+    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    try:
+        if image_b64:
+            messages = [
+                {"role": "system", "content": HOMEWORK_SYSTEM},
+                {"role": "user", "content": [
+                    {"type": "text", "text": question if question else "Помоги разобраться с этим заданием"},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
+                ]}
+            ]
+            model = VISION_MODEL
+        else:
+            messages = [
+                {"role": "system", "content": HOMEWORK_SYSTEM},
+                {"role": "user", "content": question}
+            ]
+            model = AI_MODEL
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "max_tokens": 2000},
+            timeout=60
+        )
+        resp.raise_for_status()
+        answer = resp.json()["choices"][0]["message"]["content"]
+        if credits != -1:
+            u["credits"] = max(0, credits - 1)
+            save_web_users(users)
+        return jsonify({"ok": True, "answer": answer, "credits": u.get("credits", credits)})
+    except Exception as e:
+        logger.error(f"homework-ask error: {e}")
+        return jsonify({"ok": False, "error": "Ошибка AI, попробуй ещё раз"}), 500
+
+
+@app.route("/app/analyze-image", methods=["POST"])
+def web_analyze_image():
+    """Анализ фото через AI Vision — для умной камеры."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Войдите в аккаунт"}), 401
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Нет доступа"}), 401
+    credits = u.get("credits", 0)
+    if credits == 0:
+        return jsonify({"ok": False, "error": "Недостаточно кредитов"}), 402
+    data = request.get_json(silent=True) or {}
+    image_b64 = (data.get("image_b64") or "").strip()
+    prompt = (data.get("prompt") or "Опиши подробно что изображено на фото. Если есть текст — прочитай его. Если QR-код — опиши куда он ведёт.").strip()
+    if not image_b64:
+        return jsonify({"ok": False, "error": "Нет изображения"}), 400
+    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    try:
+        messages = [{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
+        ]}]
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
+            json={"model": VISION_MODEL, "messages": messages, "max_tokens": 1000},
+            timeout=60
+        )
+        resp.raise_for_status()
+        answer = resp.json()["choices"][0]["message"]["content"]
+        if credits != -1:
+            u["credits"] = max(0, credits - 1)
+            save_web_users(users)
+        return jsonify({"ok": True, "answer": answer, "credits": u.get("credits", credits)})
+    except Exception as e:
+        logger.error(f"analyze-image error: {e}")
+        return jsonify({"ok": False, "error": "Ошибка анализа"}), 500
+
+
 @app.route("/app/notify-paid", methods=["POST"])
 def web_notify_paid():
     """Пользователь нажал «Я оплатил» — отправляем заявку администратору на почту."""

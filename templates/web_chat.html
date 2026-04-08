@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-title" content="PixelMind">
 <link rel="apple-touch-icon" href="/pwa-icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png">
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -375,6 +376,41 @@ header {
   .plan-cards { grid-template-columns:1fr; }
   .credits-badge span.cr-label { display:none; }
 }
+
+/* ===== CAMERA MODAL ===== */
+#camera-modal .modal-box { max-width:480px; padding:0; overflow:hidden; }
+.cam-video-wrap { position:relative; background:#000; overflow:hidden; border-radius:var(--radius) var(--radius) 0 0; max-height:280px; }
+#cam-video { width:100%; display:block; max-height:280px; object-fit:cover; }
+#cam-canvas { display:none; }
+.qr-finder { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.qr-finder-box { width:180px; height:180px; border-radius:14px; border:2.5px solid rgba(52,208,88,0.8); box-shadow:0 0 0 9999px rgba(0,0,0,0.45); transition:border-color .3s; }
+.qr-finder-box.found { border-color:#34d058; box-shadow:0 0 0 9999px rgba(0,0,0,0.3),0 0 30px rgba(52,208,88,0.6); }
+.cam-body { padding:20px; }
+.qr-result-box { background:rgba(52,208,88,0.07); border:1px solid rgba(52,208,88,0.25); border-radius:12px; padding:14px; margin:12px 0; display:none; }
+.qr-result-label { font-size:10px; color:var(--text2); text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; }
+#qr-found-text { font-size:13px; color:var(--text); word-break:break-all; line-height:1.5; }
+#qr-ai-answer { display:none; background:rgba(255,255,255,0.04); border:1px solid var(--glass-border); border-radius:11px; padding:13px; margin-top:10px; font-size:13px; line-height:1.65; color:var(--text); }
+.cam-status { text-align:center; font-size:13px; color:var(--text2); padding:8px 0; }
+
+/* ===== HOMEWORK MODAL ===== */
+#hw-modal .modal-box { max-width:520px; height:82vh; max-height:700px; display:flex; flex-direction:column; padding:0; overflow:hidden; }
+.hw-header { padding:18px 20px 14px; border-bottom:1px solid var(--glass-border); flex-shrink:0; }
+#hw-messages { flex:1; overflow-y:auto; padding:14px 16px; display:flex; flex-direction:column; gap:10px; }
+.hw-msg { max-width:88%; padding:11px 14px; border-radius:14px; font-size:13.5px; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+.hw-msg-user { align-self:flex-end; background:linear-gradient(135deg,rgba(58,142,255,0.25),rgba(26,110,220,0.2)); border:1px solid rgba(90,171,255,0.2); color:var(--text); border-bottom-right-radius:4px; }
+.hw-msg-ai { align-self:flex-start; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); color:var(--text); border-bottom-left-radius:4px; }
+.hw-msg-ai.thinking { color:var(--text2); font-style:italic; }
+.hw-footer { padding:10px 12px; border-top:1px solid var(--glass-border); flex-shrink:0; }
+.hw-img-preview { display:none; margin-bottom:8px; position:relative; }
+.hw-img-preview img { max-height:90px; border-radius:8px; border:1px solid var(--glass-border); }
+.hw-img-remove { position:absolute; top:3px; right:3px; background:rgba(255,69,58,0.85); border:none; border-radius:6px; color:#fff; font-size:11px; cursor:pointer; padding:2px 6px; line-height:1.4; }
+.hw-input-row { display:flex; gap:8px; align-items:flex-end; }
+#hw-input { flex:1; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); border-radius:12px; padding:10px 12px; color:var(--text); font-size:14px; resize:none; outline:none; font-family:inherit; max-height:120px; transition:border .2s; }
+#hw-input:focus { border-color:rgba(90,171,255,0.4); }
+.hw-attach-btn { width:40px; height:40px; border-radius:10px; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:var(--text2); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .18s; }
+.hw-attach-btn:hover { background:rgba(255,255,255,0.1); color:var(--text); }
+.hw-send-btn { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#3a8eff,#1a6edc); border:none; color:#fff; font-size:18px; cursor:pointer; flex-shrink:0; transition:all .18s; display:flex; align-items:center; justify-content:center; box-shadow:0 3px 12px rgba(58,142,255,0.35); }
+.hw-send-btn:disabled { opacity:.5; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -564,6 +600,8 @@ header {
         <div class="user-avatar" id="user-avatar-letter">?</div>
         <span class="uname" id="header-username"></span>
       </div>
+      <button class="hdr-btn hdr-btn-ghost" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
+      <button class="hdr-btn hdr-btn-ghost" onclick="openHomework()" title="Помощь с ДЗ" style="font-size:17px">📚</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="clearHistory()" title="Очистить чат">🗑</button>
       <button class="hdr-btn hdr-btn-red" onclick="doLogout()">Выйти</button>
     </div>
@@ -778,6 +816,65 @@ header {
       <button class="send-btn" id="send-btn" onclick="sendMsg()">➤</button>
     </div>
     <div class="input-hint">Enter — отправить &nbsp;·&nbsp; Shift+Enter — новая строка</div>
+  </div>
+</div>
+
+<!-- CAMERA MODAL -->
+<div class="modal-overlay" id="camera-modal" onclick="if(event.target===this)closeCamera()">
+  <div class="modal-box">
+    <div class="cam-video-wrap">
+      <button class="modal-close" onclick="closeCamera()" style="position:absolute;top:10px;right:10px;z-index:10;background:rgba(0,0,0,0.5)">✕</button>
+      <video id="cam-video" autoplay playsinline muted></video>
+      <canvas id="cam-canvas"></canvas>
+      <div class="qr-finder"><div class="qr-finder-box" id="qr-finder-box"></div></div>
+    </div>
+    <div class="cam-body">
+      <div class="modal-title" style="margin-bottom:3px">📷 Умная камера</div>
+      <div class="modal-sub">Наведи на QR-код — определится автоматически</div>
+      <div class="cam-status" id="cam-status">Запуск камеры…</div>
+      <div class="qr-result-box" id="qr-result-box">
+        <div class="qr-result-label">🔍 QR найден</div>
+        <div id="qr-found-text"></div>
+        <div id="qr-ai-answer"></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+          <button class="upg-btn upg-btn-blue" style="flex:1;margin:0;padding:10px" onclick="analyzeQRWithAI()">🤖 Анализ AI</button>
+          <button class="upg-btn upg-btn-ghost" style="flex:1;margin:0;padding:10px" onclick="copyQRText()">📋 Скопировать</button>
+          <button id="qr-open-btn" class="upg-btn upg-btn-ghost" style="flex:1;margin:0;padding:10px;display:none" onclick="openQRLink()">🔗 Открыть</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="upg-btn upg-btn-ghost" style="flex:1;margin:0;padding:10px" onclick="takePhotoAnalyze()">📸 Анализ фото</button>
+        <button class="upg-btn upg-btn-ghost" style="flex:1;margin:0;padding:10px" onclick="closeCamera()">Закрыть</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HOMEWORK MODAL -->
+<div class="modal-overlay" id="hw-modal" onclick="if(event.target===this)closeHomework()">
+  <div class="modal-box">
+    <div class="hw-header">
+      <button class="modal-close" onclick="closeHomework()">✕</button>
+      <div class="modal-title">📚 Помощь с домашним заданием</div>
+      <div class="modal-sub">Напиши задание или прикрепи фото — объясню пошагово</div>
+    </div>
+    <div id="hw-messages">
+      <div class="hw-msg hw-msg-ai">👋 Привет! Напиши задачу или сфотографируй листок — объясню решение пошагово!</div>
+    </div>
+    <div class="hw-footer">
+      <div class="hw-img-preview" id="hw-img-preview">
+        <img id="hw-preview-img" src="" alt="">
+        <button class="hw-img-remove" onclick="clearHWImage()">✕</button>
+      </div>
+      <div class="hw-input-row">
+        <button class="hw-attach-btn" onclick="hwPickPhoto()" title="Прикрепить фото">📎</button>
+        <textarea id="hw-input" placeholder="Напиши задачу…" rows="2"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendHomework()}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+        <button class="hw-send-btn" id="hw-send-btn" onclick="sendHomework()">➤</button>
+      </div>
+      <input type="file" id="hw-file-input" accept="image/*" capture="environment" style="display:none" onchange="hwFileSelected(this)">
+    </div>
   </div>
 </div>
 
@@ -1799,6 +1896,211 @@ async function topupConfirmPaid() {
 }
 function copyTopupPhone()   { navigator.clipboard?.writeText(_tuPhone);   toast('Номер скопирован'); }
 function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast('Комментарий скопирован'); }
+
+// ===== УМНАЯ КАМЕРА =====
+let camStream = null, camScanLoop = null, qrLastText = '';
+
+async function openCamera() {
+  document.getElementById('camera-modal').classList.add('active');
+  document.getElementById('cam-status').textContent = 'Запуск камеры…';
+  document.getElementById('qr-result-box').style.display = 'none';
+  document.getElementById('qr-finder-box').classList.remove('found');
+  qrLastText = '';
+  await startCameraStream();
+}
+function closeCamera() {
+  document.getElementById('camera-modal').classList.remove('active');
+  stopCamera();
+}
+async function startCameraStream() {
+  try {
+    if (camStream) stopCamera();
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width:{ideal:1280}, height:{ideal:720} }, audio: false });
+    const video = document.getElementById('cam-video');
+    video.srcObject = camStream;
+    await video.play();
+    document.getElementById('cam-status').textContent = '📷 Поиск QR-кода…';
+    startQRScan();
+  } catch(e) {
+    document.getElementById('cam-status').textContent = '❌ Нет доступа к камере. Разрешите в настройках браузера.';
+  }
+}
+function stopCamera() {
+  if (camScanLoop) { cancelAnimationFrame(camScanLoop); camScanLoop = null; }
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+}
+function startQRScan() {
+  const video = document.getElementById('cam-video');
+  const canvas = document.getElementById('cam-canvas');
+  const ctx = canvas.getContext('2d');
+  function scan() {
+    if (!camStream) return;
+    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      if (window.jsQR) {
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+        if (code && code.data !== qrLastText) {
+          qrLastText = code.data;
+          showQRResult(code.data);
+        }
+      }
+    }
+    camScanLoop = requestAnimationFrame(scan);
+  }
+  camScanLoop = requestAnimationFrame(scan);
+}
+function showQRResult(text) {
+  document.getElementById('qr-finder-box').classList.add('found');
+  document.getElementById('qr-found-text').textContent = text;
+  document.getElementById('qr-ai-answer').style.display = 'none';
+  document.getElementById('qr-ai-answer').textContent = '';
+  const resultBox = document.getElementById('qr-result-box');
+  resultBox.style.display = 'block';
+  const openBtn = document.getElementById('qr-open-btn');
+  if (/^https?:\/\//i.test(text)) { openBtn.style.display = ''; } else { openBtn.style.display = 'none'; }
+  document.getElementById('cam-status').textContent = '✅ QR-код найден!';
+  toast('QR-код найден!', 'ok');
+}
+function copyQRText() {
+  const t = document.getElementById('qr-found-text').textContent;
+  navigator.clipboard?.writeText(t).then(() => toast('Скопировано!','ok'));
+}
+function openQRLink() {
+  window.open(document.getElementById('qr-found-text').textContent, '_blank');
+}
+async function analyzeQRWithAI() {
+  const text = document.getElementById('qr-found-text').textContent;
+  if (!text) return;
+  const aiBox = document.getElementById('qr-ai-answer');
+  aiBox.style.display = 'block';
+  aiBox.textContent = '🤖 Анализирую…';
+  try {
+    const r = await fetch('/app/homework-ask', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ question: `Что означает этот QR-код? Вот его содержимое:\n${text}\n\nОбъясни куда он ведёт, безопасно ли его открывать, и что там может быть.` }) });
+    const d = await r.json();
+    aiBox.textContent = d.ok ? d.answer : (d.error || 'Ошибка');
+    if (d.ok && d.credits !== undefined) updateCreditsDisplay(d.credits);
+  } catch(e) { aiBox.textContent = 'Ошибка соединения'; }
+}
+async function takePhotoAnalyze() {
+  const video = document.getElementById('cam-video');
+  if (!camStream || video.readyState < video.HAVE_ENOUGH_DATA) { toast('Камера не готова','err'); return; }
+  const canvas = document.getElementById('cam-canvas');
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const b64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+  document.getElementById('cam-status').textContent = '🤖 Анализирую фото…';
+  const aiBox = document.getElementById('qr-ai-answer');
+  document.getElementById('qr-result-box').style.display = 'block';
+  document.getElementById('qr-found-text').textContent = '[Фото с камеры]';
+  document.getElementById('qr-open-btn').style.display = 'none';
+  aiBox.style.display = 'block';
+  aiBox.textContent = '🤖 Обрабатываю…';
+  try {
+    const r = await fetch('/app/analyze-image', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ image_b64: b64, prompt: 'Опиши подробно что на этом фото. Если есть текст или надписи — прочитай их.' }) });
+    const d = await r.json();
+    aiBox.textContent = d.ok ? d.answer : (d.error || 'Ошибка');
+    document.getElementById('cam-status').textContent = d.ok ? '✅ Готово' : '❌ Ошибка';
+    if (d.ok && d.credits !== undefined) updateCreditsDisplay(d.credits);
+  } catch(e) { aiBox.textContent = 'Ошибка'; document.getElementById('cam-status').textContent = '❌ Ошибка'; }
+}
+function updateCreditsDisplay(credits) {
+  const el = document.getElementById('credits-count');
+  if (el) el.textContent = credits === -1 ? '∞' : credits;
+}
+
+// ===== ПОМОЩЬ С ДЗ =====
+let hwImageB64 = '';
+let hwSending = false;
+
+function openHomework() {
+  document.getElementById('hw-modal').classList.add('active');
+  setTimeout(() => document.getElementById('hw-input').focus(), 200);
+}
+function closeHomework() {
+  document.getElementById('hw-modal').classList.remove('active');
+}
+function hwPickPhoto() {
+  document.getElementById('hw-file-input').click();
+}
+function hwFileSelected(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    hwImageB64 = dataUrl.split(',')[1];
+    document.getElementById('hw-preview-img').src = dataUrl;
+    document.getElementById('hw-img-preview').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+function clearHWImage() {
+  hwImageB64 = '';
+  document.getElementById('hw-img-preview').style.display = 'none';
+  document.getElementById('hw-preview-img').src = '';
+}
+function hwAddMessage(text, role) {
+  const box = document.getElementById('hw-messages');
+  const div = document.createElement('div');
+  div.className = 'hw-msg ' + (role === 'user' ? 'hw-msg-user' : 'hw-msg-ai');
+  if (role === 'ai' && text === '…') div.classList.add('thinking');
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+  return div;
+}
+async function sendHomework() {
+  if (hwSending) return;
+  const input = document.getElementById('hw-input');
+  const question = input.value.trim();
+  if (!question && !hwImageB64) return;
+  hwSending = true;
+  const btn = document.getElementById('hw-send-btn');
+  btn.disabled = true;
+
+  const userText = question || '📷 Фото задания';
+  if (hwImageB64) {
+    const prev = document.getElementById('hw-preview-img').src;
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'hw-msg hw-msg-user';
+    const img = document.createElement('img');
+    img.src = prev; img.style.cssText = 'max-width:100%;border-radius:8px;display:block;margin-bottom:6px';
+    msgDiv.appendChild(img);
+    if (question) { const t = document.createElement('div'); t.textContent = question; msgDiv.appendChild(t); }
+    document.getElementById('hw-messages').appendChild(msgDiv);
+    document.getElementById('hw-messages').scrollTop = 9999;
+  } else {
+    hwAddMessage(userText, 'user');
+  }
+  input.value = ''; input.style.height = 'auto';
+
+  const imageB64 = hwImageB64;
+  clearHWImage();
+
+  const thinkDiv = hwAddMessage('🤔 Думаю…', 'ai');
+
+  try {
+    const body = { question };
+    if (imageB64) body.image_b64 = imageB64;
+    const r = await fetch('/app/homework-ask', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const d = await r.json();
+    thinkDiv.classList.remove('thinking');
+    thinkDiv.textContent = d.ok ? d.answer : ('❌ ' + (d.error || 'Ошибка'));
+    document.getElementById('hw-messages').scrollTop = 9999;
+    if (d.ok && d.credits !== undefined) updateCreditsDisplay(d.credits);
+  } catch(e) {
+    thinkDiv.textContent = '❌ Ошибка соединения';
+  }
+  hwSending = false;
+  btn.disabled = false;
+  input.focus();
+}
 </script>
 <script>
 if ('serviceWorker' in navigator) {
