@@ -1949,14 +1949,19 @@ async function openVoiceChat() {
 }
 function closeVoiceChat() {
   voiceOpen = false;
+  voiceState = 'idle';
+  voiceRecogRunning = false;
   document.getElementById('voice-modal').classList.remove('active');
-  // Останавливаем распознавание и синтез, но НЕ освобождаем микрофон (чтобы не спрашивал заново)
-  if (voiceRecognizer) { voiceRecognizer = null; }
+  // Правильно останавливаем recognizer — сначала обнуляем переменную, потом stop()
+  // чтобы onend не попытался перезапустить
+  const rec = voiceRecognizer;
+  voiceRecognizer = null;
+  if (rec) { try { rec.stop(); } catch(e) {} }
   if (voiceAnimFrame) { cancelAnimationFrame(voiceAnimFrame); voiceAnimFrame = null; }
   if (window.speechSynthesis) window.speechSynthesis.cancel();
   if (voiceSendTimeout) { clearTimeout(voiceSendTimeout); voiceSendTimeout = null; }
-  voiceState = 'idle';
-  voiceRecogRunning = false;
+  // Сбрасываем транскрипт
+  voiceLastTranscript = '';
 }
 
 async function initVoiceChat() {
