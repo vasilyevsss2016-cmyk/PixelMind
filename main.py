@@ -3249,25 +3249,36 @@ def web_voice_chat():
         "Максимум 2-3 предложения. Без списков, без markdown. Только живая речь. Отвечай на русском."
     )
     OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-    try:
-        resp = requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
-            json={"model": AI_MODEL, "messages": [
-                {"role": "system", "content": VOICE_SYSTEM},
-                {"role": "user", "content": message}
-            ], "max_tokens": 200},
-            timeout=30
-        )
-        resp.raise_for_status()
-        answer = resp.json()["choices"][0]["message"]["content"]
-        if credits != -1:
-            u["credits"] = max(0, credits - 1)
-            save_web_users(users)
-        return jsonify({"ok": True, "answer": answer, "credits": u.get("credits", credits)})
-    except Exception as e:
-        logger.error(f"voice-chat error: {e}")
-        return jsonify({"ok": False, "error": "Ошибка AI"}), 500
+    models_to_try = [AI_MODEL, "google/gemini-2.0-flash-exp:free", "meta-llama/llama-4-scout:free"]
+    answer = None
+    last_err = None
+    for model in models_to_try:
+        try:
+            resp = requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
+                json={"model": model, "messages": [
+                    {"role": "system", "content": VOICE_SYSTEM},
+                    {"role": "user", "content": message}
+                ], "max_tokens": 200},
+                timeout=25
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+            if content and content.strip():
+                answer = content.strip()
+                break
+        except Exception as e:
+            last_err = e
+            logger.warning(f"voice-chat model {model} failed: {e}")
+            continue
+    if not answer:
+        logger.error(f"voice-chat all models failed: {last_err}")
+        return jsonify({"ok": False, "error": "Не удалось получить ответ, попробуй ещё раз"}), 500
+    if credits != -1:
+        u["credits"] = max(0, credits - 1)
+        save_web_users(users)
+    return jsonify({"ok": True, "answer": answer, "credits": u.get("credits", credits)})
 
 
 @app.route("/app/homework-ask", methods=["POST"])

@@ -2019,7 +2019,9 @@ function startVoiceRecognition() {
       if (voiceSendTimeout) clearTimeout(voiceSendTimeout);
       voiceSendTimeout = setTimeout(() => {
         const txt = voiceLastTranscript.trim();
-        if (txt) sendVoiceMessage(txt);
+        // Не отправляем случайные звуки — минимум 3 символа
+        if (txt && txt.length >= 3) sendVoiceMessage(txt);
+        else voiceLastTranscript = '';
       }, 900);
     }
   };
