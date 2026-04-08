@@ -3305,6 +3305,7 @@ def web_voice_chat():
         return jsonify({"ok": False, "error": "Недостаточно кредитов"}), 402
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
+    image_b64 = data.get("image_b64")  # кадр с камеры (base64 JPEG), может быть None
     if not message:
         return jsonify({"ok": False, "error": "Пустое сообщение"}), 400
     VOICE_SYSTEM = (
@@ -3312,7 +3313,18 @@ def web_voice_chat():
         "Максимум 2-3 предложения. Без списков, без markdown. Только живая речь. Отвечай на русском."
     )
     OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-    models_to_try = [AI_MODEL, "google/gemini-2.0-flash-exp:free", "meta-llama/llama-4-scout:free"]
+
+    # Если есть кадр с камеры — используем vision-модель
+    if image_b64:
+        user_content = [
+            {"type": "text", "text": message},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
+        ]
+        models_to_try = [VISION_MODEL, "google/gemini-2.0-flash-exp:free"]
+    else:
+        user_content = message
+        models_to_try = [AI_MODEL, "google/gemini-2.0-flash-exp:free", "meta-llama/llama-4-scout:free"]
+
     answer = None
     last_err = None
     for model in models_to_try:
@@ -3322,9 +3334,9 @@ def web_voice_chat():
                 headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
                 json={"model": model, "messages": [
                     {"role": "system", "content": VOICE_SYSTEM},
-                    {"role": "user", "content": message}
+                    {"role": "user", "content": user_content}
                 ], "max_tokens": 200},
-                timeout=25
+                timeout=30
             )
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]

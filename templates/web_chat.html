@@ -380,28 +380,71 @@ header {
 /* ===== VOICE CHAT FULLSCREEN ===== */
 #voice-screen {
   position:fixed; inset:0; z-index:2000;
-  background: radial-gradient(ellipse at center, #0d1224 0%, #07080f 100%);
-  display:none; flex-direction:column; align-items:center; justify-content:space-between;
-  padding: 24px 20px 32px;
-  overflow:hidden;
+  background: #070810;
+  display:none; flex-direction:column; align-items:center;
+  padding: 0; overflow:hidden;
 }
 #voice-screen.active { display:flex; }
-#voice-canvas { display:block; flex-shrink:0; }
-.voice-status-text { font-size:16px; font-weight:700; min-height:26px; color:var(--text); letter-spacing:.3px; }
-.voice-user-interim { font-size:14px; color:var(--accent); font-style:italic; min-height:22px; opacity:.9; max-width:480px; text-align:center; }
+
+/* Шапка */
+#voice-header {
+  width:100%; padding:18px 22px 14px;
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0;
+  background:linear-gradient(180deg,rgba(7,8,16,1) 60%,rgba(7,8,16,0) 100%);
+}
+
+/* Камера */
+#voice-cam-wrap {
+  width:100%; max-width:540px; flex-shrink:0;
+  display:none; position:relative; border-radius:16px; overflow:hidden;
+  background:#000; max-height:220px;
+}
+#voice-cam-wrap.active { display:block; }
+#voice-cam-video { width:100%; height:220px; object-fit:cover; display:block; }
+#voice-cam-badge {
+  position:absolute; top:8px; left:8px;
+  background:rgba(255,59,48,0.85); color:#fff; font-size:11px; font-weight:700;
+  padding:3px 8px; border-radius:20px; letter-spacing:.5px;
+}
+
+/* Лог */
 #voice-log {
-  width:100%; max-width:540px; max-height:180px; overflow-y:auto;
-  display:flex; flex-direction:column; gap:7px; padding:6px 0;
+  width:100%; max-width:540px; flex:1; overflow-y:auto;
+  display:flex; flex-direction:column; gap:7px; padding:10px 20px;
+  min-height:0;
 }
 .voice-msg { font-size:14px; padding:9px 14px; border-radius:14px; text-align:left; line-height:1.55; }
 .voice-msg-user { align-self:flex-end; background:rgba(90,171,255,0.15); border:1px solid rgba(90,171,255,0.25); color:var(--text); border-bottom-right-radius:3px; max-width:86%; }
 .voice-msg-bot { align-self:flex-start; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:var(--text2); border-bottom-left-radius:3px; max-width:86%; }
-.voice-end-btn {
-  padding:15px 48px; border-radius:50px; font-size:15px; font-weight:700;
-  background:rgba(255,69,58,0.2); border:1.5px solid rgba(255,69,58,0.45);
-  color:#ff6b63; cursor:pointer; transition:all .2s; letter-spacing:.3px;
+
+/* Нижняя панель */
+#voice-bottom {
+  width:100%; flex-shrink:0; padding:0 20px 32px;
+  display:flex; flex-direction:column; align-items:center; gap:12px;
+  background:linear-gradient(0deg,rgba(7,8,16,1) 70%,rgba(7,8,16,0) 100%);
 }
-.voice-end-btn:hover { background:rgba(255,69,58,0.35); transform:scale(1.04); }
+
+/* Волна Gemini */
+#voice-canvas { display:block; width:100%; max-width:540px; height:80px; flex-shrink:0; }
+
+/* Текст распознавания */
+.voice-user-interim { font-size:14px; color:var(--accent); font-style:italic; min-height:20px; opacity:.9; max-width:500px; text-align:center; }
+
+/* Кнопки управления */
+#voice-controls { display:flex; gap:12px; align-items:center; justify-content:center; }
+.voice-ctrl-btn {
+  width:52px; height:52px; border-radius:50%; border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:20px;
+  transition:all .2s; flex-shrink:0;
+}
+.voice-ctrl-btn.cam  { background:rgba(90,171,255,0.15); border:1.5px solid rgba(90,171,255,0.3); color:#5aabff; }
+.voice-ctrl-btn.cam.on { background:rgba(90,171,255,0.3); border-color:rgba(90,171,255,0.6); }
+.voice-ctrl-btn.mute { background:rgba(255,255,255,0.08); border:1.5px solid rgba(255,255,255,0.15); color:var(--text2); }
+.voice-ctrl-btn.mute.on { background:rgba(255,69,58,0.2); border-color:rgba(255,69,58,0.4); color:#ff6b63; }
+.voice-ctrl-btn.end  { width:64px; height:64px; font-size:22px; background:rgba(255,69,58,0.2); border:1.5px solid rgba(255,69,58,0.4); color:#ff6b63; }
+.voice-ctrl-btn:hover { transform:scale(1.08); }
+.voice-status-text { font-size:14px; font-weight:600; min-height:22px; color:var(--text3); letter-spacing:.2px; }
 
 /* ===== CAMERA MODAL ===== */
 #camera-modal .modal-box { max-width:480px; padding:0; overflow:hidden; }
@@ -992,26 +1035,44 @@ header {
 
 <!-- VOICE CHAT FULLSCREEN -->
 <div id="voice-screen">
+
   <!-- Шапка -->
-  <div style="width:100%;max-width:560px;display:flex;align-items:center;justify-content:space-between">
+  <div id="voice-header">
     <div>
-      <div style="font-size:18px;font-weight:800;color:var(--text);letter-spacing:-.3px">🎙 Голосовой чат</div>
-      <div style="font-size:12px;color:var(--text3);margin-top:2px">Говори — PixelMind слышит и отвечает</div>
+      <div style="font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.3px">🎙 Голосовой чат</div>
+      <div class="voice-status-text" id="voice-status">Инициализация…</div>
     </div>
-    <div class="voice-status-text" id="voice-status" style="margin:0"></div>
+    <div style="font-size:12px;color:var(--text3);text-align:right;max-width:140px;line-height:1.4">
+      Говори — PixelMind слышит и отвечает вслух
+    </div>
   </div>
 
-  <!-- Визуализатор (canvas заполняет доступное пространство) -->
-  <canvas id="voice-canvas"></canvas>
-
-  <!-- Текущая речь -->
-  <div class="voice-user-interim" id="voice-user-text"></div>
+  <!-- Камера AI-видение -->
+  <div id="voice-cam-wrap" style="margin:0 20px 12px">
+    <video id="voice-cam-video" autoplay playsinline muted></video>
+    <div id="voice-cam-badge">● LIVE · AI видит</div>
+    <canvas id="voice-cam-canvas" style="display:none"></canvas>
+  </div>
 
   <!-- Лог сообщений -->
-  <div id="voice-log" style="width:100%;max-width:540px"></div>
+  <div id="voice-log"></div>
 
-  <!-- Кнопка завершения -->
-  <button class="voice-end-btn" onclick="closeVoiceChat()">🔴 Завершить разговор</button>
+  <!-- Нижняя панель -->
+  <div id="voice-bottom">
+    <!-- Волна (Gemini-стиль) -->
+    <canvas id="voice-canvas"></canvas>
+
+    <!-- Текст распознавания -->
+    <div class="voice-user-interim" id="voice-user-text"></div>
+
+    <!-- Кнопки управления -->
+    <div id="voice-controls">
+      <button class="voice-ctrl-btn cam" id="voice-cam-btn" onclick="toggleVoiceCam()" title="Камера для AI">📷</button>
+      <button class="voice-ctrl-btn end" onclick="closeVoiceChat()" title="Завершить">🔴</button>
+      <button class="voice-ctrl-btn mute" id="voice-mute-btn" onclick="toggleVoiceMute()" title="Микрофон">🎤</button>
+    </div>
+  </div>
+
 </div>
 
 <!-- CAMERA MODAL -->
@@ -2141,94 +2202,156 @@ let voiceRecognizer = null;
 let voiceRecogRunning = false;
 let voiceAudioCtx = null;
 let voiceMicStream = null;
-let voiceMicSource = null;   // храним ссылку чтобы GC не уничтожил
+let voiceMicSource = null;
 let voiceAnalyser = null;
 let voiceAnimFrame = null;
 let voiceAnimTime = 0;
 let voiceSendTimeout = null;
 let voiceLastTranscript = '';
 let voiceOpen = false;
+let voiceMuted = false;
+let voiceCamStream = null;
+let voiceCamEnabled = false;
+let voiceLastFrame = null;   // последний base64 кадр для отправки AI
 
 async function openVoiceChat() {
   if (voiceOpen) return;
   voiceOpen = true;
-  const screen = document.getElementById('voice-screen');
-  screen.classList.add('active');
+  voiceMuted = false;
+  document.getElementById('voice-mute-btn').textContent = '🎤';
+  document.getElementById('voice-mute-btn').classList.remove('on');
+  document.getElementById('voice-screen').classList.add('active');
   document.getElementById('voice-log').innerHTML = '';
   document.getElementById('voice-user-text').textContent = '';
   voiceLastTranscript = '';
-  setVoiceStatus('🎤 Запуск…');
-  // Подстраиваем размер canvas под экран
-  _resizeVoiceCanvas();
+  setVoiceStatus('Запуск…');
+  _initVoiceCanvas();
   await initVoiceChat();
 }
+
 function closeVoiceChat() {
   voiceOpen = false;
   voiceState = 'idle';
   voiceRecogRunning = false;
   document.getElementById('voice-screen').classList.remove('active');
 
-  // Останавливаем recognizer
   const rec = voiceRecognizer;
   voiceRecognizer = null;
   if (rec) { try { rec.stop(); } catch(e) {} }
 
-  // Останавливаем анимацию
   if (voiceAnimFrame) { cancelAnimationFrame(voiceAnimFrame); voiceAnimFrame = null; }
-
-  // Останавливаем синтез речи
   if (window.speechSynthesis) window.speechSynthesis.cancel();
-
-  // Сбрасываем таймер
   if (voiceSendTimeout) { clearTimeout(voiceSendTimeout); voiceSendTimeout = null; }
   voiceLastTranscript = '';
 
-  // Останавливаем микрофон и закрываем AudioContext
-  if (voiceMicStream) {
-    voiceMicStream.getTracks().forEach(t => t.stop());
-    voiceMicStream = null;
-  }
+  if (voiceMicStream) { voiceMicStream.getTracks().forEach(t => t.stop()); voiceMicStream = null; }
   if (voiceMicSource) { try { voiceMicSource.disconnect(); } catch(e) {} voiceMicSource = null; }
   if (voiceAudioCtx) { try { voiceAudioCtx.close(); } catch(e) {} voiceAudioCtx = null; }
   voiceAnalyser = null;
+
+  // Выключаем камеру
+  _stopVoiceCam();
 }
 
-function _resizeVoiceCanvas() {
+function _initVoiceCanvas() {
   const canvas = document.getElementById('voice-canvas');
-  const s = Math.max(220, Math.min(Math.min(window.innerWidth * 0.85, window.innerHeight - 300), 420));
-  canvas.width = s; canvas.height = s;
-  canvas.style.width = s + 'px'; canvas.style.height = s + 'px';
+  const w = Math.min(window.innerWidth - 40, 500);
+  canvas.width = w;
+  canvas.height = 80;
 }
 
 async function initVoiceChat() {
-  // Всегда запрашиваем свежий поток микрофона
   try {
     voiceMicStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch(e) {
-    let msg = '❌ Разрешите доступ к микрофону в браузере';
-    if (e.name === 'NotFoundError') msg = '❌ Микрофон не найден — подключи его';
+    let msg = '❌ Разрешите доступ к микрофону';
+    if (e.name === 'NotFoundError') msg = '❌ Микрофон не найден';
     if (e.name === 'NotAllowedError') msg = '❌ Доступ к микрофону запрещён — разреши в настройках браузера';
     setVoiceStatus(msg);
     voiceOpen = false;
     return;
   }
 
-  // Создаём AudioContext и подключаем микрофон → analyser
   voiceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
   voiceMicSource = voiceAudioCtx.createMediaStreamSource(voiceMicStream);
   voiceAnalyser = voiceAudioCtx.createAnalyser();
   voiceAnalyser.fftSize = 256;
-  voiceAnalyser.smoothingTimeConstant = 0.8;
+  voiceAnalyser.smoothingTimeConstant = 0.75;
   voiceMicSource.connect(voiceAnalyser);
 
-  // Разблокируем AudioContext (браузерное ограничение)
-  if (voiceAudioCtx.state === 'suspended') {
-    await voiceAudioCtx.resume();
-  }
+  if (voiceAudioCtx.state === 'suspended') await voiceAudioCtx.resume();
 
   startVoiceAnimation();
   startVoiceRecognition();
   setVoiceState('listening');
+}
+
+// ---- КАМЕРА ----
+async function toggleVoiceCam() {
+  if (voiceCamEnabled) {
+    _stopVoiceCam();
+  } else {
+    await _startVoiceCam();
+  }
+}
+async function _startVoiceCam() {
+  try {
+    voiceCamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' }, audio: false });
+  } catch(e) {
+    // Пробуем фронтальную
+    try { voiceCamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
+    catch(e2) { toast('❌ Нет доступа к камере', 'err'); return; }
+  }
+  const vid = document.getElementById('voice-cam-video');
+  vid.srcObject = voiceCamStream;
+  voiceCamEnabled = true;
+  document.getElementById('voice-cam-wrap').classList.add('active');
+  document.getElementById('voice-cam-btn').classList.add('on');
+  document.getElementById('voice-cam-btn').textContent = '📷';
+  // Захватываем кадры каждые 4 секунды
+  voiceCamStream._captureInterval = setInterval(_captureVoiceCamFrame, 4000);
+  _captureVoiceCamFrame();
+}
+function _stopVoiceCam() {
+  if (voiceCamStream) {
+    if (voiceCamStream._captureInterval) clearInterval(voiceCamStream._captureInterval);
+    voiceCamStream.getTracks().forEach(t => t.stop());
+    voiceCamStream = null;
+  }
+  const vid = document.getElementById('voice-cam-video');
+  vid.srcObject = null;
+  voiceCamEnabled = false;
+  voiceLastFrame = null;
+  document.getElementById('voice-cam-wrap').classList.remove('active');
+  document.getElementById('voice-cam-btn').classList.remove('on');
+}
+function _captureVoiceCamFrame() {
+  const vid = document.getElementById('voice-cam-video');
+  if (!vid.videoWidth) return;
+  const cv = document.getElementById('voice-cam-canvas');
+  const W = 640, H = Math.round(vid.videoHeight / vid.videoWidth * 640);
+  cv.width = W; cv.height = H;
+  cv.getContext('2d').drawImage(vid, 0, 0, W, H);
+  voiceLastFrame = cv.toDataURL('image/jpeg', 0.7).split(',')[1];
+}
+
+// ---- МУТ ----
+function toggleVoiceMute() {
+  voiceMuted = !voiceMuted;
+  const btn = document.getElementById('voice-mute-btn');
+  if (voiceMuted) {
+    // Останавливаем все аудио-треки
+    if (voiceMicStream) voiceMicStream.getAudioTracks().forEach(t => { t.enabled = false; });
+    if (voiceRecognizer && voiceRecogRunning) { try { voiceRecognizer.stop(); } catch(e) {} }
+    btn.textContent = '🔇';
+    btn.classList.add('on');
+    setVoiceStatus('Микрофон выключен');
+  } else {
+    if (voiceMicStream) voiceMicStream.getAudioTracks().forEach(t => { t.enabled = true; });
+    btn.textContent = '🎤';
+    btn.classList.remove('on');
+    setVoiceState('listening');
+  }
 }
 
 function startVoiceRecognition() {
@@ -2294,8 +2417,12 @@ async function sendVoiceMessage(text) {
   document.getElementById('voice-user-text').textContent = '';
   setVoiceState('thinking');
   addVoiceMsg(text, 'user');
+  // Захватываем последний кадр если камера включена
+  if (voiceCamEnabled) _captureVoiceCamFrame();
+  const body = { message: text };
+  if (voiceLastFrame) body.image_b64 = voiceLastFrame;
   try {
-    const r = await fetch('/app/voice-chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message: text }) });
+    const r = await fetch('/app/voice-chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
     const d = await r.json();
     if (d.ok) {
       addVoiceMsg(d.answer, 'bot');
@@ -2312,19 +2439,36 @@ function speakVoiceResponse(text) {
   if (!window.speechSynthesis) { setVoiceState('listening'); return; }
   window.speechSynthesis.cancel();
   setVoiceState('speaking');
-  const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'ru-RU'; utt.rate = 1.05; utt.pitch = 1.0;
-  // Загружаем голоса (может понадобиться дождаться)
-  const trySpeak = () => {
+
+  const doSpeak = () => {
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'ru-RU'; utt.rate = 1.05; utt.pitch = 1.0;
     const voices = window.speechSynthesis.getVoices();
-    const ru = voices.find(v => v.lang.startsWith('ru'));
+    const ru = voices.find(v => v.lang && v.lang.startsWith('ru'));
     if (ru) utt.voice = ru;
-    utt.onend = () => setVoiceState('listening');
-    utt.onerror = () => setVoiceState('listening');
+    utt.onend = () => { if (voiceOpen) setVoiceState('listening'); };
+    utt.onerror = (e) => { if (voiceOpen) setVoiceState('listening'); };
+    // Фикс Chrome: иногда speechSynthesis зависает, мониторим
     window.speechSynthesis.speak(utt);
+    // Chrome bug: resume если вдруг suspended
+    const watchdog = setInterval(() => {
+      if (!voiceOpen || voiceState !== 'speaking') { clearInterval(watchdog); return; }
+      if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+    }, 5000);
   };
-  if (window.speechSynthesis.getVoices().length > 0) trySpeak();
-  else { window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.onvoiceschanged = null; trySpeak(); }; trySpeak(); }
+
+  // Небольшая задержка после cancel() — фикс Chrome
+  setTimeout(() => {
+    if (window.speechSynthesis.getVoices().length > 0) {
+      doSpeak();
+    } else {
+      window.speechSynthesis.addEventListener('voiceschanged', function onVC() {
+        window.speechSynthesis.removeEventListener('voiceschanged', onVC);
+        doSpeak();
+      });
+      doSpeak(); // всё равно пробуем
+    }
+  }, 120);
 }
 
 function setVoiceState(s) {
@@ -2349,87 +2493,82 @@ function addVoiceMsg(text, role) {
 function startVoiceAnimation() {
   const canvas = document.getElementById('voice-canvas');
   const ctx = canvas.getContext('2d');
-  const W = canvas.width, H = canvas.height;
-  const cx = W/2, cy = H/2;
-  const BARS = 72;
-  const BASE_R = Math.round(W * 0.30);  // 30% от размера canvas
   const dataArr = new Uint8Array(128);
+
+  // 4 волны — цвета как у Gemini AI-mode
+  const WAVES = [
+    { color: '#4285f4', freq: 2.8, speed: 1.2, phase: 0.0, alpha: 0.85 },   // Google Blue
+    { color: '#ea4335', freq: 2.2, speed: 0.9, phase: 1.5, alpha: 0.75 },   // Google Red
+    { color: '#34a853', freq: 3.4, speed: 1.5, phase: 3.0, alpha: 0.70 },   // Google Green
+    { color: '#fbbc05', freq: 1.8, speed: 1.0, phase: 4.7, alpha: 0.65 },   // Google Yellow
+  ];
 
   function draw(ts) {
     voiceAnimFrame = requestAnimationFrame(draw);
     voiceAnimTime = ts;
+    const W = canvas.width, H = canvas.height;
+    const cy = H / 2;
     ctx.clearRect(0, 0, W, H);
 
-    // Real mic data when user is speaking
-    if (voiceAnalyser && voiceState === 'listening') voiceAnalyser.getByteFrequencyData(dataArr);
+    // Получаем данные микрофона
+    let micAmplitude = 0;
+    if (voiceAnalyser) {
+      voiceAnalyser.getByteFrequencyData(dataArr);
+      micAmplitude = dataArr.reduce((a, b) => a + b, 0) / dataArr.length / 255;
+    }
 
-    // Glow behind circle
-    let glowColor;
+    const t = ts * 0.001; // секунды
+
+    // Вычисляем амплитуду волны для каждого состояния
+    let baseAmp;
     if (voiceState === 'listening') {
-      const avg = dataArr.reduce((a,b) => a+b, 0) / dataArr.length;
-      const glow = 0.15 + (avg/255)*0.35;
-      glowColor = `rgba(90,171,255,${glow})`;
+      // Реагирует на микрофон — если говорим, волна большая
+      baseAmp = 6 + micAmplitude * 28;
     } else if (voiceState === 'speaking') {
-      const hue = (ts * 0.05) % 360;
-      glowColor = `hsla(${hue},100%,65%,0.2)`;
+      // Плавная пульсация — AI говорит
+      baseAmp = 16 + Math.sin(t * 2.5) * 8;
+    } else if (voiceState === 'thinking') {
+      // Медленная маленькая волна
+      baseAmp = 5 + Math.sin(t * 1.2) * 4;
     } else {
-      glowColor = 'rgba(140,150,180,0.1)';
+      // Idle — почти плоская
+      baseAmp = 2;
     }
-    const grad = ctx.createRadialGradient(cx, cy, BASE_R-10, cx, cy, BASE_R+50);
-    grad.addColorStop(0, glowColor);
-    grad.addColorStop(1, 'transparent');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(cx, cy, BASE_R+50, 0, Math.PI*2); ctx.fill();
 
-    // Center emoji ⚡
-    ctx.font = '42px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    if (voiceState === 'thinking') {
-      ctx.globalAlpha = 0.5 + Math.sin(ts*0.004)*0.5;
-    } else { ctx.globalAlpha = 1; }
-    ctx.fillText('⚡', cx, cy);
-    ctx.globalAlpha = 1;
-
-    // Draw bars
-    for (let i = 0; i < BARS; i++) {
-      const angle = (i / BARS) * Math.PI * 2 - Math.PI/2;
-      let amp;
-      if (voiceState === 'listening') {
-        const idx = Math.floor((i / BARS) * dataArr.length);
-        amp = (dataArr[idx] || 0) / 255;
-      } else if (voiceState === 'speaking') {
-        amp = (Math.sin(ts*0.0025 + i*0.28)*0.45 + 0.55) * (Math.sin(ts*0.006 + i*0.12)*0.25 + 0.75);
-      } else if (voiceState === 'thinking') {
-        amp = Math.sin(ts*0.0015 + i*0.45) * 0.12 + 0.13;
-      } else {
-        amp = 0.04;
-      }
-      const maxLen = W * 0.22;
-      const len = amp * maxLen + W * 0.025;
-      const x1 = cx + Math.cos(angle) * BASE_R;
-      const y1 = cy + Math.sin(angle) * BASE_R;
-      const x2 = cx + Math.cos(angle) * (BASE_R + len);
-      const y2 = cy + Math.sin(angle) * (BASE_R + len);
-
-      let color;
-      if (voiceState === 'listening') {
-        // Blue — real mic data
-        const bright = Math.round(140 + amp * 115);
-        color = `rgba(90,${bright},255,${0.55 + amp*0.45})`;
-      } else if (voiceState === 'speaking') {
-        // Rainbow — shifts over time
-        const hue = (i / BARS * 360 + ts * 0.07) % 360;
-        color = `hsla(${hue},92%,65%,0.92)`;
-      } else if (voiceState === 'thinking') {
-        color = `rgba(180,190,220,${0.18 + amp*0.35})`;
-      } else {
-        color = 'rgba(80,100,140,0.25)';
-      }
-      ctx.strokeStyle = color;
-      ctx.lineWidth = voiceState === 'speaking' ? 3 : 2.5;
+    WAVES.forEach((wave, wi) => {
+      ctx.save();
+      ctx.globalAlpha = wave.alpha;
+      ctx.strokeStyle = wave.color;
+      ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    }
+      ctx.lineJoin = 'round';
+
+      // Каждая волна немного сдвинута по Y для эффекта стека
+      const waveOffset = (wi - 1.5) * 3;
+
+      ctx.beginPath();
+      for (let x = 0; x <= W; x += 2) {
+        const nx = x / W; // 0..1
+        // Синус с разной частотой, скоростью и фазой
+        const y = cy + waveOffset +
+          Math.sin(nx * Math.PI * 2 * wave.freq + t * wave.speed * 3 + wave.phase) * baseAmp * (0.7 + 0.3 * Math.sin(nx * Math.PI));
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Мягкое свечение по центру
+    const glowAlpha = voiceState === 'idle' ? 0.03 : 0.06 + micAmplitude * 0.08;
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, `rgba(66,133,244,0)`);
+    grad.addColorStop(0.5, `rgba(66,133,244,${glowAlpha})`);
+    grad.addColorStop(1, `rgba(66,133,244,0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
   }
+
   voiceAnimFrame = requestAnimationFrame(draw);
 }
 
