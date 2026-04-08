@@ -425,8 +425,8 @@ header {
   background:linear-gradient(0deg,rgba(7,8,16,1) 70%,rgba(7,8,16,0) 100%);
 }
 
-/* Волна Gemini */
-#voice-canvas { display:block; width:100%; max-width:540px; height:80px; flex-shrink:0; }
+/* Радиальный визуализатор */
+#voice-canvas { display:block; flex-shrink:0; }
 
 /* Текст распознавания */
 .voice-user-interim { font-size:14px; color:var(--accent); font-style:italic; min-height:20px; opacity:.9; max-width:500px; text-align:center; }
@@ -2255,9 +2255,10 @@ function closeVoiceChat() {
 
 function _initVoiceCanvas() {
   const canvas = document.getElementById('voice-canvas');
-  const w = Math.min(window.innerWidth - 40, 500);
-  canvas.width = w;
-  canvas.height = 80;
+  const s = Math.max(220, Math.min(window.innerWidth - 40, 340));
+  canvas.width = s;
+  canvas.height = s;
+  canvas.style.height = s + 'px';
 }
 
 async function initVoiceChat() {
@@ -2493,80 +2494,80 @@ function addVoiceMsg(text, role) {
 function startVoiceAnimation() {
   const canvas = document.getElementById('voice-canvas');
   const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  const BARS = 72;
+  const BASE_R = Math.round(W * 0.30);
   const dataArr = new Uint8Array(128);
-
-  // 4 волны — цвета как у Gemini AI-mode
-  const WAVES = [
-    { color: '#4285f4', freq: 2.8, speed: 1.2, phase: 0.0, alpha: 0.85 },   // Google Blue
-    { color: '#ea4335', freq: 2.2, speed: 0.9, phase: 1.5, alpha: 0.75 },   // Google Red
-    { color: '#34a853', freq: 3.4, speed: 1.5, phase: 3.0, alpha: 0.70 },   // Google Green
-    { color: '#fbbc05', freq: 1.8, speed: 1.0, phase: 4.7, alpha: 0.65 },   // Google Yellow
-  ];
 
   function draw(ts) {
     voiceAnimFrame = requestAnimationFrame(draw);
     voiceAnimTime = ts;
-    const W = canvas.width, H = canvas.height;
-    const cy = H / 2;
     ctx.clearRect(0, 0, W, H);
 
-    // Получаем данные микрофона
-    let micAmplitude = 0;
-    if (voiceAnalyser) {
-      voiceAnalyser.getByteFrequencyData(dataArr);
-      micAmplitude = dataArr.reduce((a, b) => a + b, 0) / dataArr.length / 255;
-    }
+    // Данные микрофона
+    if (voiceAnalyser) voiceAnalyser.getByteFrequencyData(dataArr);
+    const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
+    const micAmp = avg / 255; // 0..1
 
-    const t = ts * 0.001; // секунды
+    // Свечение за кругом — цвет меняется со временем
+    const glowHue = (ts * 0.04) % 360;
+    const glowStrength = voiceState === 'idle' ? 0.08 : 0.15 + micAmp * 0.25;
+    const grad = ctx.createRadialGradient(cx, cy, BASE_R - 10, cx, cy, BASE_R + 60);
+    grad.addColorStop(0, `hsla(${glowHue},100%,65%,${glowStrength})`);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, BASE_R + 60, 0, Math.PI * 2); ctx.fill();
 
-    // Вычисляем амплитуду волны для каждого состояния
-    let baseAmp;
-    if (voiceState === 'listening') {
-      // Реагирует на микрофон — если говорим, волна большая
-      baseAmp = 6 + micAmplitude * 28;
-    } else if (voiceState === 'speaking') {
-      // Плавная пульсация — AI говорит
-      baseAmp = 16 + Math.sin(t * 2.5) * 8;
-    } else if (voiceState === 'thinking') {
-      // Медленная маленькая волна
-      baseAmp = 5 + Math.sin(t * 1.2) * 4;
+    // Центральный символ
+    ctx.font = '42px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (voiceState === 'thinking') {
+      ctx.globalAlpha = 0.5 + Math.sin(ts * 0.004) * 0.5;
     } else {
-      // Idle — почти плоская
-      baseAmp = 2;
+      ctx.globalAlpha = 1;
     }
+    ctx.fillText('⚡', cx, cy);
+    ctx.globalAlpha = 1;
 
-    WAVES.forEach((wave, wi) => {
-      ctx.save();
-      ctx.globalAlpha = wave.alpha;
-      ctx.strokeStyle = wave.color;
+    // Лучи
+    for (let i = 0; i < BARS; i++) {
+      const angle = (i / BARS) * Math.PI * 2 - Math.PI / 2;
+
+      // Амплитуда луча
+      let amp;
+      if (voiceState === 'listening') {
+        const idx = Math.floor((i / BARS) * dataArr.length);
+        amp = (dataArr[idx] || 0) / 255;
+      } else if (voiceState === 'speaking') {
+        amp = (Math.sin(ts * 0.0025 + i * 0.28) * 0.45 + 0.55) *
+              (Math.sin(ts * 0.006 + i * 0.12) * 0.25 + 0.75);
+      } else if (voiceState === 'thinking') {
+        amp = Math.sin(ts * 0.0015 + i * 0.45) * 0.12 + 0.13;
+      } else {
+        amp = 0.04;
+      }
+
+      const maxLen = W * 0.22;
+      const len = amp * maxLen + W * 0.025;
+      const x1 = cx + Math.cos(angle) * BASE_R;
+      const y1 = cy + Math.sin(angle) * BASE_R;
+      const x2 = cx + Math.cos(angle) * (BASE_R + len);
+      const y2 = cy + Math.sin(angle) * (BASE_R + len);
+
+      // Радуга: цвет = позиция луча + время (плавный сдвиг)
+      const hue = (i / BARS * 360 + ts * 0.06) % 360;
+      const lightness = 55 + amp * 20;
+      const alpha = 0.5 + amp * 0.5;
+      ctx.strokeStyle = `hsla(${hue},100%,${lightness}%,${alpha})`;
       ctx.lineWidth = 2.5;
       ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      // Каждая волна немного сдвинута по Y для эффекта стека
-      const waveOffset = (wi - 1.5) * 3;
-
       ctx.beginPath();
-      for (let x = 0; x <= W; x += 2) {
-        const nx = x / W; // 0..1
-        // Синус с разной частотой, скоростью и фазой
-        const y = cy + waveOffset +
-          Math.sin(nx * Math.PI * 2 * wave.freq + t * wave.speed * 3 + wave.phase) * baseAmp * (0.7 + 0.3 * Math.sin(nx * Math.PI));
-        if (x === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
       ctx.stroke();
-      ctx.restore();
-    });
-
-    // Мягкое свечение по центру
-    const glowAlpha = voiceState === 'idle' ? 0.03 : 0.06 + micAmplitude * 0.08;
-    const grad = ctx.createLinearGradient(0, 0, 0, H);
-    grad.addColorStop(0, `rgba(66,133,244,0)`);
-    grad.addColorStop(0.5, `rgba(66,133,244,${glowAlpha})`);
-    grad.addColorStop(1, `rgba(66,133,244,0)`);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+    }
   }
 
   voiceAnimFrame = requestAnimationFrame(draw);
