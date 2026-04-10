@@ -709,7 +709,13 @@ def push_sse(event_type: str, data: dict):
 
 # ============ УТИЛИТЫ БОТА ============
 
+# Активные моды для Telegram-пользователей: {chat_id: mod_data}
+tg_active_mods: dict[int, dict] = {}
+
 def get_system_prompt(chat_id: int) -> str:
+    mod = tg_active_mods.get(chat_id)
+    if mod and mod.get("system_prompt"):
+        return mod["system_prompt"].strip() + f"\n\nТекущая дата: {datetime.now().strftime('%d.%m.%Y')}."
     mode = chat_modes.get(chat_id, "chat")
     return SYSTEM_PROMPT_BUSINESS if mode == "business" else SYSTEM_PROMPT_CHAT
 
@@ -1054,6 +1060,9 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
             "Видео — расшифрую речь\n"
             "Фото — опишу что на нём\n"
             "Файлы (txt, py, cpp, cs, mp3...) — прочитаю и проанализирую\n\n"
+            "🧩 Мод паки:\n"
+            "Отправь файл .pixelmod — активирую персонажа\n"
+            "/clearmod — вернуться к обычному режиму\n\n"
             "📁 Файлы и озвучка:\n"
             "/tts [текст] — озвучить текст голосом\n"
             "/voice_on — отвечать голосом\n"
@@ -1076,6 +1085,16 @@ def handle_command(chat_id: int, text: str, message_id: int, username: str) -> b
     if cmd == "reset":
         chat_histories[chat_id] = []
         send_message(chat_id, "Память очищена 🔄 Начнём сначала!")
+        return True
+
+    if cmd == "clearmod":
+        if chat_id in tg_active_mods:
+            mod_name = tg_active_mods[chat_id].get("name", "мод")
+            del tg_active_mods[chat_id]
+            chat_histories[chat_id] = []
+            send_message(chat_id, f"✅ Мод «{mod_name}» отключён. Вернулся к обычному режиму.")
+        else:
+            send_message(chat_id, "Нет активного мода. Отправь .pixelmod файл чтобы активировать.")
         return True
 
     if cmd == "business":
@@ -1410,7 +1429,31 @@ def process_message(message):
             return
 
         log_message(chat_id, "user", f"📎 [Файл: {fname}]")
-        if ext in ("txt", "py", "cpp", "cs", "js", "ts", "html", "css", "json", "xml", "md", "yaml", "yml", "sh", "bat", "c", "h", "java", "rs", "go", "rb", "php"):
+        if ext == "pixelmod":
+            try:
+                mod_data = json.loads(file_data.decode("utf-8", errors="replace"))
+                mod_name = (mod_data.get("name") or "Без названия")[:64]
+                mod_avatar = mod_data.get("avatar") or "🔧"
+                mod_desc = mod_data.get("description") or ""
+                mod_author = mod_data.get("author") or ""
+                mod_sp = (mod_data.get("system_prompt") or "").strip()
+                if not mod_sp:
+                    send_message(chat_id, "❌ В файле мода нет system_prompt — мод не активирован.")
+                    return
+                tg_active_mods[chat_id] = mod_data
+                # Очищаем историю чата чтобы мод начал с чистого листа
+                chat_histories[chat_id] = []
+                info_lines = [f"🧩 Мод активирован: *{mod_name}* {mod_avatar}"]
+                if mod_desc:
+                    info_lines.append(f"📝 {mod_desc}")
+                if mod_author:
+                    info_lines.append(f"👤 Автор: {mod_author}")
+                info_lines.append(f"\nТеперь я буду общаться в режиме этого мода. Чтобы вернуться к обычному режиму — отправь /clearmod")
+                send_message(chat_id, "\n".join(info_lines), parse_mode="Markdown")
+            except Exception as e:
+                send_message(chat_id, f"❌ Ошибка чтения .pixelmod файла: {e}")
+            return
+        elif ext in ("txt", "py", "cpp", "cs", "js", "ts", "html", "css", "json", "xml", "md", "yaml", "yml", "sh", "bat", "c", "h", "java", "rs", "go", "rb", "php"):
             try:
                 content = file_data.decode("utf-8", errors="replace")
                 if len(content) > 4000:
