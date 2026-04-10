@@ -3490,7 +3490,7 @@ def web_voice_tts():
         return jsonify({"ok": False, "error": "Нет текста"}), 400
     # Ограничиваем длину чтобы не генерировать огромные файлы
     text = text[:600]
-    audio_bytes = synthesize_voice(text)
+    audio_bytes = synthesize_speech(text)
     if not audio_bytes:
         return jsonify({"ok": False, "error": "Ошибка синтеза речи"}), 500
     return Response(audio_bytes, mimetype="audio/mpeg",

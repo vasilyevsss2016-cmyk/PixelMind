@@ -48,10 +48,20 @@
             "role": "assistant",
             "content": "```sql\nSELECT *\nFROM employees\nORDER BY name ASC;\n```\n\nЭтот SQL-запрос выбирает всех сотрудников из таблицы employees и сортирует их по алфавиту в порядке возрастания (ASC) по столбцу name.",
             "ts": "2026-04-10T19:03:09.219974"
+          },
+          {
+            "role": "user",
+            "content": "Напиши на Делфи код, возвращающий число, возведенное в степень.",
+            "ts": "2026-04-10T19:30:01.050094"
+          },
+          {
+            "role": "assistant",
+            "content": "```pascal\nfunction Power(Base, Exponent: Double): Double;\nbegin\n  Result := Exp(Exponent * Ln(Base));\nend;\n```\n\nЭтот код на Делфи определяет функцию Power, которая принимает два параметра: Base (основание) и Exponent (степень). Функция возвращает результат возведения основания в степень, используя формулу Result := Exp(Exponent * Ln(Base)).",
+            "ts": "2026-04-10T19:30:01.050107"
           }
         ],
         "created_at": "2026-04-10T19:02:06.338460",
-        "updated_at": "2026-04-10T19:03:09.219984",
+        "updated_at": "2026-04-10T19:30:01.050110",
         "mod": {
           "name": "Разработчик ПО",
           "description": "",
