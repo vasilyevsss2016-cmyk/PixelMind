@@ -247,11 +247,13 @@ header {
 .sidebar-new-btn:hover { background:linear-gradient(135deg,rgba(58,142,255,0.3),rgba(58,142,255,0.18)); transform:translateY(-1px); }
 
 .chat-list {
-  flex:1; overflow-y:auto; padding:6px 10px 12px;
+  overflow-y:auto; padding:6px 10px 8px;
   scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.08) transparent;
 }
 .chat-list::-webkit-scrollbar { width:3px; }
 .chat-list::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:3px; }
+#chat-list { flex:1; min-height:60px; max-height:52%; }
+#mod-list { flex:0 0 auto; max-height:32%; min-height:0; }
 
 .chat-item {
   display:flex; align-items:center; gap:10px; padding:10px 10px;
@@ -281,6 +283,85 @@ header {
   color:var(--text); font-size:13px; font-weight:600; outline:none;
   width:100%; padding:0; font-family:inherit;
 }
+
+/* === MOD SIDEBAR SECTION === */
+.sidebar-divider {
+  display:flex; align-items:center; gap:8px; padding:14px 14px 6px;
+  color:var(--text2); font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
+}
+.sidebar-divider::before,.sidebar-divider::after {
+  content:''; flex:1; height:1px; background:rgba(255,255,255,0.07);
+}
+.sidebar-mod-btn {
+  display:flex; align-items:center; gap:8px; margin:4px 10px 2px;
+  padding:9px 14px; border-radius:12px; border:1px dashed rgba(124,58,237,0.35);
+  background:rgba(124,58,237,0.07); color:#a78bfa; font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .18s; width:calc(100% - 20px);
+}
+.sidebar-mod-btn:hover { background:rgba(124,58,237,0.15); border-color:rgba(124,58,237,0.5); }
+.sidebar-create-mod-link {
+  display:block; text-align:center; padding:8px; font-size:12px;
+  color:var(--text3); text-decoration:none; transition:color .2s;
+}
+.sidebar-create-mod-link:hover { color:var(--accent); }
+.chat-item.mod-item { border-color:rgba(124,58,237,0.15); }
+.chat-item.mod-item .chat-item-icon { background:rgba(124,58,237,0.12); border-color:rgba(124,58,237,0.25); }
+.chat-item.mod-item.active { background:rgba(124,58,237,0.1); border-color:rgba(124,58,237,0.3); }
+.chat-item.mod-item.active .chat-item-name { color:#a78bfa; }
+
+/* Mod badge in header */
+.mod-header-badge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:4px 11px; border-radius:20px;
+  background:rgba(124,58,237,0.18); border:1px solid rgba(124,58,237,0.35);
+  font-size:12px; font-weight:700; color:#a78bfa; letter-spacing:.3px;
+}
+
+/* === MOD UPLOAD MODAL === */
+.mod-modal-overlay {
+  position:fixed; inset:0; z-index:500; background:rgba(7,8,15,0.85);
+  backdrop-filter:blur(8px); display:none; align-items:center; justify-content:center; padding:20px;
+}
+.mod-modal-overlay.open { display:flex; }
+.mod-modal {
+  background:rgba(16,18,34,0.98); border:1px solid rgba(255,255,255,0.1);
+  border-radius:22px; padding:32px; max-width:440px; width:100%;
+  box-shadow:0 24px 80px rgba(0,0,0,0.6); position:relative;
+}
+.mod-modal-title { font-size:18px; font-weight:800; margin-bottom:6px;
+  background:linear-gradient(135deg,#5aabff,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.mod-modal-sub { font-size:13px; color:var(--text2); margin-bottom:24px; }
+.mod-drop-zone {
+  border:2px dashed rgba(124,58,237,0.4); border-radius:16px; padding:36px 24px;
+  text-align:center; cursor:pointer; transition:all .2s; background:rgba(124,58,237,0.05);
+}
+.mod-drop-zone.drag-over { border-color:#7c3aed; background:rgba(124,58,237,0.12); }
+.mod-drop-icon { font-size:40px; margin-bottom:12px; }
+.mod-drop-text { font-size:15px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.mod-drop-hint { font-size:12px; color:var(--text2); }
+.mod-drop-ext { font-size:11px; color:rgba(124,58,237,0.8); margin-top:6px; font-weight:600; }
+.mod-preview-box {
+  background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.25); border-radius:14px;
+  padding:16px 18px; display:none; align-items:center; gap:14px; margin-bottom:20px;
+}
+.mod-preview-box.visible { display:flex; }
+.mod-preview-avatar { font-size:28px; width:46px; height:46px; background:rgba(124,58,237,0.15); border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.mod-preview-name { font-size:15px; font-weight:700; color:var(--text); }
+.mod-preview-desc { font-size:12px; color:var(--text2); margin-top:2px; }
+.mod-preview-author { font-size:11px; color:var(--text3); margin-top:3px; }
+.mod-load-btn {
+  width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer;
+  font-size:15px; font-weight:700; background:linear-gradient(135deg,#7c3aed,#5a1fd4);
+  color:#fff; box-shadow:0 4px 20px rgba(124,58,237,0.4); transition:all .2s; margin-top:0;
+}
+.mod-load-btn:hover { transform:translateY(-2px); box-shadow:0 6px 28px rgba(124,58,237,0.55); }
+.mod-load-btn:disabled { opacity:.5; cursor:default; transform:none; }
+.mod-modal-close {
+  position:absolute; top:16px; right:16px; width:32px; height:32px; border-radius:8px;
+  border:none; background:rgba(255,255,255,0.07); color:var(--text2); cursor:pointer;
+  font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .18s;
+}
+.mod-modal-close:hover { background:rgba(255,255,255,0.13); color:var(--text); }
 
 @media (max-width:480px) {
   .chat-sidebar { width:82vw; }
@@ -678,6 +759,51 @@ header {
     <span style="font-size:18px;line-height:1">+</span> Новый чат
   </button>
   <div class="chat-list" id="chat-list"></div>
+
+  <!-- Разделитель Моды -->
+  <div class="sidebar-divider">
+    <span>Моды</span>
+  </div>
+  <div class="chat-list" id="mod-list"></div>
+  <button class="sidebar-mod-btn" onclick="openModModal()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Загрузить мод
+  </button>
+  <a href="/create-mod" target="_blank" class="sidebar-create-mod-link">Создать мод →</a>
+</div>
+
+<!-- MOD UPLOAD MODAL -->
+<div class="mod-modal-overlay" id="mod-modal-overlay" onclick="if(event.target===this)closeModModal()">
+  <div class="mod-modal">
+    <button class="mod-modal-close" onclick="closeModModal()">✕</button>
+    <div class="mod-modal-title">Загрузить мод</div>
+    <div class="mod-modal-sub">Перетащи файл <b>.pixelmod</b> или нажми для выбора</div>
+
+    <!-- Preview (скрыта до загрузки файла) -->
+    <div class="mod-preview-box" id="mod-preview-box">
+      <div class="mod-preview-avatar" id="mod-preview-avatar">🤖</div>
+      <div>
+        <div class="mod-preview-name" id="mod-preview-name">—</div>
+        <div class="mod-preview-desc" id="mod-preview-desc"></div>
+        <div class="mod-preview-author" id="mod-preview-author"></div>
+      </div>
+    </div>
+
+    <!-- Drop zone (скрывается после выбора файла) -->
+    <div class="mod-drop-zone" id="mod-drop-zone"
+         onclick="document.getElementById('mod-file-input').click()"
+         ondragover="modDragOver(event)" ondragleave="modDragLeave(event)" ondrop="modDrop(event)">
+      <div class="mod-drop-icon">🧩</div>
+      <div class="mod-drop-text">Перетащи .pixelmod сюда</div>
+      <div class="mod-drop-hint">или нажми для выбора файла</div>
+      <div class="mod-drop-ext">Расширение: .pixelmod</div>
+    </div>
+    <input type="file" id="mod-file-input" accept=".pixelmod,.json" style="display:none" onchange="modFileSelected(this)">
+
+    <button class="mod-load-btn" id="mod-load-btn" onclick="loadModChat()" disabled style="margin-top:16px">
+      Открыть мод
+    </button>
+  </div>
 </div>
 
 <!-- APP SCREEN -->
@@ -689,6 +815,7 @@ header {
         <span class="bolt">⚡</span>
         <span class="name">PixelMind</span>
       </div>
+      <span class="mod-header-badge" id="mod-header-badge" style="display:none"></span>
     </div>
     <div class="header-right">
       <div class="credits-badge ok" id="credits-badge" onclick="openUpgrade()" title="Кредиты">
@@ -1827,21 +1954,30 @@ function closeChatSidebar() {
   setTimeout(() => { ov.style.display = 'none'; }, 300);
 }
 
+// modChatsCache: [{id, name, mod, ...}]
+let modChatsCache = [];
+
 async function loadChatList() {
   try {
     const r = await fetch('/app/chats');
     const d = await r.json();
     if (!d.ok) return;
     activeChatId = d.active_id;
-    chatListCache = d.chats;
-    renderChatList(d.chats, d.active_id);
+    const allChats = d.chats_with_mod || d.chats;
+    const regular = allChats.filter(c => !c.mod);
+    const mods = allChats.filter(c => c.mod);
+    chatListCache = regular;
+    modChatsCache = mods;
+    renderChatList(regular, d.active_id);
+    renderModList(mods, d.active_id);
+    updateModHeaderBadge(d.active_id, allChats);
   } catch(e) {}
 }
 
 function renderChatList(chats, activeId) {
   const list = document.getElementById('chat-list');
   if (!chats.length) {
-    list.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:13px;padding:24px 0">Нет чатов</div>';
+    list.innerHTML = '<div style="text-align:center;color:var(--text2);font-size:13px;padding:18px 0">Нет чатов</div>';
     return;
   }
   list.innerHTML = chats.map(c => {
@@ -1859,6 +1995,43 @@ function renderChatList(chats, activeId) {
   }).join('');
 }
 
+function renderModList(mods, activeId) {
+  const list = document.getElementById('mod-list');
+  if (!mods.length) {
+    list.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:12px;padding:8px 0 4px">Нет загруженных модов</div>';
+    return;
+  }
+  list.innerHTML = mods.map(c => {
+    const isActive = c.id === activeId;
+    const m = c.mod;
+    const avatar = escHtml(m.avatar || '🔧');
+    const lastTxt = c.last ? escHtml(c.last) : '<span style="opacity:.4;font-style:italic">Пустой чат</span>';
+    const color = m.color || '#7c3aed';
+    return `
+    <div class="chat-item mod-item${isActive?' active':''}" id="ci-${c.id}" onclick="switchChat('${c.id}')">
+      <div class="chat-item-icon" style="background:${color}18;border-color:${color}44;font-size:18px">${avatar}</div>
+      <div class="chat-item-body">
+        <div class="chat-item-name" id="ciname-${c.id}">${escHtml(c.name)}</div>
+        <div class="chat-item-last">${lastTxt}</div>
+      </div>
+      <button class="chat-item-del" onclick="deleteModChat(event,'${c.id}')" title="Удалить мод">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function updateModHeaderBadge(activeId, allChats) {
+  const badgeEl = document.getElementById('mod-header-badge');
+  if (!badgeEl) return;
+  const found = (allChats || []).find(c => c.id === activeId && c.mod);
+  if (found) {
+    const m = found.mod;
+    badgeEl.style.display = 'inline-flex';
+    badgeEl.innerHTML = `<span>${escHtml(m.avatar || '🔧')}</span><span>${escHtml(m.name)}</span>`;
+  } else {
+    badgeEl.style.display = 'none';
+  }
+}
+
 async function switchChat(chatId) {
   if (chatId === activeChatId) { closeChatSidebar(); return; }
   try {
@@ -1869,17 +2042,121 @@ async function switchChat(chatId) {
     const d = await r.json();
     if (!d.ok) { toast('Ошибка переключения', 'err'); return; }
     activeChatId = chatId;
-    // Render history
     const area = document.getElementById('chat-area');
     area.innerHTML = '';
+    const allChats = [...chatListCache, ...modChatsCache];
+    const found = allChats.find(c => c.id === chatId);
     if (!d.history.length) {
-      area.innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я PixelMind</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
+      const isMod = found && found.mod;
+      const emptyMsg = isMod
+        ? `<div class="empty-chat" id="empty-state"><div class="big-icon">${escHtml(found.mod.avatar || '🔧')}</div><h2>${escHtml(found.mod.name)}</h2><p>${escHtml(found.mod.description || 'Мод загружен. Начни общение!')}</p></div>`
+        : `<div class="empty-chat" id="empty-state"><div class="big-icon">⚡</div><h2>Привет! Я PixelMind</h2><p>AI-ассистент готов к общению. Напиши что-нибудь!</p></div>`;
+      area.innerHTML = emptyMsg;
     } else {
       for (const m of d.history) appendMsg(m.role, m.content, m.ts, false);
       area.scrollTop = area.scrollHeight;
     }
+    // Update active styles in both lists
+    document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById(`ci-${chatId}`);
+    if (el) el.classList.add('active');
+    updateModHeaderBadge(chatId, [...chatListCache, ...modChatsCache]);
     closeChatSidebar();
   } catch(e) { toast('Ошибка соединения', 'err'); }
+}
+
+async function deleteModChat(e, chatId) {
+  e.stopPropagation();
+  if (!confirm('Удалить мод-чат?')) return;
+  try {
+    const r = await fetch('/app/mods/delete', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({chat_id: chatId})
+    });
+    const d = await r.json();
+    if (!d.ok) { toast(d.error || 'Ошибка удаления', 'err'); return; }
+    toast('Мод удалён');
+    loadChatList();
+  } catch(e2) { toast('Ошибка соединения', 'err'); }
+}
+
+// ===== MOD UPLOAD MODAL =====
+let pendingModData = null;
+
+function openModModal() {
+  pendingModData = null;
+  document.getElementById('mod-preview-box').classList.remove('visible');
+  document.getElementById('mod-drop-zone').style.display = '';
+  document.getElementById('mod-load-btn').disabled = true;
+  document.getElementById('mod-load-btn').textContent = 'Открыть мод';
+  document.getElementById('mod-file-input').value = '';
+  document.getElementById('mod-modal-overlay').classList.add('open');
+}
+
+function closeModModal() {
+  document.getElementById('mod-modal-overlay').classList.remove('open');
+  pendingModData = null;
+}
+
+function modDragOver(e) {
+  e.preventDefault();
+  document.getElementById('mod-drop-zone').classList.add('drag-over');
+}
+function modDragLeave(e) {
+  document.getElementById('mod-drop-zone').classList.remove('drag-over');
+}
+function modDrop(e) {
+  e.preventDefault();
+  document.getElementById('mod-drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) parseModFile(file);
+}
+function modFileSelected(input) {
+  if (input.files[0]) parseModFile(input.files[0]);
+}
+
+function parseModFile(file) {
+  if (!file.name.endsWith('.pixelmod') && !file.name.endsWith('.json')) {
+    toast('Неверный формат файла. Нужен .pixelmod', 'err'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data.system_prompt) { toast('Файл мода не содержит system_prompt', 'err'); return; }
+      pendingModData = data;
+      // Show preview
+      document.getElementById('mod-preview-avatar').textContent = data.avatar || '🔧';
+      document.getElementById('mod-preview-name').textContent = data.name || 'Без названия';
+      document.getElementById('mod-preview-desc').textContent = data.description || '';
+      document.getElementById('mod-preview-author').textContent = data.author ? ('Автор: ' + data.author) : '';
+      document.getElementById('mod-preview-box').classList.add('visible');
+      document.getElementById('mod-drop-zone').style.display = 'none';
+      document.getElementById('mod-load-btn').disabled = false;
+    } catch(e) { toast('Ошибка чтения файла мода', 'err'); }
+  };
+  reader.readAsText(file);
+}
+
+async function loadModChat() {
+  if (!pendingModData) return;
+  const btn = document.getElementById('mod-load-btn');
+  btn.disabled = true; btn.textContent = 'Создаю чат…';
+  try {
+    const r = await fetch('/app/mods/upload', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({mod: pendingModData})
+    });
+    const d = await r.json();
+    if (!d.ok) { toast(d.error || 'Ошибка загрузки мода', 'err'); btn.disabled = false; btn.textContent = 'Открыть мод'; return; }
+    closeModModal();
+    toast('Мод загружен!');
+    activeChatId = d.chat_id;
+    // Reload chat list and render mod empty state
+    await loadChatList();
+    const area = document.getElementById('chat-area');
+    area.innerHTML = `<div class="empty-chat" id="empty-state"><div class="big-icon">${escHtml(d.mod.avatar || '🔧')}</div><h2>${escHtml(d.mod.name)}</h2><p>${escHtml(d.mod.description || 'Мод загружен. Начни общение!')}</p></div>`;
+  } catch(e2) { toast('Ошибка соединения', 'err'); btn.disabled = false; btn.textContent = 'Открыть мод'; }
 }
 
 async function createNewChat() {

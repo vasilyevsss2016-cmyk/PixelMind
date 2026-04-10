@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PixelMind Mod Studio</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='28' font-size='28'>⚡</text></svg>">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080f; --surface:rgba(255,255,255,0.04); --border:rgba(255,255,255,0.1);
+  --text:#e8eaf2; --text2:#8b92b8; --text3:#555d80;
+  --accent:#3a8eff; --purple:#7c3aed; --radius:16px;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;line-height:1.5}
+
+/* Layout */
+.page{max-width:900px;margin:0 auto;padding:32px 20px 60px}
+
+/* Header */
+.header{display:flex;align-items:center;gap:14px;margin-bottom:40px}
+.header-logo{width:44px;height:44px;background:linear-gradient(135deg,#3a8eff,#7c3aed);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.header h1{font-size:22px;font-weight:800;background:linear-gradient(135deg,#5aabff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-sub{font-size:13px;color:var(--text2);margin-top:1px}
+
+/* Links */
+.header-links{margin-left:auto;display:flex;gap:10px}
+.header-link{font-size:13px;color:var(--text2);text-decoration:none;padding:7px 14px;border-radius:20px;border:1px solid var(--border);transition:all .2s}
+.header-link:hover{color:var(--text);background:var(--surface)}
+
+/* Grid */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:680px){.grid{grid-template-columns:1fr}}
+
+/* Card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px}
+.card-title{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:18px}
+
+/* Form */
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.field input,.field textarea,.field select{
+  width:100%;padding:10px 13px;background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;outline:none;
+  transition:border .2s;resize:vertical
+}
+.field input:focus,.field textarea:focus{border-color:rgba(90,171,255,0.5);background:rgba(90,171,255,0.05)}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{min-height:100px;line-height:1.5}
+.field-system{margin-bottom:16px}
+.field-system label{display:block;font-size:13px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.field-system textarea{
+  width:100%;padding:12px 14px;background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;outline:none;
+  transition:border .2s;resize:vertical;min-height:180px;line-height:1.55
+}
+.field-system textarea:focus{border-color:rgba(90,171,255,0.5);background:rgba(90,171,255,0.05)}
+.field-hint{font-size:11px;color:var(--text3);margin-top:5px}
+
+/* Row */
+.row{display:flex;gap:12px}
+.row .field{flex:1}
+
+/* Emoji + color row */
+.avatar-row{display:flex;gap:10px;align-items:flex-end}
+.emoji-field{flex:0 0 80px}
+.emoji-input{
+  width:80px;height:52px;background:rgba(255,255,255,0.06);border:1px solid var(--border);
+  border-radius:10px;font-size:28px;text-align:center;cursor:pointer;
+  color:var(--text);outline:none;transition:border .2s;
+}
+.emoji-input:focus{border-color:rgba(90,171,255,0.5)}
+.color-field{flex:0 0 60px}
+.color-input{width:60px;height:52px;border:1px solid var(--border);border-radius:10px;cursor:pointer;padding:4px;background:rgba(255,255,255,0.04)}
+
+/* Preview card */
+.preview-mod-card{
+  background:rgba(255,255,255,0.04);border:1.5px solid var(--border);
+  border-radius:14px;padding:16px 18px;display:flex;align-items:center;gap:14px;
+  transition:border-color .3s;margin-bottom:20px
+}
+.preview-icon{
+  width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+  font-size:24px;flex-shrink:0;background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.25);
+}
+.preview-body{flex:1;min-width:0}
+.preview-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;word-break:break-word}
+.preview-desc{font-size:12px;color:var(--text2);line-height:1.45}
+.preview-badge{
+  font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;letter-spacing:.4px;
+  background:rgba(124,58,237,0.18);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);white-space:nowrap
+}
+
+/* Examples */
+.example-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+@media(max-width:400px){.example-grid{grid-template-columns:1fr}}
+.example-card{
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:12px;
+  padding:12px 14px;cursor:pointer;transition:all .18s;
+}
+.example-card:hover{background:rgba(255,255,255,0.08);border-color:rgba(90,171,255,0.3);transform:translateY(-1px)}
+.example-icon{font-size:20px;margin-bottom:6px}
+.example-name{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px}
+.example-desc{font-size:11px;color:var(--text2)}
+
+/* Format */
+.format-box{background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-family:'Fira Mono',monospace;font-size:12px;color:#7ec8ff;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+
+/* Buttons */
+.btn-download{
+  width:100%;padding:14px;border-radius:12px;border:none;cursor:pointer;
+  font-size:15px;font-weight:700;letter-spacing:.2px;
+  background:linear-gradient(135deg,#7c3aed,#5a1fd4);color:#fff;
+  box-shadow:0 4px 20px rgba(124,58,237,0.4);transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px
+}
+.btn-download:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(124,58,237,0.55)}
+.btn-download:active{transform:scale(.97)}
+.btn-download svg{flex-shrink:0}
+.btn-copy{
+  width:100%;padding:11px;border-radius:10px;border:1px solid var(--border);cursor:pointer;
+  font-size:13px;font-weight:600;background:transparent;color:var(--text2);margin-top:10px;transition:all .2s
+}
+.btn-copy:hover{background:rgba(255,255,255,0.06);color:var(--text)}
+
+/* Footer */
+.footer{text-align:center;margin-top:40px;font-size:12px;color:var(--text3)}
+.footer a{color:var(--accent);text-decoration:none}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(20,25,45,0.95);border:1px solid var(--border);border-radius:12px;
+  padding:10px 20px;font-size:13px;color:var(--text);opacity:0;transition:all .3s;pointer-events:none;z-index:999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-logo">⚡</div>
+    <div>
+      <h1>PixelMind Mod Studio</h1>
+      <div class="header-sub">Создавай моды для нейросети</div>
+    </div>
+    <div class="header-links">
+      <a href="/app" class="header-link">Открыть чат</a>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- LEFT: форма -->
+    <div>
+      <div class="card">
+        <div class="card-title">Настройки мода</div>
+
+        <div class="avatar-row">
+          <div class="emoji-field field">
+            <label>Аватар</label>
+            <input class="emoji-input" id="mod-avatar" type="text" value="🤖" maxlength="4" oninput="updatePreview()">
+          </div>
+          <div class="color-field field">
+            <label>Цвет</label>
+            <input class="color-input" id="mod-color" type="color" value="#7c3aed" oninput="updatePreview()">
+          </div>
+          <div class="field" style="flex:1">
+            <label>Название мода</label>
+            <input id="mod-name" type="text" placeholder="English Teacher" maxlength="64" oninput="updatePreview()">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Описание (показывается в чате)</label>
+          <input id="mod-description" type="text" placeholder="Помогает учить английский язык" maxlength="200" oninput="updatePreview()">
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label>Автор</label>
+            <input id="mod-author" type="text" placeholder="Твоё имя" maxlength="64">
+          </div>
+          <div class="field">
+            <label>Версия</label>
+            <input id="mod-version" type="text" placeholder="1.0" maxlength="16" value="1.0">
+          </div>
+        </div>
+
+        <div class="field-system">
+          <label>System Prompt — как AI должен себя вести</label>
+          <textarea id="mod-system" placeholder="Ты — опытный учитель английского языка по имени Alex. Всегда отвечай на русском, но исправляй ошибки пользователя и давай примеры на английском. Объясняй грамматику просто и дружелюбно..."></textarea>
+          <div class="field-hint">Это главное поле — именно здесь ты описываешь роль, стиль и поведение нейросети в этом моде</div>
+        </div>
+
+        <button class="btn-download" onclick="downloadMod()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Скачать .pixelmod
+        </button>
+        <button class="btn-copy" onclick="copyJson()">Скопировать JSON</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: превью и примеры -->
+    <div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title">Превью</div>
+        <div class="preview-mod-card" id="preview-card">
+          <div class="preview-icon" id="preview-icon">🤖</div>
+          <div class="preview-body">
+            <div class="preview-name" id="preview-name">Название мода</div>
+            <div class="preview-desc" id="preview-desc">Описание мода появится здесь</div>
+          </div>
+          <div class="preview-badge" id="preview-badge">МОД</div>
+        </div>
+        <div class="card-title" style="margin-top:4px">Формат файла</div>
+        <div class="format-box" id="format-preview">{
+  "name": "...",
+  "system_prompt": "...",
+  "avatar": "🤖",
+  "color": "#7c3aed"
+}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Примеры модов</div>
+        <div class="example-grid">
+          <div class="example-card" onclick="loadExample('english')">
+            <div class="example-icon">🇬🇧</div>
+            <div class="example-name">English Teacher</div>
+            <div class="example-desc">Учитель английского</div>
+          </div>
+          <div class="example-card" onclick="loadExample('coder')">
+            <div class="example-icon">💻</div>
+            <div class="example-name">Code Assistant</div>
+            <div class="example-desc">Помощник программиста</div>
+          </div>
+          <div class="example-card" onclick="loadExample('chef')">
+            <div class="example-icon">👨‍🍳</div>
+            <div class="example-name">Chef Bot</div>
+            <div class="example-desc">Кулинарный ассистент</div>
+          </div>
+          <div class="example-card" onclick="loadExample('psycho')">
+            <div class="example-icon">🧠</div>
+            <div class="example-name">Mind Coach</div>
+            <div class="example-desc">Психологическая поддержка</div>
+          </div>
+        </div>
+        <div class="field-hint" style="text-align:center;font-size:12px">Нажми на пример — заполнит форму автоматически</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    Моды работают в <a href="/app">PixelMind Web Chat</a> · Загрузи .pixelmod в разделе «Моды» в боковой панели
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const EXAMPLES = {
+  english: {
+    name: 'English Teacher',
+    avatar: '🇬🇧',
+    color: '#1565c0',
+    description: 'Учитель английского языка',
+    author: 'PixelMind',
+    version: '1.0',
+    system_prompt: `Ты — опытный учитель английского языка по имени Alex. Твоя цель — помочь пользователю улучшить знание английского.
+
+— Всегда отвечай на русском языке, но приводи примеры на английском
+— Мягко исправляй грамматические и лексические ошибки пользователя
+— Объясняй правила просто, с примерами из жизни
+— Предлагай небольшие упражнения и тесты
+— Хвали за успехи и ободряй при ошибках
+— Уровень подстраивай под пользователя (A1–C2)`
+  },
+  coder: {
+    name: 'Code Assistant',
+    avatar: '💻',
+    color: '#1b5e20',
+    description: 'Помощник программиста — любой язык',
+    author: 'PixelMind',
+    version: '1.0',
+    system_prompt: `Ты — опытный разработчик-ментор. Помогаешь писать, отлаживать и улучшать код.
+
+— Объясняй код понятно, с комментариями
+— Предлагай лучшие практики и паттерны
+— Указывай на потенциальные баги и уязвимости
+— Используй markdown с подсветкой кода (\`\`\`язык)
+— Если вопрос расплывчатый — уточни что нужно
+— Поддерживаешь Python, JavaScript, TypeScript, Go, Rust, C++, SQL и другие языки`
+  },
+  chef: {
+    name: 'Chef Bot',
+    avatar: '👨‍🍳',
+    color: '#e65100',
+    description: 'Кулинарный помощник и шеф-повар',
+    author: 'PixelMind',
+    version: '1.0',
+    system_prompt: `Ты — профессиональный шеф-повар с 15-летним опытом. Помогаешь с кулинарными вопросами.
+
+— Предлагай рецепты с точными пропорциями и шагами
+— Учитывай диетические ограничения (веган, без глютена и т.д.)
+— Объясняй техники приготовления и почему они работают
+— Предлагай замену продуктов если нужного нет
+— Рассказывай о кухнях мира интересно и увлекательно
+— Используй эмодзи для красоты рецептов`
+  },
+  psycho: {
+    name: 'Mind Coach',
+    avatar: '🧠',
+    color: '#4a148c',
+    description: 'Поддержка, мотивация и коучинг',
+    author: 'PixelMind',
+    version: '1.0',
+    system_prompt: `Ты — заботливый психологический коуч. Помогаешь пользователю разобраться в себе и двигаться вперёд.
+
+— Слушай внимательно, задавай уточняющие вопросы
+— Никогда не осуждай и не критикуй
+— Помогай находить причины тревог и страхов
+— Предлагай практические техники (дыхание, рефрейминг, CBT)
+— Мотивируй и отмечай прогресс
+— При серьёзных проблемах рекомендуй обратиться к специалисту`
+  }
+};
+
+function loadExample(key) {
+  const e = EXAMPLES[key];
+  document.getElementById('mod-name').value = e.name;
+  document.getElementById('mod-avatar').value = e.avatar;
+  document.getElementById('mod-color').value = e.color;
+  document.getElementById('mod-description').value = e.description;
+  document.getElementById('mod-author').value = e.author;
+  document.getElementById('mod-version').value = e.version;
+  document.getElementById('mod-system').value = e.system_prompt;
+  updatePreview();
+}
+
+function getMod() {
+  return {
+    pixelmod_version: 1,
+    name: document.getElementById('mod-name').value.trim() || 'Мой мод',
+    description: document.getElementById('mod-description').value.trim(),
+    system_prompt: document.getElementById('mod-system').value.trim(),
+    avatar: document.getElementById('mod-avatar').value.trim() || '🤖',
+    color: document.getElementById('mod-color').value || '#7c3aed',
+    author: document.getElementById('mod-author').value.trim(),
+    version: document.getElementById('mod-version').value.trim() || '1.0',
+    created_at: new Date().toISOString().slice(0,10)
+  };
+}
+
+function updatePreview() {
+  const mod = getMod();
+  const icon = document.getElementById('preview-icon');
+  const nameEl = document.getElementById('preview-name');
+  const descEl = document.getElementById('preview-desc');
+  const badge = document.getElementById('preview-badge');
+  const card = document.getElementById('preview-card');
+
+  icon.textContent = mod.avatar || '🤖';
+  nameEl.textContent = mod.name || 'Название мода';
+  descEl.textContent = mod.description || 'Описание мода появится здесь';
+  badge.textContent = 'МОД v' + (mod.version || '1.0');
+
+  const c = mod.color || '#7c3aed';
+  icon.style.background = c + '22';
+  icon.style.borderColor = c + '55';
+  card.style.borderColor = c + '55';
+  badge.style.background = c + '22';
+  badge.style.color = c;
+  badge.style.borderColor = c + '44';
+
+  const preview = { name: mod.name, system_prompt: mod.system_prompt ? mod.system_prompt.slice(0,60) + (mod.system_prompt.length > 60 ? '…' : '') : '…', avatar: mod.avatar, color: mod.color, author: mod.author, version: mod.version };
+  document.getElementById('format-preview').textContent = JSON.stringify(preview, null, 2);
+}
+
+function downloadMod() {
+  const mod = getMod();
+  if (!mod.system_prompt) { showToast('❌ Заполни поле System Prompt!'); return; }
+  if (!mod.name || mod.name === 'Мой мод') { showToast('⚠️ Придумай название для мода'); }
+  const json = JSON.stringify(mod, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = mod.name.replace(/[^a-zA-Zа-яА-Я0-9_\-]/g, '_').toLowerCase();
+  a.href = url;
+  a.download = `mod-${safeName}.pixelmod`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✅ Файл мода скачан!');
+}
+
+function copyJson() {
+  const mod = getMod();
+  const json = JSON.stringify(mod, null, 2);
+  navigator.clipboard.writeText(json).then(() => showToast('📋 Скопировано!'));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+updatePreview();
+</script>
+</body>
+</html>

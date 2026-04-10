@@ -2877,7 +2877,8 @@ def web_get_chats():
             "msg_count": len(h),
         })
     lst.sort(key=lambda x: x["updated_at"], reverse=True)
-    return jsonify({"ok": True, "chats": lst, "active_id": u["active_chat_id"]})
+    return jsonify({"ok": True, "chats": lst, "active_id": u["active_chat_id"],
+                    "chats_with_mod": [{**item, "mod": u["chats"][item["id"]].get("mod")} for item in lst]})
 
 @app.route("/app/chats/new", methods=["POST"])
 def web_new_chat():
@@ -2975,6 +2976,71 @@ def web_history():
     _, chat = _active_chat(u)
     return jsonify({"ok": True, "history": chat.get("history", []), "active_id": u["active_chat_id"]})
 
+@app.route("/create-mod")
+def create_mod_page():
+    """Страница создания мода — без авторизации."""
+    return render_template("create_mod.html")
+
+@app.route("/app/mods/upload", methods=["POST"])
+def web_mod_upload():
+    """Загрузка .pixelmod файла — создаёт новый чат с модом."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    data = request.get_json(silent=True) or {}
+    mod_data = data.get("mod")
+    if not mod_data or not isinstance(mod_data, dict):
+        return jsonify({"ok": False, "error": "Неверный формат файла мода"}), 400
+    name = (str(mod_data.get("name") or "Без названия")).strip()[:64]
+    system_prompt = (str(mod_data.get("system_prompt") or "")).strip()[:8000]
+    if not system_prompt:
+        return jsonify({"ok": False, "error": "В файле мода отсутствует system_prompt"}), 400
+    users = load_web_users()
+    u = users.get(uid)
+    if not u:
+        return jsonify({"ok": False, "error": "Пользователь не найден"}), 401
+    _ensure_chats(u)
+    cid = str(uuid_module.uuid4())
+    u["chats"][cid] = {
+        "name": name,
+        "history": [],
+        "created_at": datetime.now().isoformat(),
+        "updated_at": datetime.now().isoformat(),
+        "mod": {
+            "name": name,
+            "description": (str(mod_data.get("description") or ""))[:300],
+            "system_prompt": system_prompt,
+            "avatar": (str(mod_data.get("avatar") or "🔧"))[:8],
+            "color": (str(mod_data.get("color") or "#7c3aed"))[:20],
+            "author": (str(mod_data.get("author") or ""))[:64],
+            "version": (str(mod_data.get("version") or "1.0"))[:16],
+        },
+    }
+    u["active_chat_id"] = cid
+    save_web_users(users)
+    chat_mod = u["chats"][cid]["mod"]
+    return jsonify({"ok": True, "chat_id": cid, "name": name, "mod": chat_mod})
+
+@app.route("/app/mods/delete", methods=["POST"])
+def web_mod_delete():
+    """Удаление мод-чата."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    data = request.get_json(silent=True) or {}
+    cid = data.get("chat_id", "")
+    users = load_web_users()
+    u = users.get(uid)
+    if not u or cid not in u.get("chats", {}):
+        return jsonify({"ok": False, "error": "Чат не найден"}), 404
+    if not u["chats"][cid].get("mod"):
+        return jsonify({"ok": False, "error": "Это не мод-чат"}), 400
+    del u["chats"][cid]
+    remaining = list(u["chats"].keys())
+    u["active_chat_id"] = remaining[-1] if remaining else None
+    save_web_users(users)
+    return jsonify({"ok": True})
+
 WEB_PAYMENTS_FILE = "web_payments.json"
 
 def load_web_payments() -> dict:
@@ -3016,7 +3082,13 @@ def web_chat_send():
     _ensure_chats(u)
     cid, chat = _active_chat(u)
     history = chat.get("history", [])
-    messages = [{"role": "system", "content": f"Ты — PixelMind, дружелюбный AI-ассистент. Отвечай на русском языке. Текущая дата: {datetime.now().strftime('%d.%m.%Y')}."}]
+    # Если у чата есть мод — используем его system_prompt
+    chat_mod = chat.get("mod")
+    if chat_mod and chat_mod.get("system_prompt"):
+        sys_content = chat_mod["system_prompt"].strip() + f"\n\nТекущая дата: {datetime.now().strftime('%d.%m.%Y')}."
+    else:
+        sys_content = f"Ты — PixelMind, дружелюбный AI-ассистент. Отвечай на русском языке. Текущая дата: {datetime.now().strftime('%d.%m.%Y')}."
+    messages = [{"role": "system", "content": sys_content}]
     for msg in history[-20:]:
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": text})
