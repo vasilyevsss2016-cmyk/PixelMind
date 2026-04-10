@@ -486,7 +486,7 @@ function downloadMod() {
   if (!mod.system_prompt) { showToast('❌ Заполни поле System Prompt!'); return; }
   if (!mod.name || mod.name === 'Мой мод') { showToast('⚠️ Придумай название для мода'); }
   const json = JSON.stringify(mod, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
+  const blob = new Blob([json], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const safeName = mod.name.replace(/[^a-zA-Zа-яА-Я0-9_\-]/g, '_').toLowerCase();
