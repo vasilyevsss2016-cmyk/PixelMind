@@ -13,6 +13,17 @@
 <link rel="apple-touch-icon" href="/pwa-icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/python.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/typescript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/bash.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/json.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/css.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/xml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/sql.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -119,11 +130,42 @@ header {
 .msg.assistant .msg-avatar { background:linear-gradient(135deg,#5aabff22,#a78bfa22); border:1px solid rgba(167,139,250,0.3); color:#a78bfa; font-size:16px; }
 
 .msg-bubble {
-  padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.55;
+  padding:11px 14px; border-radius:16px; font-size:14px; line-height:1.6;
   word-break:break-word; white-space:pre-wrap;
 }
 .msg.user .msg-bubble { background:linear-gradient(135deg,rgba(58,142,255,0.25),rgba(58,142,255,0.15)); border:1px solid rgba(58,142,255,0.3); border-bottom-right-radius:4px; }
-.msg.assistant .msg-bubble { background:var(--glass); border:1px solid var(--glass-border); border-bottom-left-radius:4px; }
+.msg.assistant .msg-bubble { background:var(--glass); border:1px solid var(--glass-border); border-bottom-left-radius:4px; white-space:normal; }
+
+/* ===== Markdown rendering in assistant messages ===== */
+.msg-bubble.md-rendered p { margin:0 0 8px; }
+.msg-bubble.md-rendered p:last-child { margin-bottom:0; }
+.msg-bubble.md-rendered h1,.msg-bubble.md-rendered h2,.msg-bubble.md-rendered h3 { font-weight:700; margin:10px 0 6px; color:var(--text); }
+.msg-bubble.md-rendered h1 { font-size:18px; }
+.msg-bubble.md-rendered h2 { font-size:16px; }
+.msg-bubble.md-rendered h3 { font-size:15px; }
+.msg-bubble.md-rendered ul,.msg-bubble.md-rendered ol { padding-left:20px; margin:6px 0; }
+.msg-bubble.md-rendered li { margin:3px 0; }
+.msg-bubble.md-rendered blockquote { border-left:3px solid var(--accent); padding:6px 12px; margin:8px 0; background:rgba(90,171,255,0.07); border-radius:0 8px 8px 0; color:var(--text2); }
+.msg-bubble.md-rendered hr { border:none; border-top:1px solid var(--glass-border); margin:10px 0; }
+.msg-bubble.md-rendered a { color:var(--accent); text-decoration:underline; }
+.msg-bubble.md-rendered strong { font-weight:700; color:var(--text); }
+.msg-bubble.md-rendered em { font-style:italic; color:var(--text2); }
+.msg-bubble.md-rendered table { border-collapse:collapse; width:100%; margin:8px 0; font-size:13px; }
+.msg-bubble.md-rendered th,.msg-bubble.md-rendered td { border:1px solid var(--glass-border); padding:6px 10px; text-align:left; }
+.msg-bubble.md-rendered th { background:rgba(255,255,255,0.07); font-weight:600; }
+
+/* Inline code */
+.msg-bubble.md-rendered code:not(.hljs) { background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.12); border-radius:5px; padding:1px 5px; font-family:'Fira Mono',monospace; font-size:12.5px; color:#a78bfa; }
+
+/* Code block wrapper */
+.code-block-wrap { position:relative; margin:8px 0; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); }
+.code-block-header { display:flex; align-items:center; justify-content:space-between; padding:6px 12px; background:rgba(0,0,0,0.35); font-size:11px; color:var(--text2); }
+.code-block-lang { text-transform:uppercase; font-weight:600; letter-spacing:.5px; }
+.code-block-copy { display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:6px; padding:3px 9px; cursor:pointer; font-size:11px; color:var(--text2); transition:all .18s; }
+.code-block-copy:hover { background:rgba(255,255,255,0.15); color:var(--text); }
+.code-block-copy.copied { color:#4ade80; border-color:rgba(74,222,128,0.4); }
+.code-block-wrap pre { margin:0!important; border-radius:0!important; border:none!important; max-height:400px; overflow-x:auto; }
+.code-block-wrap pre code.hljs { padding:14px 16px!important; font-size:12.5px!important; }
 
 .msg-time { font-size:10px; color:var(--text2); margin-top:4px; padding:0 2px; align-self:flex-end; }
 
@@ -1330,6 +1372,7 @@ document.addEventListener('click', () => { try { _getAudioCtx(); } catch(e){} },
 
 // Проверяем блокировку при загрузке страницы
 document.addEventListener('DOMContentLoaded', async () => {
+  initMarked();
   try {
     const r = await fetch('/app/status');
     const d = await r.json();
@@ -1757,10 +1800,12 @@ function appendMsg(role, content, ts, animate=true) {
 
   const div = document.createElement('div');
   div.className = `msg ${role}`;
+  const bubbleContent = isUser ? escHtml(content) : renderMarkdown(content);
+  const bubbleClass = isUser ? 'msg-bubble' : 'msg-bubble md-rendered';
   div.innerHTML = `
     <div class="msg-avatar">${isUser ? currentUsername.charAt(0).toUpperCase() : '⚡'}</div>
     <div>
-      <div class="msg-bubble">${escHtml(content)}</div>
+      <div class="${bubbleClass}">${bubbleContent}</div>
       ${time ? `<div class="msg-time">${time}</div>` : ''}
     </div>`;
   if (!animate) div.style.animation = 'none';
@@ -1871,6 +1916,45 @@ function autoResize(el) {
 
 // ===== HELPERS =====
 function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ===== Markdown renderer =====
+function initMarked() {
+  if (!window.marked) return;
+  const renderer = new marked.Renderer();
+  renderer.code = function(token) {
+    const code = typeof token === 'object' ? token.text : token;
+    const lang = (typeof token === 'object' ? token.lang : '') || '';
+    let highlighted;
+    try {
+      if (lang && window.hljs && hljs.getLanguage(lang)) {
+        highlighted = hljs.highlight(code, { language: lang }).value;
+      } else if (window.hljs) {
+        highlighted = hljs.highlightAuto(code).value;
+      } else {
+        highlighted = escHtml(code);
+      }
+    } catch(e) { highlighted = escHtml(code); }
+    const displayLang = lang || 'code';
+    return `<div class="code-block-wrap"><div class="code-block-header"><span class="code-block-lang">${escHtml(displayLang)}</span><button class="code-block-copy" onclick="copyCodeBlock(this)" data-code="${encodeURIComponent(code)}">📋 Копировать</button></div><pre><code class="hljs language-${escHtml(lang)}">${highlighted}</code></pre></div>`;
+  };
+  marked.use({ renderer, breaks: true, gfm: true });
+}
+
+function renderMarkdown(text) {
+  if (!window.marked) return escHtml(text);
+  try {
+    return marked.parse(text);
+  } catch(e) { return escHtml(text); }
+}
+
+function copyCodeBlock(btn) {
+  const code = decodeURIComponent(btn.dataset.code);
+  navigator.clipboard.writeText(code).then(() => {
+    btn.textContent = '✅ Скопировано';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = '📋 Копировать'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {});
+}
 
 function toast(msg, type='info') {
   toastQ.push({msg,type}); if (!toastBusy) runToast();
