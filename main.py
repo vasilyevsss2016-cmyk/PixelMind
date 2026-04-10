@@ -3024,6 +3024,11 @@ def create_mod_page():
     """Страница создания мода — без авторизации."""
     return render_template("create_mod.html")
 
+@app.route("/read-mod")
+def read_mod_page():
+    """Страница просмотра .pixelmod файла — без авторизации."""
+    return render_template("read_mod.html")
+
 @app.route("/app/mods/upload", methods=["POST"])
 def web_mod_upload():
     """Загрузка .pixelmod файла — создаёт новый чат с модом."""
