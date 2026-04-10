@@ -13,17 +13,9 @@
 <link rel="apple-touch-icon" href="/pwa-icon-192.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github-dark.min.css">
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/core.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/python.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/javascript.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/typescript.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/bash.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/json.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/css.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/xml.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/sql.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
@@ -164,8 +156,8 @@ header {
 .code-block-copy { display:flex; align-items:center; gap:5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); border-radius:6px; padding:3px 9px; cursor:pointer; font-size:11px; color:var(--text2); transition:all .18s; }
 .code-block-copy:hover { background:rgba(255,255,255,0.15); color:var(--text); }
 .code-block-copy.copied { color:#4ade80; border-color:rgba(74,222,128,0.4); }
-.code-block-wrap pre { margin:0!important; border-radius:0!important; border:none!important; max-height:400px; overflow-x:auto; }
-.code-block-wrap pre code.hljs { padding:14px 16px!important; font-size:12.5px!important; }
+.code-block-wrap pre { margin:0; border-radius:0; border:none; max-height:400px; overflow-x:auto; background:#0d1117; }
+.code-block-wrap pre code { display:block; padding:14px 16px; font-size:12.5px; font-family:'Fira Mono',monospace; color:#c9d1d9; line-height:1.6; white-space:pre; word-break:normal; }
 
 .msg-time { font-size:10px; color:var(--text2); margin-top:4px; padding:0 2px; align-self:flex-end; }
 
@@ -1917,34 +1909,70 @@ function autoResize(el) {
 // ===== HELPERS =====
 function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-// ===== Markdown renderer =====
+// ===== Markdown renderer (built-in, no CDN dependency) =====
 function initMarked() {
   if (!window.marked) return;
-  const renderer = new marked.Renderer();
-  renderer.code = function(token) {
-    const code = typeof token === 'object' ? token.text : token;
-    const lang = (typeof token === 'object' ? token.lang : '') || '';
-    let highlighted;
-    try {
-      if (lang && window.hljs && hljs.getLanguage(lang)) {
-        highlighted = hljs.highlight(code, { language: lang }).value;
-      } else if (window.hljs) {
-        highlighted = hljs.highlightAuto(code).value;
-      } else {
-        highlighted = escHtml(code);
-      }
-    } catch(e) { highlighted = escHtml(code); }
-    const displayLang = lang || 'code';
-    return `<div class="code-block-wrap"><div class="code-block-header"><span class="code-block-lang">${escHtml(displayLang)}</span><button class="code-block-copy" onclick="copyCodeBlock(this)" data-code="${encodeURIComponent(code)}">📋 Копировать</button></div><pre><code class="hljs language-${escHtml(lang)}">${highlighted}</code></pre></div>`;
-  };
-  marked.use({ renderer, breaks: true, gfm: true });
+  try {
+    const renderer = new marked.Renderer();
+    renderer.code = function(token) {
+      const code = typeof token === 'object' ? token.text : token;
+      const lang = (typeof token === 'object' ? token.lang : '') || '';
+      let highlighted;
+      try {
+        if (lang && window.hljs && hljs.getLanguage && hljs.getLanguage(lang)) {
+          highlighted = hljs.highlight(code, { language: lang }).value;
+        } else if (window.hljs && hljs.highlightAuto) {
+          highlighted = hljs.highlightAuto(code).value;
+        } else { highlighted = escHtml(code); }
+      } catch(e) { highlighted = escHtml(code); }
+      const displayLang = lang || 'code';
+      return `<div class="code-block-wrap"><div class="code-block-header"><span class="code-block-lang">${escHtml(displayLang)}</span><button class="code-block-copy" onclick="copyCodeBlock(this)" data-code="${encodeURIComponent(code)}">📋 Копировать</button></div><pre><code class="hljs">${highlighted}</code></pre></div>`;
+    };
+    marked.use({ renderer, breaks: true, gfm: true });
+  } catch(e) {}
+}
+
+// Built-in fallback markdown parser
+function _mdFallback(src) {
+  let out = '', lines = src.split('\n'), i = 0, inUl = false, inOl = false;
+  const closeList = () => { if(inUl){out+='</ul>';inUl=false;} if(inOl){out+='</ol>';inOl=false;} };
+  const inl = (t) => escHtml(t)
+    .replace(/\*\*\*(.*?)\*\*\*/g,'<strong><em>$1</em></strong>')
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g,'<em>$1</em>')
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/__(.*?)__/g,'<strong>$1</strong>')
+    .replace(/_(.*?)_/g,'<em>$1</em>');
+  while(i < lines.length) {
+    const line = lines[i];
+    if (/^```/.test(line)) {
+      closeList();
+      const lang = line.slice(3).trim() || 'code';
+      const cl = []; i++;
+      while(i < lines.length && !/^```/.test(lines[i])) { cl.push(lines[i]); i++; }
+      const raw = cl.join('\n'), enc = encodeURIComponent(raw);
+      out += `<div class="code-block-wrap"><div class="code-block-header"><span class="code-block-lang">${escHtml(lang)}</span><button class="code-block-copy" onclick="copyCodeBlock(this)" data-code="${enc}">📋 Копировать</button></div><pre><code>${escHtml(raw)}</code></pre></div>`;
+      i++; continue;
+    }
+    const hm = line.match(/^(#{1,3})\s+(.*)/);
+    if (hm) { closeList(); out+=`<h${hm[1].length}>${inl(hm[2])}</h${hm[1].length}>`; i++; continue; }
+    if (/^(---|\*\*\*)\s*$/.test(line)) { closeList(); out+='<hr>'; i++; continue; }
+    const ulm = line.match(/^[-*+]\s+(.*)/);
+    if (ulm) { if(!inUl){if(inOl){out+='</ol>';inOl=false;}out+='<ul>';inUl=true;} out+=`<li>${inl(ulm[1])}</li>`; i++; continue; }
+    const olm = line.match(/^\d+\.\s+(.*)/);
+    if (olm) { if(!inOl){if(inUl){out+='</ul>';inUl=false;}out+='<ol>';inOl=true;} out+=`<li>${inl(olm[1])}</li>`; i++; continue; }
+    if (/^>\s?/.test(line)) { closeList(); out+=`<blockquote>${inl(line.replace(/^>\s?/,''))}</blockquote>`; i++; continue; }
+    if (line.trim()==='') { closeList(); i++; continue; }
+    closeList(); out+=`<p>${inl(line)}</p>`; i++;
+  }
+  closeList(); return out;
 }
 
 function renderMarkdown(text) {
-  if (!window.marked) return escHtml(text);
-  try {
-    return marked.parse(text);
-  } catch(e) { return escHtml(text); }
+  if (window.marked) {
+    try { const r = marked.parse(text); if (r) return r; } catch(e) {}
+  }
+  return _mdFallback(text);
 }
 
 function copyCodeBlock(btn) {
