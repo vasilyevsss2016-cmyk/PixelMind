@@ -460,9 +460,9 @@ function downloadMod() {
   const blob = new Blob([json], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const encoded = encodeNameToNumbers(mod.name) || 'mod';
+  const safeName = mod.name.replace(/[^a-zA-Zа-яА-Я0-9_\-]/g, '_').toLowerCase();
   a.href = url;
-  a.download = `mod-${encoded}.pixelmod`;
+  a.download = `mod-${safeName}.pixelmod`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('✅ Файл мода скачан!');
