@@ -42,6 +42,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .drop-sub{font-size:13px;color:var(--text2);max-width:300px}
 .drop-btn{margin-top:6px;padding:10px 24px;border-radius:10px;border:1px solid rgba(90,171,255,0.4);background:rgba(90,171,255,0.1);color:#5aabff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s}
 .drop-btn:hover{background:rgba(90,171,255,0.2);border-color:rgba(90,171,255,0.7)}
+.drop-demo-btn{margin-top:8px;padding:7px 18px;border-radius:20px;border:1px solid rgba(167,139,250,0.3);background:transparent;color:var(--text3);font-size:12px;cursor:pointer;transition:all .2s}
+.drop-demo-btn:hover{color:#a78bfa;border-color:rgba(167,139,250,0.6);background:rgba(124,58,237,0.07)}
 #file-input{display:none}
 
 /* Mod card */
@@ -151,6 +153,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
     <div class="drop-sub">или нажми кнопку ниже, чтобы выбрать файл</div>
     <button class="drop-btn" onclick="document.getElementById('file-input').click()">Выбрать файл</button>
     <input type="file" id="file-input" accept=".pixelmod,.json">
+    <button class="drop-demo-btn" onclick="loadDemo()">✨ Посмотреть пример</button>
   </div>
 
   <!-- Mod view -->
@@ -324,8 +327,68 @@ function copyCodeBlock(btn) {
   }).catch(()=>{});
 }
 
+// ===== Demo =====
+function loadDemo() {
+  const demo = {
+    name: "Code Assistant",
+    avatar: "💻",
+    color: "#3a8eff",
+    description: "Помощник программиста — пишет, объясняет и отлаживает код",
+    author: "PixelMind Team",
+    version: "2.0",
+    pixelmod_version: "1",
+    system_prompt: `# Роль
+Ты — опытный программист и наставник по имени **Алекс**. Помогаешь писать чистый, эффективный код.
+
+## Как ты работаешь
+
+- Всегда объясняешь *почему* решение именно такое
+- Указываешь на потенциальные ошибки и улучшения
+- Пишешь код с комментариями
+
+## Пример ответа на вопрос
+
+Если пользователь спрашивает про сортировку — покажи несколько подходов:
+
+\`\`\`python
+# Быстрая сортировка — O(n log n)
+def quicksort(arr):
+    if len(arr) <= 1:
+        return arr
+    pivot = arr[len(arr) // 2]
+    left = [x for x in arr if x < pivot]
+    mid  = [x for x in arr if x == pivot]
+    right = [x for x in arr if x > pivot]
+    return quicksort(left) + mid + quicksort(right)
+
+# Пример использования
+data = [3, 6, 8, 10, 1, 2, 1]
+print(quicksort(data))  # [1, 1, 2, 3, 6, 8, 10]
+\`\`\`
+
+## Твои правила
+
+1. Не пиши код без объяснений
+2. Используй \`type hints\` в Python
+3. Предпочитай читаемость оптимизации
+
+> Хороший код — это код, который понятен другому человеку через год.
+
+---
+
+Если не знаешь ответа — **честно скажи об этом** и предложи где найти информацию.`
+  };
+  currentMod = demo;
+  showMod(demo, 'mod-code_assistant.pixelmod');
+}
+
 // ===== File reading =====
 let currentMod = null;
+
+// Auto-load demo from URL param
+if (new URLSearchParams(location.search).get('demo') === '1') {
+  document.addEventListener('DOMContentLoaded', loadDemo);
+}
 
 function readFile(file) {
   if (!file) return;
