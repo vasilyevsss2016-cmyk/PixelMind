@@ -112,6 +112,20 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .btn-ghost{flex:1;min-width:160px;padding:13px;border-radius:12px;border:1px solid var(--border2);cursor:pointer;font-size:14px;font-weight:600;background:var(--surface2);color:var(--text2);transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
 .btn-ghost:hover{background:var(--surface);color:var(--text);border-color:rgba(255,255,255,0.25)}
 
+/* Cipher card */
+.cipher-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px 28px;margin-bottom:20px}
+.cipher-title{font-size:16px;font-weight:800;color:var(--text);margin-bottom:4px}
+.cipher-sub{font-size:12px;color:var(--text3);margin-bottom:18px}
+.cipher-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cipher-col-head{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.cipher-rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:5px}
+.cipher-item{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:7px;font-size:13px;cursor:pointer;transition:background .15s;gap:6px}
+.cipher-item:hover{background:rgba(255,255,255,0.07)}
+.cipher-item:active{background:rgba(90,171,255,0.12)}
+.cipher-letter{font-weight:600;color:var(--text)}
+.cipher-num{color:var(--accent);font-weight:700;font-size:12px}
+@media(max-width:520px){.cipher-grid{grid-template-columns:1fr}}
+
 /* Load another */
 .load-another{text-align:center;margin-top:28px}
 .load-another-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;transition:all .2s}
@@ -193,6 +207,22 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
         </span>
       </div>
       <div class="raw-box" id="raw-box"></div>
+    </div>
+
+    <!-- Cipher reference -->
+    <div class="cipher-card">
+      <div class="cipher-title">🔢 Таблица букв и цифр</div>
+      <div class="cipher-sub">Русские а–я = 1–33 · Латинские a–z = 34–59</div>
+      <div class="cipher-grid">
+        <div class="cipher-col">
+          <div class="cipher-col-head">Русский (1–33)</div>
+          <div class="cipher-rows" id="cipher-ru"></div>
+        </div>
+        <div class="cipher-col">
+          <div class="cipher-col-head">Латинский (34–59)</div>
+          <div class="cipher-rows" id="cipher-en"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Load another -->
@@ -548,6 +578,30 @@ function showToast(msg) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
 }
+
+// ===== Build cipher table =====
+(function buildCipher() {
+  const ru = ['а','б','в','г','д','е','ё','ж','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ч','ш','щ','ъ','ы','ь','э','ю','я'];
+  const en = 'abcdefghijklmnopqrstuvwxyz'.split('');
+  const ruEl = document.getElementById('cipher-ru');
+  const enEl = document.getElementById('cipher-en');
+  ru.forEach((l, i) => {
+    const d = document.createElement('div');
+    d.className = 'cipher-item';
+    d.title = 'Нажми чтобы скопировать число';
+    d.innerHTML = `<span class="cipher-letter">${l}</span><span class="cipher-num">${i+1}</span>`;
+    d.onclick = () => { navigator.clipboard?.writeText(String(i+1)); showToast(`Скопировано: ${i+1}`); };
+    ruEl.appendChild(d);
+  });
+  en.forEach((l, i) => {
+    const d = document.createElement('div');
+    d.className = 'cipher-item';
+    d.title = 'Нажми чтобы скопировать число';
+    d.innerHTML = `<span class="cipher-letter">${l}</span><span class="cipher-num">${i+34}</span>`;
+    d.onclick = () => { navigator.clipboard?.writeText(String(i+34)); showToast(`Скопировано: ${i+34}`); };
+    enEl.appendChild(d);
+  });
+})();
 
 </script>
 </body>
