@@ -2813,24 +2813,6 @@ function startVoiceRecognition() {
   voiceRecognizer.onstart = () => { voiceRecogRunning = true; };
 
   voiceRecognizer.onresult = (e) => {
-    // Во время озвучки — перебиваем AI если пользователь заговорил
-    if (voiceState === 'speaking') {
-      let hasAny = false;
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript.trim();
-        if (t.length >= 2) { hasAny = true; break; }
-      }
-      if (hasAny) {
-        // Перебиваем — останавливаем аудио и переходим в режим слушания
-        _stopVoiceAudio();
-        voiceLastTranscript = '';
-        setVoiceState('listening');
-        // Продолжаем обработку результата ниже
-      } else {
-        return;
-      }
-    }
-
     if (voiceState !== 'listening') return;
 
     let interim = '', finalText = '';
@@ -2853,16 +2835,14 @@ function startVoiceRecognition() {
   voiceRecognizer.onerror = (e) => {
     voiceRecogRunning = false;
     if (e.error === 'not-allowed') { setVoiceStatus('❌ Доступ к микрофону запрещён'); return; }
-    // Перезапускаем если чат открыт (и слушаем, или AI говорит — чтобы ловить перебивание)
-    if (voiceOpen && (voiceState === 'listening' || voiceState === 'speaking') && voiceRecognizer) {
+    if (voiceOpen && voiceState === 'listening' && voiceRecognizer) {
       setTimeout(() => { try { voiceRecognizer.start(); } catch(e2) {} }, 300);
     }
   };
 
   voiceRecognizer.onend = () => {
     voiceRecogRunning = false;
-    // Перезапускаем если слушаем ИЛИ если AI говорит (нужно ловить перебивание)
-    if (voiceOpen && (voiceState === 'listening' || voiceState === 'speaking') && voiceRecognizer) {
+    if (voiceOpen && voiceState === 'listening' && voiceRecognizer) {
       setTimeout(() => { try { voiceRecognizer.start(); } catch(e) {} }, 200);
     }
   };
@@ -2904,6 +2884,10 @@ function _stopVoiceAudio() {
 
 async function speakVoiceResponse(text) {
   _stopVoiceAudio();
+  // Останавливаем микрофон пока AI говорит
+  if (voiceRecognizer && voiceRecogRunning) {
+    try { voiceRecognizer.stop(); } catch(e) {}
+  }
   setVoiceState('speaking');
   try {
     const r = await fetch('/app/voice-tts', {
@@ -2919,7 +2903,15 @@ async function speakVoiceResponse(text) {
     audio.onended = () => {
       voiceAudioEl = null;
       URL.revokeObjectURL(url);
-      if (voiceOpen) setVoiceState('listening');
+      if (voiceOpen) {
+        setVoiceState('listening');
+        // Включаем микрофон снова только после конца озвучки
+        setTimeout(() => {
+          if (voiceOpen && voiceState === 'listening' && voiceRecognizer && !voiceRecogRunning) {
+            try { voiceRecognizer.start(); } catch(e) {}
+          }
+        }, 400);
+      }
     };
     audio.onerror = () => {
       voiceAudioEl = null;
@@ -2935,10 +2927,6 @@ function setVoiceState(s) {
   voiceState = s;
   const map = { idle:'Ожидание', listening:'Говори…', thinking:'Думаю…', speaking:'Отвечаю…' };
   setVoiceStatus(map[s] || s);
-  // Когда возвращаемся в режим слушания — перезапускаем распознавание если оно встало
-  if (s === 'listening' && voiceOpen && voiceRecognizer && !voiceRecogRunning) {
-    setTimeout(() => { try { voiceRecognizer.start(); } catch(e) {} }, 250);
-  }
 }
 function setVoiceStatus(t) { const el = document.getElementById('voice-status'); if(el) el.textContent = t; }
 function addVoiceMsg(text, role) {
