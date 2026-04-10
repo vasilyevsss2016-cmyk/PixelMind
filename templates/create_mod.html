@@ -256,27 +256,8 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
       </div>
     </div>
 
-    <!-- RIGHT: превью и примеры -->
+    <!-- RIGHT: примеры -->
     <div>
-      <div class="card" style="margin-bottom:20px">
-        <div class="card-title">Превью</div>
-        <div class="preview-mod-card" id="preview-card">
-          <div class="preview-icon" id="preview-icon">🤖</div>
-          <div class="preview-body">
-            <div class="preview-name" id="preview-name">Название мода</div>
-            <div class="preview-desc" id="preview-desc">Описание мода появится здесь</div>
-          </div>
-          <div class="preview-badge" id="preview-badge">МОД</div>
-        </div>
-        <div class="card-title" style="margin-top:4px">Формат файла</div>
-        <div class="format-box" id="format-preview">{
-  "name": "...",
-  "system_prompt": "...",
-  "avatar": "🤖",
-  "color": "#7c3aed"
-}</div>
-      </div>
-
       <div class="card">
         <div class="card-title">Примеры модов</div>
         <div class="example-grid">
@@ -456,29 +437,19 @@ function getMod() {
   };
 }
 
-function updatePreview() {
-  const mod = getMod();
-  const icon = document.getElementById('preview-icon');
-  const nameEl = document.getElementById('preview-name');
-  const descEl = document.getElementById('preview-desc');
-  const badge = document.getElementById('preview-badge');
-  const card = document.getElementById('preview-card');
+function updatePreview() {}
 
-  icon.textContent = mod.avatar || '🤖';
-  nameEl.textContent = mod.name || 'Название мода';
-  descEl.textContent = mod.description || 'Описание мода появится здесь';
-  badge.textContent = 'МОД v' + (mod.version || '1.0');
+const LETTER_MAP = (() => {
+  const m = {};
+  const ru = 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+  const en = 'abcdefghijklmnopqrstuvwxyz';
+  ru.split('').forEach((c, i) => { m[c] = i + 1; });
+  en.split('').forEach((c, i) => { m[c] = i + 34; });
+  return m;
+})();
 
-  const c = mod.color || '#7c3aed';
-  icon.style.background = c + '22';
-  icon.style.borderColor = c + '55';
-  card.style.borderColor = c + '55';
-  badge.style.background = c + '22';
-  badge.style.color = c;
-  badge.style.borderColor = c + '44';
-
-  const preview = { name: mod.name, system_prompt: mod.system_prompt ? mod.system_prompt.slice(0,60) + (mod.system_prompt.length > 60 ? '…' : '') : '…', avatar: mod.avatar, color: mod.color, author: mod.author, version: mod.version };
-  document.getElementById('format-preview').textContent = JSON.stringify(preview, null, 2);
+function encodeNameToNumbers(name) {
+  return name.toLowerCase().split('').map(c => LETTER_MAP[c] || null).filter(n => n !== null).join('-');
 }
 
 function downloadMod() {
@@ -489,9 +460,9 @@ function downloadMod() {
   const blob = new Blob([json], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const safeName = mod.name.replace(/[^a-zA-Zа-яА-Я0-9_\-]/g, '_').toLowerCase();
+  const encoded = encodeNameToNumbers(mod.name) || 'mod';
   a.href = url;
-  a.download = `mod-${safeName}.pixelmod`;
+  a.download = `mod-${encoded}.pixelmod`;
   a.click();
   URL.revokeObjectURL(url);
   showToast('✅ Файл мода скачан!');
