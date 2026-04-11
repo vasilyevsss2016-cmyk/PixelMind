@@ -3511,16 +3511,24 @@ def web_voice_tts():
                     headers={"Cache-Control": "no-store"})
 
 
+def _chromium_path() -> str | None:
+    import shutil
+    return shutil.which("chromium") or shutil.which("chromium-browser")
+
 def browser_screenshot(url: str) -> tuple:
     """Открывает URL в Chromium headless и делает скриншот."""
     if not PLAYWRIGHT_AVAILABLE:
         return None, "", "Playwright недоступен"
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch(
+            launch_kwargs = dict(
                 headless=True,
                 args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
             )
+            exe = _chromium_path()
+            if exe:
+                launch_kwargs["executable_path"] = exe
+            browser = p.chromium.launch(**launch_kwargs)
             page = browser.new_page(viewport={"width": 1280, "height": 800})
             page.goto(url, wait_until="domcontentloaded", timeout=20000)
             page.wait_for_timeout(1500)
