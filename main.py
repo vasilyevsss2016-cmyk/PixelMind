@@ -3515,6 +3515,170 @@ def _chromium_path() -> str | None:
     import shutil
     return shutil.which("chromium") or shutil.which("chromium-browser")
 
+
+class BrowserAgent:
+    """AI-агент управляющий браузером пошагово через скриншоты."""
+
+    SYSTEM_PROMPT = (
+        "Ты AI-агент управляющий браузером Chromium. Тебе дана задача и скриншот текущей страницы (1280×800).\n"
+        "Ответь ТОЛЬКО валидным JSON-объектом — никакого текста вне JSON.\n"
+        "Поля:\n"
+        "  thought  — твои мысли что сейчас делать (кратко, по-русски)\n"
+        "  action   — одно из: goto | click | type | press | scroll | wait | finish\n"
+        "Доп. поля по action:\n"
+        "  goto:   url (строка)\n"
+        "  click:  x (0-1280), y (0-800)\n"
+        "  type:   text (строка)\n"
+        "  press:  key (Enter/Escape/Tab/ArrowDown/ArrowUp/Backspace/…)\n"
+        "  scroll: direction (up|down), amount (пикселей, по умолчанию 400)\n"
+        "  wait:   (ничего доп.)\n"
+        "  finish: answer (итоговый ответ пользователю)\n"
+        "Правила:\n"
+        "- Кликай точно по видимым кнопкам/ссылкам/полям — смотри на скриншот\n"
+        "- Для Google-поиска: goto https://www.google.com → click поле поиска → type запрос → press Enter\n"
+        "- Если задача выполнена — сразу finish с ответом\n"
+        "- Если ошибка 4xx/5xx — попробуй другой URL\n"
+        "- Не делай лишних шагов"
+    )
+
+    def __init__(self):
+        self._pw = None
+        self._browser = None
+        self.page = None
+
+    def _launch(self):
+        from playwright.sync_api import sync_playwright
+        self._pw = sync_playwright().start()
+        exe = _chromium_path()
+        kw = dict(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"])
+        if exe:
+            kw["executable_path"] = exe
+        self._browser = self._pw.chromium.launch(**kw)
+        self.page = self._browser.new_page(viewport={"width": 1280, "height": 800})
+
+    def _close(self):
+        try:
+            self._browser.close()
+            self._pw.stop()
+        except Exception:
+            pass
+
+    def _screenshot_b64(self) -> str:
+        raw = self.page.screenshot(full_page=False)
+        return base64.b64encode(raw).decode()
+
+    def _ask_ai(self, task: str, history: list, shot_b64: str) -> dict:
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not key:
+            return {"thought": "Нет API ключа", "action": "finish", "answer": "OPENROUTER_API_KEY не задан"}
+        cur_url = self.page.url
+        cur_title = ""
+        try:
+            cur_title = self.page.title()
+        except Exception:
+            pass
+        msgs = [{"role": "system", "content": self.SYSTEM_PROMPT}]
+        for h in history[-8:]:
+            msgs.append(h)
+        msgs.append({"role": "user", "content": [
+            {"type": "text", "text": f"Задача: {task}\nURL: {cur_url}\nЗаголовок: {cur_title}"},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{shot_b64}"}}
+        ]})
+        try:
+            resp = http_requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={"model": VISION_MODEL, "messages": msgs, "max_tokens": 400},
+                timeout=35
+            )
+            resp.raise_for_status()
+            raw = resp.json()["choices"][0]["message"]["content"].strip()
+            m = re.search(r'\{.*\}', raw, re.DOTALL)
+            if m:
+                return json.loads(m.group())
+            return {"thought": raw, "action": "finish", "answer": raw}
+        except Exception as e:
+            return {"thought": str(e), "action": "finish", "answer": f"Ошибка AI: {e}"}
+
+    def _do_action(self, obj: dict) -> str:
+        act = obj.get("action", "wait")
+        try:
+            if act == "goto":
+                url = obj.get("url", "")
+                if not url.startswith("http"):
+                    url = "https://" + url
+                self.page.goto(url, wait_until="domcontentloaded", timeout=18000)
+                self.page.wait_for_timeout(1800)
+                return f"Перешёл: {url}"
+            elif act == "click":
+                x, y = int(obj.get("x", 640)), int(obj.get("y", 400))
+                self.page.mouse.click(x, y)
+                self.page.wait_for_timeout(900)
+                return f"Клик ({x}, {y})"
+            elif act == "type":
+                text = obj.get("text", "")
+                self.page.keyboard.type(text, delay=40)
+                self.page.wait_for_timeout(400)
+                return f"Ввод: {text}"
+            elif act == "press":
+                key = obj.get("key", "Enter")
+                self.page.keyboard.press(key)
+                self.page.wait_for_timeout(1200)
+                return f"Нажал {key}"
+            elif act == "scroll":
+                direction = obj.get("direction", "down")
+                amount = int(obj.get("amount", 400))
+                self.page.mouse.wheel(0, amount if direction == "down" else -amount)
+                self.page.wait_for_timeout(600)
+                return f"Прокрутка {direction} {amount}px"
+            elif act == "wait":
+                self.page.wait_for_timeout(2500)
+                return "Ожидание"
+        except Exception as e:
+            return f"Ошибка: {e}"
+        return "?"
+
+    def run_task(self, task: str, max_steps: int = 15):
+        """Generator: yield step dicts → finally yield finish dict."""
+        try:
+            self._launch()
+        except Exception as e:
+            yield {"type": "error", "message": str(e)}
+            return
+        history: list = []
+        try:
+            for step_n in range(1, max_steps + 1):
+                shot = self._screenshot_b64()
+                obj = self._ask_ai(task, history, shot)
+                thought = obj.get("thought", "")
+                action = obj.get("action", "wait")
+                if action == "finish":
+                    yield {"type": "finish", "step": step_n, "thought": thought,
+                           "answer": obj.get("answer", "Готово"), "screenshot": shot,
+                           "url": self.page.url}
+                    break
+                result = self._do_action(obj)
+                try:
+                    cur_url = self.page.url
+                except Exception:
+                    cur_url = ""
+                yield {"type": "step", "step": step_n, "thought": thought,
+                       "action": action, "action_desc": result,
+                       "screenshot": shot, "url": cur_url}
+                history.append({"role": "assistant",
+                                 "content": json.dumps(obj, ensure_ascii=False)})
+                history.append({"role": "user",
+                                 "content": f"Результат: {result}"})
+                if step_n == max_steps:
+                    final_shot = self._screenshot_b64()
+                    yield {"type": "finish", "step": step_n,
+                           "thought": "Лимит шагов",
+                           "answer": "Достигнут лимит шагов. Смотри последний скриншот.",
+                           "screenshot": final_shot, "url": self.page.url}
+        finally:
+            self._close()
+
+
 def browser_screenshot(url: str) -> tuple:
     """Открывает URL в Chromium headless и делает скриншот."""
     if not PLAYWRIGHT_AVAILABLE:
@@ -3582,6 +3746,32 @@ def web_browser_control():
         except Exception as e:
             logger.warning(f"Browser AI error: {e}")
     return jsonify({"ok": True, "title": title, "url": url, "screenshot": screenshot_b64, "ai_response": ai_response})
+
+
+@app.route("/app/browser-agent", methods=["POST"])
+def web_browser_agent():
+    """AI-агент управляющий браузером (SSE стрим шагов)."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    if not PLAYWRIGHT_AVAILABLE:
+        return jsonify({"ok": False, "error": "Браузер недоступен"}), 503
+    data = request.get_json(silent=True) or {}
+    task = (data.get("task") or "").strip()
+    if not task:
+        return jsonify({"ok": False, "error": "Укажите задачу"}), 400
+
+    def generate():
+        agent = BrowserAgent()
+        try:
+            for step_data in agent.run_task(task, max_steps=15):
+                yield f"data: {json.dumps(step_data, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type':'error','message':str(e)}, ensure_ascii=False)}\n\n"
+        yield "data: {\"type\":\"done\"}\n\n"
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 @app.route("/app/homework-ask", methods=["POST"])
