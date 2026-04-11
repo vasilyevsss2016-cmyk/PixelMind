@@ -860,6 +860,7 @@ header {
         <span class="uname" id="header-username"></span>
       </div>
       <button class="hdr-btn hdr-btn-ghost" onclick="openSupportModal()" title="Удалённая поддержка" style="font-size:17px">🖥</button>
+      <button class="hdr-btn hdr-btn-ghost" onclick="openBrowserModal()" title="AI Браузер" style="font-size:17px">🌐</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openVoiceChat()" title="Голосовой чат" style="font-size:17px">🎙</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openHomework()" title="Помощь с ДЗ" style="font-size:17px">📚</button>
@@ -1186,6 +1187,45 @@ header {
 </div>
 
 <!-- SUPPORT REQUEST MODAL -->
+<!-- BROWSER MODAL -->
+<div class="modal-overlay" id="browser-modal" onclick="if(event.target===this)closeBrowserModal()">
+  <div class="modal-box" style="max-width:620px;padding:0;overflow:hidden">
+    <div style="padding:22px 24px 16px;position:relative">
+      <button class="modal-close" onclick="closeBrowserModal()">✕</button>
+      <div class="modal-title">🌐 AI Браузер</div>
+      <div class="modal-sub">ИИ открывает сайт в Chromium и анализирует его</div>
+    </div>
+    <div style="padding:0 24px 22px;display:flex;flex-direction:column;gap:12px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">URL сайта *</label>
+        <input id="br-url" type="url" placeholder="https://example.com"
+          style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:14px;outline:none;box-sizing:border-box"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+          onkeydown="if(event.key==='Enter')doBrowserOpen()">
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Задача для ИИ</label>
+        <input id="br-task" type="text" placeholder="Опиши что видишь на странице"
+          style="width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:14px;outline:none;box-sizing:border-box"
+          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+          onkeydown="if(event.key==='Enter')doBrowserOpen()">
+      </div>
+      <button onclick="doBrowserOpen()" id="br-btn"
+        style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#3a8eff,#1a6edc);color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s">
+        🚀 Открыть
+      </button>
+      <div id="br-status" style="font-size:13px;color:var(--text2);min-height:18px;text-align:center"></div>
+      <div id="br-result" style="display:none;flex-direction:column;gap:12px">
+        <img id="br-screenshot" style="width:100%;border-radius:10px;border:1px solid rgba(255,255,255,0.1)" alt="Скриншот">
+        <div id="br-ai-text" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:14px;font-size:14px;line-height:1.6;color:var(--text)"></div>
+        <button onclick="sendBrowserToChat()" style="padding:10px;border-radius:10px;border:1px solid var(--accent);background:rgba(58,142,255,0.1);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer">
+          💬 Отправить в чат
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="support-modal" onclick="if(event.target===this)closeSupportModal()">
   <div class="modal-box" style="max-width:420px">
     <button class="modal-close" onclick="closeSupportModal()">✕</button>
@@ -2592,6 +2632,41 @@ function copyTopupPhone()   { navigator.clipboard?.writeText(_tuPhone);   toast(
 function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast('Комментарий скопирован'); }
 
 // ===== УДАЛЁННАЯ ПОДДЕРЖКА =====
+// ===== AI BROWSER =====
+let _brLastResult = null;
+function openBrowserModal() {
+  document.getElementById('browser-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('br-url').focus(), 100);
+}
+function closeBrowserModal() { document.getElementById('browser-modal').style.display = 'none'; }
+async function doBrowserOpen() {
+  const url = (document.getElementById('br-url').value || '').trim();
+  const task = (document.getElementById('br-task').value || '').trim() || 'Опиши что видишь на странице';
+  if (!url) { document.getElementById('br-status').textContent = '❌ Введите URL'; return; }
+  const btn = document.getElementById('br-btn');
+  const statusEl = document.getElementById('br-status');
+  const resultEl = document.getElementById('br-result');
+  btn.disabled = true; btn.textContent = '⏳ Открываю…';
+  statusEl.textContent = 'Chromium открывает страницу…';
+  resultEl.style.display = 'none';
+  try {
+    const r = await fetch('/app/browser', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url, task}) });
+    const d = await r.json();
+    if (!d.ok) { statusEl.textContent = '❌ ' + (d.error || 'Ошибка'); return; }
+    _brLastResult = d;
+    document.getElementById('br-screenshot').src = 'data:image/png;base64,' + d.screenshot;
+    document.getElementById('br-ai-text').textContent = d.ai_response;
+    resultEl.style.display = 'flex';
+    statusEl.textContent = '✅ ' + (d.title || d.url);
+  } catch(e) { statusEl.textContent = '❌ Ошибка соединения'; }
+  finally { btn.disabled = false; btn.textContent = '🚀 Открыть'; }
+}
+function sendBrowserToChat() {
+  if (!_brLastResult) return;
+  closeBrowserModal();
+  appendMessage('assistant', `🌐 **${_brLastResult.title}** (${_brLastResult.url})\n\n${_brLastResult.ai_response}`);
+}
+
 function openSupportModal() {
   document.getElementById('support-modal').classList.add('active');
   document.getElementById('sup-err').textContent = '';

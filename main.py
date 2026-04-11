@@ -43,6 +43,12 @@ try:
 except ImportError:
     SPEECH_AVAILABLE = False
 
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+
 # ============ НАСТРОЙКИ ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
@@ -3503,6 +3509,71 @@ def web_voice_tts():
         return jsonify({"ok": False, "error": "Ошибка синтеза речи"}), 500
     return Response(audio_bytes, mimetype="audio/mpeg",
                     headers={"Cache-Control": "no-store"})
+
+
+def browser_screenshot(url: str) -> tuple:
+    """Открывает URL в Chromium headless и делает скриншот."""
+    if not PLAYWRIGHT_AVAILABLE:
+        return None, "", "Playwright недоступен"
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+            )
+            page = browser.new_page(viewport={"width": 1280, "height": 800})
+            page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            page.wait_for_timeout(1500)
+            title = page.title()
+            text = page.evaluate("document.body ? document.body.innerText.slice(0,2000) : ''")
+            screenshot = page.screenshot(full_page=False)
+            browser.close()
+            return screenshot, title, text
+    except Exception as e:
+        logger.error(f"Browser error: {e}")
+        return None, "", str(e)
+
+
+@app.route("/app/browser", methods=["POST"])
+def web_browser_control():
+    """Открывает сайт в Chromium и анализирует его через AI."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    if not PLAYWRIGHT_AVAILABLE:
+        return jsonify({"ok": False, "error": "Браузер недоступен"}), 503
+    data = request.get_json(silent=True) or {}
+    url = (data.get("url") or "").strip()
+    task = (data.get("task") or "Опиши что видишь на странице").strip()
+    if not url:
+        return jsonify({"ok": False, "error": "Укажите URL"}), 400
+    if not url.startswith(("http://", "https://")):
+        url = "https://" + url
+    screenshot_bytes, title, page_text = browser_screenshot(url)
+    if screenshot_bytes is None:
+        return jsonify({"ok": False, "error": f"Не удалось открыть: {page_text}"}), 500
+    screenshot_b64 = base64.b64encode(screenshot_bytes).decode()
+    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    ai_response = f"Страница загружена: {title}"
+    if OPENROUTER_KEY:
+        try:
+            resp = http_requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
+                json={"model": VISION_MODEL, "messages": [
+                    {"role": "system", "content": "Ты PixelMind Browser — AI-ассистент который анализирует веб-страницы. Отвечай кратко и по делу на русском языке."},
+                    {"role": "user", "content": [
+                        {"type": "text", "text": f"Задача: {task}\n\nСайт: {url}\nЗаголовок: {title}\n\nТекст со страницы:\n{page_text[:1000]}"},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{screenshot_b64}"}}
+                    ]}
+                ], "max_tokens": 600},
+                timeout=30
+            )
+            resp.raise_for_status()
+            ai_response = resp.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            logger.warning(f"Browser AI error: {e}")
+    return jsonify({"ok": True, "title": title, "url": url, "screenshot": screenshot_b64, "ai_response": ai_response})
 
 
 @app.route("/app/homework-ask", methods=["POST"])
