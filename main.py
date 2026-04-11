@@ -48,7 +48,12 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
-AI_MODEL = "google/gemini-2.0-flash-exp:free"
+AI_MODEL = "qwen/qwen-2.5-7b-instruct:free"
+AI_FALLBACKS = [
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "mistralai/mistral-7b-instruct:free",
+    "arcee-ai/trinity-large-preview:free",
+]
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
 
@@ -3140,18 +3145,25 @@ def web_chat_send():
     for msg in history[-20:]:
         messages.append({"role": msg["role"], "content": msg["content"]})
     messages.append({"role": "user", "content": text})
-    try:
-        resp = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
-            json={"model": AI_MODEL, "messages": messages, "max_tokens": 1500},
-            timeout=60
-        )
-        resp.raise_for_status()
-        _m3 = resp.json()["choices"][0]["message"]
-        reply = (_m3.get("content") or _m3.get("reasoning") or "").strip()
-    except Exception as e:
-        return jsonify({"ok": False, "error": f"Ошибка AI: {str(e)}"}), 500
+    reply = None
+    for _model in [AI_MODEL] + AI_FALLBACKS:
+        try:
+            resp = http_requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+                json={"model": _model, "messages": messages, "max_tokens": 1500},
+                timeout=60
+            )
+            resp.raise_for_status()
+            _m3 = resp.json()["choices"][0]["message"]
+            reply = (_m3.get("content") or _m3.get("reasoning") or "").strip()
+            if reply:
+                break
+        except Exception as _e:
+            logger.warning(f"web_chat model {_model} failed: {_e}")
+            continue
+    if not reply:
+        return jsonify({"ok": False, "error": "Нейросеть недоступна, попробуй позже"}), 500
     # Deduct credit (skip if unlimited: credits == -1)
     if credits > 0:
         u["credits"] = credits - 1
@@ -3443,7 +3455,7 @@ def web_voice_chat():
         models_to_try = [VISION_MODEL, "google/gemini-2.0-flash-exp:free"]
     else:
         user_content = message
-        models_to_try = [AI_MODEL, "meta-llama/llama-3.3-70b-instruct:free"]
+        models_to_try = [AI_MODEL] + AI_FALLBACKS
 
     answer = None
     last_err = None
