@@ -3539,22 +3539,56 @@ class BrowserAgent:
         "Ответь ТОЛЬКО валидным JSON-объектом — никакого текста вне JSON.\n"
         "Поля:\n"
         "  thought  — твои мысли что сейчас делать (кратко, по-русски)\n"
-        "  action   — одно из: goto | click | type | press | scroll | wait | finish\n"
+        "  action   — одно из: goto | click | type | press | scroll | wait | solve_captcha | finish\n"
         "Доп. поля по action:\n"
-        "  goto:   url (строка)\n"
-        "  click:  x (0-1280), y (0-800)\n"
-        "  type:   text (строка)\n"
-        "  press:  key (Enter/Escape/Tab/ArrowDown/ArrowUp/Backspace/…)\n"
-        "  scroll: direction (up|down), amount (пикселей, по умолчанию 400)\n"
-        "  wait:   (ничего доп.)\n"
-        "  finish: answer (итоговый ответ пользователю)\n"
-        "Правила:\n"
-        "- Кликай точно по видимым кнопкам/ссылкам/полям — смотри на скриншот\n"
-        "- Для Google-поиска: goto https://www.google.com → click поле поиска → type запрос → press Enter\n"
-        "- Если задача выполнена — сразу finish с ответом\n"
+        "  goto:          url (строка)\n"
+        "  click:         x (0-1280), y (0-800)\n"
+        "  type:          text (строка)\n"
+        "  press:         key (Enter/Escape/Tab/ArrowDown/ArrowUp/Backspace/…)\n"
+        "  scroll:        direction (up|down), amount (пикселей, по умолчанию 400)\n"
+        "  wait:          (ничего доп.)\n"
+        "  solve_captcha: x1,y1,x2,y2 — координаты рамки вокруг капчи; "
+        "input_x,input_y — координаты поля ввода ответа (если есть)\n"
+        "  finish:        answer (итоговый ответ пользователю)\n"
+        "КАПЧИ — ОБЯЗАТЕЛЬНЫЕ ПРАВИЛА:\n"
+        "- Если видишь текстовую/числовую капчу (искажённые буквы/цифры) — используй solve_captcha "
+        "с координатами области изображения капчи\n"
+        "- Если видишь reCAPTCHA/hCaptcha с чекбоксом 'Я не робот' — кликни на чекбокс и подожди\n"
+        "- Если после клика по чекбоксу появилась задача (выбери картинки) — используй solve_captcha "
+        "на всей области задачи\n"
+        "- Никогда не пропускай капчу — без её решения сайт не откроется\n"
+        "ОБЩИЕ ПРАВИЛА:\n"
+        "- Кликай точно по видимым кнопкам/ссылкам/полям\n"
+        "- Для поиска Google: goto https://www.google.com → click поле поиска → type запрос → press Enter\n"
+        "- Если задача выполнена — сразу finish\n"
         "- Если ошибка 4xx/5xx — попробуй другой URL\n"
         "- Не делай лишних шагов"
     )
+
+    # JavaScript для маскировки автоматизации
+    _STEALTH_JS = """
+        Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+        Object.defineProperty(navigator, 'plugins', {get: () => [
+            {name:'Chrome PDF Plugin',filename:'internal-pdf-viewer',description:'Portable Document Format'},
+            {name:'Chrome PDF Viewer',filename:'mhjfbmdgcfjbbpaeojofohoefgiehjai',description:''},
+            {name:'Native Client',filename:'internal-nacl-plugin',description:''}
+        ]});
+        Object.defineProperty(navigator, 'languages', {get: () => ['ru-RU','ru','en-US','en']});
+        Object.defineProperty(navigator, 'hardwareConcurrency', {get: () => 8});
+        Object.defineProperty(navigator, 'deviceMemory', {get: () => 8});
+        window.chrome = {runtime:{}, loadTimes:()=>{}, csi:()=>{}, app:{}};
+        const origQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) =>
+            parameters.name === 'notifications'
+            ? Promise.resolve({state: Notification.permission})
+            : origQuery(parameters);
+        const getParam = WebGLRenderingContext.prototype.getParameter;
+        WebGLRenderingContext.prototype.getParameter = function(p) {
+            if (p === 37445) return 'Intel Inc.';
+            if (p === 37446) return 'Intel Iris OpenGL Engine';
+            return getParam.call(this, p);
+        };
+    """
 
     def __init__(self):
         self._pw = None
@@ -3565,14 +3599,44 @@ class BrowserAgent:
         self._history: list = []          # история шагов (для resume)
 
     def _launch(self):
+        import random
         from playwright.sync_api import sync_playwright
         self._pw = sync_playwright().start()
         exe = _chromium_path()
-        kw = dict(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"])
+        kw = dict(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+                "--disable-extensions",
+                "--no-first-run",
+                "--lang=ru-RU,ru",
+                "--window-size=1280,800",
+            ]
+        )
         if exe:
             kw["executable_path"] = exe
         self._browser = self._pw.chromium.launch(**kw)
-        self.page = self._browser.new_page(viewport={"width": 1280, "height": 800})
+        # Создаём контекст с реалистичным UA и геолокацией
+        ctx = self._browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            locale="ru-RU",
+            timezone_id="Europe/Moscow",
+            java_script_enabled=True,
+            has_touch=False,
+            color_scheme="dark",
+        )
+        self.page = ctx.new_page()
+        # Применяем стелс-скрипт до загрузки любой страницы
+        self.page.add_init_script(self._STEALTH_JS)
 
     def force_close(self):
         try:
@@ -3593,6 +3657,64 @@ class BrowserAgent:
     def _screenshot_b64(self) -> str:
         raw = self.page.screenshot(full_page=False)
         return base64.b64encode(raw).decode()
+
+    def _screenshot_region_b64(self, x1: int, y1: int, x2: int, y2: int) -> str:
+        """Скриншот конкретной области (для анализа капчи)."""
+        w = max(x2 - x1, 10)
+        h = max(y2 - y1, 10)
+        raw = self.page.screenshot(
+            full_page=False,
+            clip={"x": x1, "y": y1, "width": w, "height": h}
+        )
+        return base64.b64encode(raw).decode()
+
+    def _solve_captcha_with_ai(self, region_b64: str) -> str:
+        """Отправляет изображение капчи в vision AI и возвращает ответ."""
+        key = os.environ.get("OPENROUTER_API_KEY", "")
+        if not key:
+            return ""
+        msgs = [{"role": "user", "content": [
+            {"type": "text", "text": (
+                "This is a CAPTCHA image. Look carefully and reply with ONLY the exact "
+                "characters/words/numbers shown. No explanations. No punctuation unless "
+                "the CAPTCHA itself has it. Just the answer text."
+            )},
+            {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{region_b64}"}}
+        ]}]
+        for model in [VISION_MODEL] + VISION_FALLBACKS:
+            try:
+                resp = http_requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": msgs, "max_tokens": 30},
+                    timeout=20
+                )
+                resp.raise_for_status()
+                text = resp.json()["choices"][0]["message"]["content"].strip()
+                # Берём только первую строку, убираем лишнее
+                text = text.splitlines()[0].strip().strip('"').strip("'")
+                if text:
+                    return text
+            except Exception as e:
+                logger.warning(f"CaptchaSolve model {model} failed: {e}")
+                continue
+        return ""
+
+    def _human_move(self, x: int, y: int):
+        """Плавное движение мыши к точке (менее подозрительно для антибот-систем)."""
+        import random
+        steps = random.randint(6, 12)
+        try:
+            cur = self.page.evaluate("() => ({x: window.mouseX||640, y: window.mouseY||400})")
+        except Exception:
+            cur = {"x": 640, "y": 400}
+        sx, sy = cur.get("x", 640), cur.get("y", 400)
+        for i in range(1, steps + 1):
+            t = i / steps
+            mid_x = sx + (x - sx) * t + random.randint(-5, 5)
+            mid_y = sy + (y - sy) * t + random.randint(-5, 5)
+            self.page.mouse.move(mid_x, mid_y)
+            self.page.wait_for_timeout(random.randint(10, 30))
 
     def _ask_ai(self, task: str, history: list, shot_b64: str) -> dict:
         key = os.environ.get("OPENROUTER_API_KEY", "")
@@ -3634,6 +3756,7 @@ class BrowserAgent:
         return {"thought": last_err, "action": "finish", "answer": f"Ошибка AI: {last_err}"}
 
     def _do_action(self, obj: dict) -> str:
+        import random
         act = obj.get("action", "wait")
         try:
             if act == "goto":
@@ -3641,32 +3764,54 @@ class BrowserAgent:
                 if not url.startswith("http"):
                     url = "https://" + url
                 self.page.goto(url, wait_until="domcontentloaded", timeout=18000)
-                self.page.wait_for_timeout(1800)
+                self.page.wait_for_timeout(random.randint(1500, 2200))
                 return f"Перешёл: {url}"
             elif act == "click":
                 x, y = int(obj.get("x", 640)), int(obj.get("y", 400))
+                self._human_move(x, y)
                 self.page.mouse.click(x, y)
-                self.page.wait_for_timeout(900)
+                self.page.wait_for_timeout(random.randint(700, 1200))
                 return f"Клик ({x}, {y})"
             elif act == "type":
                 text = obj.get("text", "")
-                self.page.keyboard.type(text, delay=40)
-                self.page.wait_for_timeout(400)
+                # Человекоподобная скорость печати (60-120ms между символами)
+                self.page.keyboard.type(text, delay=random.randint(60, 120))
+                self.page.wait_for_timeout(random.randint(300, 600))
                 return f"Ввод: {text}"
             elif act == "press":
                 key = obj.get("key", "Enter")
                 self.page.keyboard.press(key)
-                self.page.wait_for_timeout(1200)
+                self.page.wait_for_timeout(random.randint(900, 1400))
                 return f"Нажал {key}"
             elif act == "scroll":
                 direction = obj.get("direction", "down")
                 amount = int(obj.get("amount", 400))
                 self.page.mouse.wheel(0, amount if direction == "down" else -amount)
-                self.page.wait_for_timeout(600)
+                self.page.wait_for_timeout(random.randint(500, 800))
                 return f"Прокрутка {direction} {amount}px"
             elif act == "wait":
-                self.page.wait_for_timeout(2500)
+                self.page.wait_for_timeout(random.randint(2000, 3000))
                 return "Ожидание"
+            elif act == "solve_captcha":
+                x1 = int(obj.get("x1", 400))
+                y1 = int(obj.get("y1", 250))
+                x2 = int(obj.get("x2", 880))
+                y2 = int(obj.get("y2", 550))
+                region_b64 = self._screenshot_region_b64(x1, y1, x2, y2)
+                answer = self._solve_captcha_with_ai(region_b64)
+                if not answer:
+                    return "Не удалось распознать капчу"
+                # Если задано поле ввода — кликаем и вводим
+                input_x = obj.get("input_x")
+                input_y = obj.get("input_y")
+                if input_x is not None and input_y is not None:
+                    self._human_move(int(input_x), int(input_y))
+                    self.page.mouse.click(int(input_x), int(input_y))
+                    self.page.wait_for_timeout(400)
+                self.page.keyboard.type(answer, delay=random.randint(80, 140))
+                self.page.wait_for_timeout(500)
+                logger.info(f"BrowserAgent captcha solved: '{answer}'")
+                return f"Капча решена: '{answer}'"
         except Exception as e:
             return f"Ошибка: {e}"
         return "?"
