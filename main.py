@@ -48,7 +48,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
-AI_MODEL = "meta-llama/llama-4-scout:free"
+AI_MODEL = "google/gemini-2.0-flash-exp:free"
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
 
@@ -3443,7 +3443,7 @@ def web_voice_chat():
         models_to_try = [VISION_MODEL, "google/gemini-2.0-flash-exp:free"]
     else:
         user_content = message
-        models_to_try = ["google/gemini-2.0-flash-exp:free", "meta-llama/llama-4-scout:free", AI_MODEL]
+        models_to_try = [AI_MODEL, "meta-llama/llama-3.3-70b-instruct:free"]
 
     answer = None
     last_err = None
