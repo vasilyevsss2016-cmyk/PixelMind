@@ -49,11 +49,7 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
 AI_MODEL = "arcee-ai/trinity-large-preview:free"
-AI_FALLBACKS = [
-    "mistralai/mistral-7b-instruct:free",
-    "qwen/qwen-2.5-7b-instruct:free",
-    "google/gemini-2.0-flash-exp:free",
-]
+AI_FALLBACKS = []
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
 
