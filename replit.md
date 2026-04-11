@@ -13,7 +13,7 @@ Feature-rich Telegram AI chatbot with web admin panel. Built on Python/Flask wit
 - **admin_emails.json** — admin account emails for password recovery
 
 ## Key Features
-- AI chat via OpenRouter (stepfun/step-3.5-flash:free)
+- AI chat via OpenRouter (meta-llama/llama-4-scout:free)
 - Vision/image description (google/gemini-2.0-flash-exp:free)
 - Voice/video note transcription (Whisper via OpenRouter)
 - Text-to-speech with Russian male voice (edge-tts, ru-RU-DmitryNeural)

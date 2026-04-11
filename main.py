@@ -48,7 +48,7 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
-AI_MODEL = "arcee-ai/trinity-large-preview:free"
+AI_MODEL = "meta-llama/llama-4-scout:free"
 VISION_MODEL = "google/gemini-2.0-flash-exp:free"
 PORT = int(os.environ.get("PORT", 5000))
 
@@ -3443,7 +3443,7 @@ def web_voice_chat():
         models_to_try = [VISION_MODEL, "google/gemini-2.0-flash-exp:free"]
     else:
         user_content = message
-        models_to_try = [AI_MODEL, "google/gemini-2.0-flash-exp:free", "meta-llama/llama-4-scout:free"]
+        models_to_try = ["google/gemini-2.0-flash-exp:free", "meta-llama/llama-4-scout:free", AI_MODEL]
 
     answer = None
     last_err = None
@@ -3456,7 +3456,7 @@ def web_voice_chat():
                     {"role": "system", "content": VOICE_SYSTEM},
                     {"role": "user", "content": user_content}
                 ], "max_tokens": 200},
-                timeout=30
+                timeout=15
             )
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
