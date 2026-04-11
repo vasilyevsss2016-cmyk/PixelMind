@@ -1,5 +1,24 @@
 {pkgs}: {
   deps = [
+    pkgs.binutils
+    pkgs.patchelf
+    pkgs.glibc
+    pkgs.libgcc
+    pkgs.gcc
+    pkgs.zlib
+    pkgs.harfbuzz
+    pkgs.xorg.libxkbfile
+    pkgs.xorg.libXScrnSaver
+    pkgs.xorg.libXcursor
+    pkgs.xorg.libXinerama
+    pkgs.xorg.libXtst
+    pkgs.xorg.libXi
+    pkgs.gio-sharp
+    pkgs.polkit
+    pkgs.openssl
+    pkgs.xterm
+    pkgs.xvfb-run
+    pkgs.xorg.xorgserver
     pkgs.chromium
     pkgs.freetype
     pkgs.fontconfig
