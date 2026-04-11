@@ -3516,6 +3516,11 @@ def _chromium_path() -> str | None:
     return shutil.which("chromium") or shutil.which("chromium-browser")
 
 
+# Активные браузерные сессии: uid -> BrowserAgent (браузер остаётся открытым при перехвате)
+_browser_sessions: dict = {}
+_browser_sessions_lock = threading.Lock()
+
+
 class BrowserAgent:
     """AI-агент управляющий браузером пошагово через скриншоты."""
 
@@ -3545,6 +3550,9 @@ class BrowserAgent:
         self._pw = None
         self._browser = None
         self.page = None
+        self._intercepted: bool = False   # флаг: пользователь перехватил управление
+        self.uid: str = ""                # uid владельца сессии
+        self._history: list = []          # история шагов (для resume)
 
     def _launch(self):
         from playwright.sync_api import sync_playwright
@@ -3556,12 +3564,21 @@ class BrowserAgent:
         self._browser = self._pw.chromium.launch(**kw)
         self.page = self._browser.new_page(viewport={"width": 1280, "height": 800})
 
-    def _close(self):
+    def force_close(self):
         try:
             self._browser.close()
             self._pw.stop()
         except Exception:
             pass
+
+    def _close(self):
+        """Закрывает браузер и удаляет сессию если не перехвачен."""
+        if self._intercepted:
+            return  # браузер оставляем открытым
+        self.force_close()
+        if self.uid:
+            with _browser_sessions_lock:
+                _browser_sessions.pop(self.uid, None)
 
     def _screenshot_b64(self) -> str:
         raw = self.page.screenshot(full_page=False)
@@ -3638,25 +3655,24 @@ class BrowserAgent:
             return f"Ошибка: {e}"
         return "?"
 
-    def run_task(self, task: str, max_steps: int = 15):
-        """Generator: yield step dicts → finally yield finish dict."""
+    def _run_loop(self, task: str, max_steps: int, start_step: int = 1):
+        """Внутренний генератор шагов. Используется run_task и run_resume."""
         try:
-            self._launch()
-        except Exception as e:
-            yield {"type": "error", "message": str(e)}
-            return
-        history: list = []
-        try:
-            for step_n in range(1, max_steps + 1):
+            for step_n in range(start_step, start_step + max_steps):
+                # Проверяем перехват перед каждым шагом
+                if self._intercepted:
+                    shot = self._screenshot_b64()
+                    yield {"type": "intercepted", "screenshot": shot, "url": self.page.url}
+                    return  # выходим, браузер остаётся открытым
                 shot = self._screenshot_b64()
-                obj = self._ask_ai(task, history, shot)
+                obj = self._ask_ai(task, self._history, shot)
                 thought = obj.get("thought", "")
                 action = obj.get("action", "wait")
                 if action == "finish":
                     yield {"type": "finish", "step": step_n, "thought": thought,
                            "answer": obj.get("answer", "Готово"), "screenshot": shot,
                            "url": self.page.url}
-                    break
+                    return
                 result = self._do_action(obj)
                 try:
                     cur_url = self.page.url
@@ -3665,18 +3681,48 @@ class BrowserAgent:
                 yield {"type": "step", "step": step_n, "thought": thought,
                        "action": action, "action_desc": result,
                        "screenshot": shot, "url": cur_url}
-                history.append({"role": "assistant",
-                                 "content": json.dumps(obj, ensure_ascii=False)})
-                history.append({"role": "user",
-                                 "content": f"Результат: {result}"})
-                if step_n == max_steps:
-                    final_shot = self._screenshot_b64()
-                    yield {"type": "finish", "step": step_n,
-                           "thought": "Лимит шагов",
-                           "answer": "Достигнут лимит шагов. Смотри последний скриншот.",
-                           "screenshot": final_shot, "url": self.page.url}
+                self._history.append({"role": "assistant",
+                                      "content": json.dumps(obj, ensure_ascii=False)})
+                self._history.append({"role": "user", "content": f"Результат: {result}"})
+            # Лимит шагов
+            final_shot = self._screenshot_b64()
+            yield {"type": "finish", "step": start_step + max_steps - 1,
+                   "thought": "Лимит шагов",
+                   "answer": "Достигнут лимит шагов. Смотри последний скриншот.",
+                   "screenshot": final_shot, "url": self.page.url}
         finally:
             self._close()
+
+    def run_task(self, task: str, max_steps: int = 15):
+        """Новый запуск — создаёт браузер и запускает цикл."""
+        try:
+            self._launch()
+        except Exception as e:
+            yield {"type": "error", "message": str(e)}
+            return
+        self._intercepted = False
+        self._history = []
+        yield from self._run_loop(task, max_steps, start_step=1)
+
+    def run_resume(self, task: str, max_steps: int = 10):
+        """Возобновить управление агентом на существующей странице."""
+        self._intercepted = False
+        # Добавляем контекст о ручном вмешательстве
+        self._history.append({"role": "user",
+                               "content": "Пользователь вручную управлял браузером. Продолжи задачу с текущего состояния страницы."})
+        start = max(1, len(self._history) // 2 + 1)
+        yield from self._run_loop(task, max_steps, start_step=start)
+
+    def do_manual_action(self, obj: dict) -> tuple[str, str]:
+        """Выполнить ручное действие и вернуть (screenshot_b64, current_url)."""
+        self._do_action(obj)
+        try:
+            shot = self._screenshot_b64()
+            url = self.page.url
+        except Exception as e:
+            shot = ""
+            url = ""
+        return shot, url
 
 
 def browser_screenshot(url: str) -> tuple:
@@ -3760,9 +3806,17 @@ def web_browser_agent():
     task = (data.get("task") or "").strip()
     if not task:
         return jsonify({"ok": False, "error": "Укажите задачу"}), 400
+    # Закрываем старую сессию если есть
+    with _browser_sessions_lock:
+        old = _browser_sessions.pop(uid, None)
+    if old:
+        old.force_close()
 
     def generate():
         agent = BrowserAgent()
+        agent.uid = uid
+        with _browser_sessions_lock:
+            _browser_sessions[uid] = agent
         try:
             for step_data in agent.run_task(task, max_steps=15):
                 yield f"data: {json.dumps(step_data, ensure_ascii=False)}\n\n"
@@ -3772,6 +3826,78 @@ def web_browser_agent():
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.route("/app/browser-takeover", methods=["POST"])
+def web_browser_takeover():
+    """Перехватить управление браузером у агента."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    with _browser_sessions_lock:
+        agent = _browser_sessions.get(uid)
+    if not agent or not agent.page:
+        return jsonify({"ok": False, "error": "Нет активной сессии браузера"}), 404
+    agent._intercepted = True
+    try:
+        shot = agent._screenshot_b64()
+        url = agent.page.url
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+    return jsonify({"ok": True, "screenshot": shot, "url": url})
+
+
+@app.route("/app/browser-manual", methods=["POST"])
+def web_browser_manual():
+    """Выполнить ручное действие в браузере (перехваченном)."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    with _browser_sessions_lock:
+        agent = _browser_sessions.get(uid)
+    if not agent or not agent.page:
+        return jsonify({"ok": False, "error": "Нет активной сессии"}), 404
+    data = request.get_json(silent=True) or {}
+    shot, url = agent.do_manual_action(data)
+    return jsonify({"ok": True, "screenshot": shot, "url": url})
+
+
+@app.route("/app/browser-resume", methods=["POST"])
+def web_browser_resume():
+    """Возобновить управление агентом после перехвата (SSE стрим)."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    with _browser_sessions_lock:
+        agent = _browser_sessions.get(uid)
+    if not agent or not agent.page:
+        return jsonify({"ok": False, "error": "Нет активной сессии"}), 404
+    data = request.get_json(silent=True) or {}
+    task = (data.get("task") or "").strip() or "Продолжи выполнение задачи"
+
+    def generate():
+        try:
+            for step_data in agent.run_resume(task, max_steps=10):
+                yield f"data: {json.dumps(step_data, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'type':'error','message':str(e)}, ensure_ascii=False)}\n\n"
+        yield "data: {\"type\":\"done\"}\n\n"
+
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.route("/app/browser-release", methods=["POST"])
+def web_browser_release():
+    """Закрыть браузерную сессию."""
+    uid = get_web_user_id()
+    if not uid:
+        return jsonify({"ok": False, "error": "Не авторизован"}), 401
+    with _browser_sessions_lock:
+        agent = _browser_sessions.pop(uid, None)
+    if agent:
+        agent.force_close()
+    return jsonify({"ok": True})
 
 
 @app.route("/app/homework-ask", methods=["POST"])

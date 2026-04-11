@@ -227,6 +227,7 @@ header {
 .credits-badge.empty { background:rgba(255,69,58,0.12); border-color:rgba(255,69,58,0.3); color:var(--danger); animation:pulse 1.5s infinite; }
 .credits-badge.unlimited { background:rgba(167,139,250,0.12); border-color:rgba(167,139,250,0.3); color:#a78bfa; cursor:default; }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.6; } }
+@keyframes pulse-border { 0%,100% { box-shadow:0 0 0 0 rgba(255,149,0,0.5); } 50% { box-shadow:0 0 0 6px rgba(255,149,0,0); } }
 
 /* ===== CHAT SIDEBAR ===== */
 .menu-btn {
@@ -1238,22 +1239,86 @@ header {
 
     <!-- АГЕНТ TAB -->
     <div id="br-pane-agent" style="padding:18px 22px 20px;display:none;flex-direction:column;gap:12px;overflow-y:auto;flex:1">
-      <div style="background:rgba(58,142,255,0.08);border:1px solid rgba(58,142,255,0.2);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--text2);line-height:1.5">
-        🤖 <b>Режим Агента</b> — ИИ сам управляет браузером: кликает, печатает, переходит по ссылкам. Дай задачу на русском.
-      </div>
-      <div>
+      <!-- Setup panel -->
+      <div id="ag-setup">
+        <div style="background:rgba(160,32,240,0.08);border:1px solid rgba(160,32,240,0.2);border-radius:10px;padding:10px 13px;font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:12px">
+          🤖 <b>Режим Агента</b> — ИИ сам управляет браузером: кликает, печатает, переходит по ссылкам. Дай задачу на русском.
+        </div>
         <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:6px">Задача для агента *</label>
         <textarea id="ag-task" placeholder="Например: найди погоду в Москве на завтра&#10;или: зайди на habr.com и найди топ статью за сегодня" rows="3"
           style="width:100%;padding:10px 13px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:14px;outline:none;box-sizing:border-box;resize:vertical;font-family:inherit"
-          onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"></textarea>
+          onfocus="this.style.borderColor='#a020f0'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"></textarea>
+        <button onclick="doAgentRun()" id="ag-btn"
+          style="width:100%;margin-top:10px;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#a020f0,#6010c0);color:#fff;font-size:15px;font-weight:700;cursor:pointer">
+          ▶ Запустить агента
+        </button>
       </div>
-      <button onclick="doAgentRun()" id="ag-btn"
-        style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#a020f0,#6010c0);color:#fff;font-size:15px;font-weight:700;cursor:pointer">
-        ▶ Запустить агента
-      </button>
+
       <div id="ag-status" style="font-size:13px;color:var(--text2);min-height:18px;text-align:center"></div>
+
+      <!-- Takeover button — показывается пока агент работает -->
+      <button id="ag-takeover-btn" onclick="doTakeover()" style="display:none;width:100%;padding:11px;border-radius:12px;border:2px solid #ff9500;background:rgba(255,149,0,0.1);color:#ff9500;font-size:14px;font-weight:700;cursor:pointer;animation:pulse-border 1.5s ease-in-out infinite">
+        ⚡ Перехватить управление
+      </button>
+
       <!-- Live steps feed -->
       <div id="ag-feed" style="display:none;flex-direction:column;gap:10px"></div>
+
+      <!-- ===== ПАНЕЛЬ РУЧНОГО УПРАВЛЕНИЯ ===== -->
+      <div id="ag-manual" style="display:none;flex-direction:column;gap:10px">
+        <div style="background:rgba(255,149,0,0.08);border:1px solid rgba(255,149,0,0.3);border-radius:10px;padding:9px 13px;font-size:13px;color:#ff9500;font-weight:600">
+          ⚡ Вы перехватили управление — агент остановлен. Управляйте вручную.
+        </div>
+
+        <!-- Скриншот — кликабельный -->
+        <div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);cursor:crosshair" title="Кликни чтобы кликнуть в браузере">
+          <img id="ag-manual-shot" style="width:100%;display:block" alt="Скриншот браузера">
+          <div id="ag-click-hint" style="position:absolute;top:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.65);color:#fff;font-size:11px;padding:3px 10px;border-radius:20px;pointer-events:none">
+            🖱 Кликни по скриншоту — нажатие применится в браузере
+          </div>
+        </div>
+
+        <!-- URL навигация -->
+        <div style="display:flex;gap:8px">
+          <input id="ag-manual-url" type="url" placeholder="URL для перехода…"
+            style="flex:1;padding:9px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:13px;outline:none"
+            onfocus="this.style.borderColor='#ff9500'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+            onkeydown="if(event.key==='Enter')manualGoto()">
+          <button onclick="manualGoto()" style="padding:9px 14px;border-radius:9px;border:none;background:#ff9500;color:#fff;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">→ Перейти</button>
+        </div>
+
+        <!-- Ввод текста -->
+        <div style="display:flex;gap:8px">
+          <input id="ag-manual-text" type="text" placeholder="Текст для ввода (поставь курсор в поле сначала)…"
+            style="flex:1;padding:9px 12px;border-radius:9px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:var(--text);font-size:13px;outline:none"
+            onfocus="this.style.borderColor='#ff9500'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'"
+            onkeydown="if(event.key==='Enter')manualType()">
+          <button onclick="manualType()" style="padding:9px 14px;border-radius:9px;border:none;background:rgba(255,149,0,0.2);border:1px solid #ff9500;color:#ff9500;font-size:13px;font-weight:700;cursor:pointer">⌨ Ввести</button>
+        </div>
+
+        <!-- Клавиши -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--text2);align-self:center;margin-right:2px">Клавиши:</span>
+          <button onclick="manualPress('Enter')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;cursor:pointer">↵ Enter</button>
+          <button onclick="manualPress('Tab')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;cursor:pointer">⇥ Tab</button>
+          <button onclick="manualPress('Escape')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;cursor:pointer">Esc</button>
+          <button onclick="manualPress('ArrowDown')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;cursor:pointer">↓</button>
+          <button onclick="manualPress('ArrowUp')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;cursor:pointer">↑</button>
+          <button onclick="manualScroll('down')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;cursor:pointer">⬇ Вниз</button>
+          <button onclick="manualScroll('up')" style="padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text);font-size:12px;cursor:pointer">⬆ Вверх</button>
+        </div>
+
+        <!-- Кнопки Resume / Release -->
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button onclick="doResume()" style="flex:1;padding:11px;border-radius:11px;border:none;background:linear-gradient(135deg,#a020f0,#6010c0);color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+            🤖 Вернуть агенту
+          </button>
+          <button onclick="doRelease()" style="padding:11px 16px;border-radius:11px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text2);font-size:13px;cursor:pointer">
+            ✕ Закрыть
+          </button>
+        </div>
+      </div>
+
       <!-- Final answer -->
       <div id="ag-answer" style="display:none;background:rgba(58,142,255,0.08);border:1px solid rgba(58,142,255,0.25);border-radius:12px;padding:14px;font-size:14px;line-height:1.6;color:var(--text)"></div>
       <button id="ag-to-chat" onclick="sendAgentToChat()" style="display:none;padding:10px;border-radius:10px;border:1px solid var(--accent);background:rgba(58,142,255,0.1);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer">
@@ -2728,15 +2793,17 @@ const AG_ACTION_LABELS = {
   goto:'🔗 Переход', click:'🖱 Клик', type:'⌨️ Ввод',
   press:'⌨️ Нажатие', scroll:'↕ Прокрутка', wait:'⏳ Ожидание', finish:'✅ Финиш'
 };
+let _agCurrentTask = '';
 
 function _agStepCard(d) {
   const card = document.createElement('div');
   card.style.cssText = 'border:1px solid rgba(255,255,255,0.1);border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03)';
   const label = AG_ACTION_LABELS[d.action] || d.action;
+  const shortUrl = (d.url||'').replace(/^https?:\/\//,'').slice(0,50);
   card.innerHTML = `
     <div style="padding:8px 12px;background:rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:12px;font-weight:700;color:var(--text2)">Шаг ${d.step} · ${label}</span>
-      <span style="font-size:11px;color:var(--text2);max-width:60%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.url||''}</span>
+      <span style="font-size:11px;color:var(--text2);max-width:55%;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${shortUrl}</span>
     </div>
     <div style="padding:8px 12px 6px;font-size:13px;color:var(--text);line-height:1.4">💭 ${d.thought||''}</div>
     <div style="padding:0 12px 10px;font-size:12px;color:rgba(255,255,255,0.45)">→ ${d.action_desc||''}</div>
@@ -2745,19 +2812,85 @@ function _agStepCard(d) {
   return card;
 }
 
+function _agSetRunning(running) {
+  const takeoverBtn = document.getElementById('ag-takeover-btn');
+  const agBtn = document.getElementById('ag-btn');
+  takeoverBtn.style.display = running ? 'block' : 'none';
+  agBtn.disabled = running;
+  agBtn.textContent = running ? '⏳ Агент работает…' : '▶ Запустить агента';
+}
+
+async function _agReadSSE(resp, feedEl, statusEl) {
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  while (true) {
+    const {done, value} = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, {stream: true});
+    const parts = buf.split('\n\n');
+    buf = parts.pop();
+    for (const part of parts) {
+      if (!part.startsWith('data:')) continue;
+      const raw = part.slice(5).trim();
+      if (!raw) continue;
+      let d;
+      try { d = JSON.parse(raw); } catch { continue; }
+      if (d.type === 'step') {
+        statusEl.textContent = `🤖 Шаг ${d.step}…`;
+        feedEl.appendChild(_agStepCard(d));
+        feedEl.lastChild.scrollIntoView({behavior:'smooth', block:'nearest'});
+      } else if (d.type === 'intercepted') {
+        // Агент остановлен — переходим в ручной режим
+        _agSetRunning(false);
+        statusEl.textContent = '⚡ Управление перехвачено';
+        _showManualPanel(d.screenshot, d.url);
+        return 'intercepted';
+      } else if (d.type === 'finish') {
+        const n = d.step;
+        statusEl.textContent = `✅ Готово за ${n} ${n===1?'шаг':n<5?'шага':'шагов'}`;
+        if (d.screenshot) {
+          const finalCard = document.createElement('div');
+          finalCard.style.cssText = 'border:1px solid rgba(58,142,255,0.3);border-radius:10px;overflow:hidden';
+          finalCard.innerHTML = `
+            <div style="padding:7px 12px;background:rgba(58,142,255,0.1);font-size:12px;font-weight:700;color:var(--accent)">
+              ✅ Шаг ${d.step} · Финиш · 💭 ${d.thought||''}
+            </div>
+            <img src="data:image/png;base64,${d.screenshot}" style="width:100%;display:block" loading="lazy">
+          `;
+          feedEl.appendChild(finalCard);
+        }
+        const answerEl = document.getElementById('ag-answer');
+        const toChatBtn = document.getElementById('ag-to-chat');
+        answerEl.style.display = 'block';
+        answerEl.innerHTML = `<b>🤖 Ответ агента:</b><br><br>${(d.answer||'Готово').replace(/\n/g,'<br>')}`;
+        _agLastAnswer = d.answer || 'Готово';
+        toChatBtn.style.display = 'block';
+        return 'finish';
+      } else if (d.type === 'error') {
+        statusEl.textContent = '❌ ' + (d.message || 'Ошибка');
+        return 'error';
+      }
+    }
+  }
+  return 'done';
+}
+
 async function doAgentRun() {
   const task = (document.getElementById('ag-task').value || '').trim();
   if (!task) { document.getElementById('ag-status').textContent = '❌ Введите задачу'; return; }
-  const btn = document.getElementById('ag-btn');
+  _agCurrentTask = task;
   const statusEl = document.getElementById('ag-status');
   const feedEl = document.getElementById('ag-feed');
   const answerEl = document.getElementById('ag-answer');
   const toChatBtn = document.getElementById('ag-to-chat');
-  btn.disabled = true; btn.textContent = '⏳ Агент работает…';
+  const manualEl = document.getElementById('ag-manual');
+  _agSetRunning(true);
   statusEl.textContent = '🤖 Запускаю Chromium…';
   feedEl.style.display = 'flex'; feedEl.innerHTML = '';
   answerEl.style.display = 'none';
   toChatBtn.style.display = 'none';
+  manualEl.style.display = 'none';
   _agLastAnswer = null;
   try {
     const resp = await fetch('/app/browser-agent', {
@@ -2770,50 +2903,92 @@ async function doAgentRun() {
       statusEl.textContent = '❌ ' + (e.error || 'Ошибка');
       return;
     }
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buf = '';
-    while (true) {
-      const {done, value} = await reader.read();
-      if (done) break;
-      buf += decoder.decode(value, {stream: true});
-      const parts = buf.split('\n\n');
-      buf = parts.pop();
-      for (const part of parts) {
-        if (!part.startsWith('data:')) continue;
-        const raw = part.slice(5).trim();
-        if (!raw) continue;
-        let d;
-        try { d = JSON.parse(raw); } catch { continue; }
-        if (d.type === 'step') {
-          statusEl.textContent = `🤖 Шаг ${d.step}…`;
-          feedEl.appendChild(_agStepCard(d));
-          feedEl.lastChild.scrollIntoView({behavior:'smooth', block:'nearest'});
-        } else if (d.type === 'finish') {
-          statusEl.textContent = `✅ Готово за ${d.step} ${d.step===1?'шаг':d.step<5?'шага':'шагов'}`;
-          // Add final screenshot card
-          if (d.screenshot) {
-            const finalCard = document.createElement('div');
-            finalCard.style.cssText = 'border:1px solid rgba(58,142,255,0.3);border-radius:10px;overflow:hidden';
-            finalCard.innerHTML = `
-              <div style="padding:7px 12px;background:rgba(58,142,255,0.1);font-size:12px;font-weight:700;color:var(--accent)">
-                ✅ Шаг ${d.step} · Финиш · 💭 ${d.thought||''}
-              </div>
-              <img src="data:image/png;base64,${d.screenshot}" style="width:100%;display:block" loading="lazy">
-            `;
-            feedEl.appendChild(finalCard);
-          }
-          answerEl.style.display = 'block';
-          answerEl.innerHTML = `<b>🤖 Ответ агента:</b><br><br>${(d.answer||'Готово').replace(/\n/g,'<br>')}`;
-          _agLastAnswer = d.answer || 'Готово';
-          toChatBtn.style.display = 'block';
-        } else if (d.type === 'error') {
-          statusEl.textContent = '❌ ' + (d.message || 'Ошибка');
-        }
-      }
+    await _agReadSSE(resp, feedEl, statusEl);
+  } catch(e) { statusEl.textContent = '❌ ' + e.message; }
+  finally { _agSetRunning(false); }
+}
+
+// ===== ПЕРЕХВАТ УПРАВЛЕНИЯ =====
+async function doTakeover() {
+  const statusEl = document.getElementById('ag-status');
+  statusEl.textContent = '⚡ Перехватываю…';
+  try {
+    const r = await fetch('/app/browser-takeover', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const d = await r.json();
+    if (!d.ok) { statusEl.textContent = '❌ ' + (d.error||'Ошибка'); return; }
+    _agSetRunning(false);
+    statusEl.textContent = '⚡ Управление перехвачено';
+    _showManualPanel(d.screenshot, d.url);
+  } catch(e) { statusEl.textContent = '❌ ' + e.message; }
+}
+
+function _showManualPanel(shot, url) {
+  const manualEl = document.getElementById('ag-manual');
+  manualEl.style.display = 'flex';
+  const shotImg = document.getElementById('ag-manual-shot');
+  shotImg.src = 'data:image/png;base64,' + shot;
+  document.getElementById('ag-manual-url').value = url || '';
+  // Кликабельный скриншот
+  shotImg.parentElement.onclick = function(e) {
+    const rect = shotImg.getBoundingClientRect();
+    const scaleX = 1280 / rect.width;
+    const scaleY = 800 / rect.height;
+    const x = Math.round((e.clientX - rect.left) * scaleX);
+    const y = Math.round((e.clientY - rect.top) * scaleY);
+    manualAction({action:'click', x, y});
+  };
+  manualEl.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+async function manualAction(obj) {
+  try {
+    const r = await fetch('/app/browser-manual', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(obj)});
+    const d = await r.json();
+    if (d.ok && d.screenshot) {
+      document.getElementById('ag-manual-shot').src = 'data:image/png;base64,' + d.screenshot;
+      if (d.url) document.getElementById('ag-manual-url').value = d.url;
     }
-  } catch(e) { statusEl.textContent = '❌ Ошибка соединения: ' + e.message; }
-  finally { btn.disabled = false; btn.textContent = '▶ Запустить агента'; }
+  } catch(e) { console.error('Manual action error:', e); }
+}
+
+function manualGoto() {
+  const url = (document.getElementById('ag-manual-url').value || '').trim();
+  if (url) manualAction({action:'goto', url});
+}
+function manualType() {
+  const text = (document.getElementById('ag-manual-text').value || '');
+  if (text) { manualAction({action:'type', text}); document.getElementById('ag-manual-text').value = ''; }
+}
+function manualPress(key) { manualAction({action:'press', key}); }
+function manualScroll(dir) { manualAction({action:'scroll', direction:dir, amount:400}); }
+
+async function doResume() {
+  const task = _agCurrentTask || 'Продолжи выполнение задачи';
+  const statusEl = document.getElementById('ag-status');
+  const feedEl = document.getElementById('ag-feed');
+  document.getElementById('ag-manual').style.display = 'none';
+  _agSetRunning(true);
+  statusEl.textContent = '🤖 Агент возобновляет работу…';
+  try {
+    const resp = await fetch('/app/browser-resume', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({task})
+    });
+    if (!resp.ok) {
+      const e = await resp.json();
+      statusEl.textContent = '❌ ' + (e.error||'Ошибка');
+      return;
+    }
+    await _agReadSSE(resp, feedEl, statusEl);
+  } catch(e) { statusEl.textContent = '❌ ' + e.message; }
+  finally { _agSetRunning(false); }
+}
+
+async function doRelease() {
+  await fetch('/app/browser-release', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  document.getElementById('ag-manual').style.display = 'none';
+  document.getElementById('ag-status').textContent = '🗑 Браузер закрыт';
 }
 
 function sendAgentToChat() {
