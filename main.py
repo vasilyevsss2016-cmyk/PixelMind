@@ -54,9 +54,19 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
-AI_MODEL = "google/gemini-2.0-flash-exp:free"
-AI_FALLBACKS = ["arcee-ai/trinity-large-preview:free"]
-VISION_MODEL = "google/gemini-2.0-flash-exp:free"
+AI_MODEL = "google/gemma-4-26b-a4b-it:free"
+AI_FALLBACKS = [
+    "google/gemma-3-27b-it:free",
+    "arcee-ai/trinity-large-preview:free",
+    "minimax/minimax-m2.5:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+]
+VISION_MODEL = "google/gemma-4-26b-a4b-it:free"
+VISION_FALLBACKS = [
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "google/gemma-3-27b-it:free",
+]
 PORT = int(os.environ.get("PORT", 5000))
 
 # Аккаунты админ-панели: логин → пароль
@@ -3601,21 +3611,27 @@ class BrowserAgent:
             {"type": "text", "text": f"Задача: {task}\nURL: {cur_url}\nЗаголовок: {cur_title}"},
             {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{shot_b64}"}}
         ]})
-        try:
-            resp = http_requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                json={"model": VISION_MODEL, "messages": msgs, "max_tokens": 400},
-                timeout=35
-            )
-            resp.raise_for_status()
-            raw = resp.json()["choices"][0]["message"]["content"].strip()
-            m = re.search(r'\{.*\}', raw, re.DOTALL)
-            if m:
-                return json.loads(m.group())
-            return {"thought": raw, "action": "finish", "answer": raw}
-        except Exception as e:
-            return {"thought": str(e), "action": "finish", "answer": f"Ошибка AI: {e}"}
+        models_to_try = [VISION_MODEL] + VISION_FALLBACKS
+        last_err = "Нет ответа от AI"
+        for model in models_to_try:
+            try:
+                resp = http_requests.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                    json={"model": model, "messages": msgs, "max_tokens": 400},
+                    timeout=35
+                )
+                resp.raise_for_status()
+                raw = resp.json()["choices"][0]["message"]["content"].strip()
+                m = re.search(r'\{.*\}', raw, re.DOTALL)
+                if m:
+                    return json.loads(m.group())
+                return {"thought": raw, "action": "finish", "answer": raw}
+            except Exception as e:
+                last_err = str(e)
+                logger.warning(f"BrowserAgent vision model {model} failed: {e}")
+                continue
+        return {"thought": last_err, "action": "finish", "answer": f"Ошибка AI: {last_err}"}
 
     def _do_action(self, obj: dict) -> str:
         act = obj.get("action", "wait")
@@ -3898,6 +3914,21 @@ def web_browser_release():
     if agent:
         agent.force_close()
     return jsonify({"ok": True})
+
+
+@app.route("/app/download-mod/<path:filename>")
+def download_mod(filename):
+    """Скачать .pixelmod файл по имени."""
+    mods_dir = os.path.join(os.path.dirname(__file__), "mods")
+    safe_name = os.path.basename(filename)
+    if not safe_name.endswith(".pixelmod"):
+        return jsonify({"error": "Только .pixelmod файлы"}), 400
+    filepath = os.path.join(mods_dir, safe_name)
+    if not os.path.exists(filepath):
+        return jsonify({"error": "Мод не найден"}), 404
+    from flask import send_file
+    return send_file(filepath, as_attachment=True, download_name=safe_name,
+                     mimetype="application/json")
 
 
 @app.route("/app/homework-ask", methods=["POST"])
