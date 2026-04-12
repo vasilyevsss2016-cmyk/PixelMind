@@ -861,7 +861,6 @@ header {
         <span class="uname" id="header-username"></span>
       </div>
       <button class="hdr-btn hdr-btn-ghost" onclick="openSupportModal()" title="Удалённая поддержка" style="font-size:17px">🖥</button>
-      <button class="hdr-btn hdr-btn-ghost" onclick="openStabModal()" title="Стабилизация видео" style="font-size:17px">🎬</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openBrowserModal()" title="AI Браузер" style="font-size:17px">🌐</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openVoiceChat()" title="Голосовой чат" style="font-size:17px">🎙</button>
       <button class="hdr-btn hdr-btn-ghost" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
@@ -1190,88 +1189,6 @@ header {
 
 <!-- SUPPORT REQUEST MODAL -->
 <!-- BROWSER MODAL -->
-<!-- ====== STABILIZATION MODAL ====== -->
-<div class="modal-overlay" id="stab-modal" onclick="if(event.target===this)closeStabModal()" style="display:none">
-  <div class="modal-box" style="max-width:520px;padding:0;overflow:hidden;display:flex;flex-direction:column">
-    <div style="padding:18px 22px 14px;flex-shrink:0;position:relative;border-bottom:1px solid rgba(255,255,255,0.08)">
-      <button class="modal-close" onclick="closeStabModal()">✕</button>
-      <div class="modal-title">🎬 Стабилизация видео</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px">Как Super Stabilization на флагманах Samsung</div>
-    </div>
-
-    <!-- Upload area -->
-    <div id="stab-upload-zone" style="padding:22px">
-      <div id="stab-drop-area"
-        onclick="document.getElementById('stab-file-input').click()"
-        ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
-        ondragleave="this.style.borderColor='rgba(255,255,255,0.15)'"
-        ondrop="stabHandleDrop(event)"
-        style="border:2px dashed rgba(255,255,255,0.15);border-radius:16px;padding:40px 20px;text-align:center;cursor:pointer;transition:border-color 0.2s">
-        <div style="font-size:40px;margin-bottom:10px">🎥</div>
-        <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Перетащи видео сюда</div>
-        <div style="font-size:12px;color:var(--text2)">или нажми чтобы выбрать · MP4, MOV, AVI, MKV, WebM</div>
-        <input id="stab-file-input" type="file" accept="video/*" style="display:none" onchange="stabHandleFile(this.files[0])">
-      </div>
-      <div id="stab-filename" style="margin-top:10px;font-size:13px;color:var(--text2);text-align:center;display:none"></div>
-    </div>
-
-    <!-- Progress area (скрыта до загрузки) -->
-    <div id="stab-progress-zone" style="display:none;padding:22px;flex-direction:column;gap:14px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <div id="stab-icon" style="font-size:28px">⚙️</div>
-        <div style="flex:1">
-          <div id="stab-msg" style="font-size:14px;font-weight:600;color:var(--text)">Запускаю стабилизатор...</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">Samsung Super Stabilization · 2 прохода</div>
-        </div>
-        <div id="stab-pct" style="font-size:20px;font-weight:800;color:var(--accent)">0%</div>
-      </div>
-      <!-- Progress bar -->
-      <div style="background:rgba(255,255,255,0.07);border-radius:8px;height:8px;overflow:hidden">
-        <div id="stab-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#3a8eff,#7c4dff);border-radius:8px;transition:width 0.4s ease"></div>
-      </div>
-      <div id="stab-stages" style="display:flex;gap:8px;font-size:11px">
-        <span id="stab-s1" style="color:var(--text2)">① Анализ движения</span>
-        <span style="color:rgba(255,255,255,0.2)">→</span>
-        <span id="stab-s2" style="color:var(--text2)">② Стабилизация</span>
-        <span style="color:rgba(255,255,255,0.2)">→</span>
-        <span id="stab-s3" style="color:var(--text2)">③ Готово</span>
-      </div>
-    </div>
-
-    <!-- Result area -->
-    <div id="stab-result-zone" style="display:none;padding:22px;flex-direction:column;gap:12px">
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(52,199,89,0.1);border:1px solid rgba(52,199,89,0.3);border-radius:12px">
-        <span style="font-size:22px">✅</span>
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#34c759">Стабилизация завершена!</div>
-          <div id="stab-done-msg" style="font-size:12px;color:var(--text2)"></div>
-        </div>
-      </div>
-      <div style="display:flex;gap:10px">
-        <button id="stab-download-btn"
-          style="flex:1;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#3a8eff,#1a6edc);color:#fff;font-size:15px;font-weight:700;cursor:pointer"
-          onclick="stabDownload()">
-          ⬇️ Скачать стабилизированное видео
-        </button>
-      </div>
-      <button onclick="stabReset()" style="padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--text2);font-size:13px;cursor:pointer">
-        🔄 Стабилизировать другое видео
-      </button>
-    </div>
-
-    <!-- Error area -->
-    <div id="stab-error-zone" style="display:none;padding:22px">
-      <div style="padding:12px 14px;background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);border-radius:12px">
-        <div style="font-size:14px;font-weight:700;color:#ff3b30;margin-bottom:4px">❌ Ошибка стабилизации</div>
-        <div id="stab-err-msg" style="font-size:13px;color:var(--text2)"></div>
-      </div>
-      <button onclick="stabReset()" style="margin-top:12px;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:transparent;color:var(--text2);font-size:13px;cursor:pointer">
-        🔄 Попробовать снова
-      </button>
-    </div>
-  </div>
-</div>
-<!-- ====== END STABILIZATION MODAL ====== -->
 
 <div class="modal-overlay" id="browser-modal" onclick="if(event.target===this)closeBrowserModal()">
   <div class="modal-box" style="max-width:680px;padding:0;overflow:hidden;max-height:90vh;display:flex;flex-direction:column">
@@ -2819,100 +2736,6 @@ function copyTopupComment() { navigator.clipboard?.writeText(_tuComment); toast(
 
 // ===== УДАЛЁННАЯ ПОДДЕРЖКА =====
 // ===== AI BROWSER =====
-// ====== STABILIZATION ======
-let _stabJobId = null;
-let _stabSSE = null;
-
-function openStabModal() {
-  document.getElementById('stab-modal').style.display = 'flex';
-}
-function closeStabModal() {
-  document.getElementById('stab-modal').style.display = 'none';
-}
-function stabReset() {
-  if (_stabSSE) { _stabSSE.close(); _stabSSE = null; }
-  _stabJobId = null;
-  document.getElementById('stab-upload-zone').style.display = 'block';
-  document.getElementById('stab-progress-zone').style.display = 'none';
-  document.getElementById('stab-result-zone').style.display = 'none';
-  document.getElementById('stab-error-zone').style.display = 'none';
-  document.getElementById('stab-filename').style.display = 'none';
-  document.getElementById('stab-bar').style.width = '0%';
-  document.getElementById('stab-file-input').value = '';
-}
-function stabHandleDrop(e) {
-  e.preventDefault();
-  const f = e.dataTransfer.files[0];
-  if (f) stabHandleFile(f);
-}
-async function stabHandleFile(file) {
-  if (!file) return;
-  const allowed = ['video/mp4','video/quicktime','video/x-msvideo','video/x-matroska','video/webm','video/3gpp'];
-  // Allow by extension too
-  const ext = file.name.split('.').pop().toLowerCase();
-  const extOk = ['mp4','mov','avi','mkv','webm','m4v','3gp'].includes(ext);
-  if (!file.type.startsWith('video/') && !extOk) {
-    toast('Выбери видеофайл', 'err'); return;
-  }
-
-  // Show filename
-  const fnEl = document.getElementById('stab-filename');
-  fnEl.textContent = `📁 ${file.name} · ${(file.size/1024/1024).toFixed(1)} МБ`;
-  fnEl.style.display = 'block';
-
-  // Upload
-  const fd = new FormData();
-  fd.append('video', file);
-  const r = await fetch('/app/stabilize/upload', {method:'POST', body: fd});
-  const data = await r.json();
-  if (!data.ok) { toast(data.error || 'Ошибка загрузки', 'err'); return; }
-
-  _stabJobId = data.job_id;
-
-  // Show progress
-  document.getElementById('stab-upload-zone').style.display = 'none';
-  const pz = document.getElementById('stab-progress-zone');
-  pz.style.display = 'flex';
-
-  // SSE progress
-  _stabSSE = new EventSource(`/app/stabilize/status/${_stabJobId}`);
-  _stabSSE.onmessage = (e) => {
-    const d = JSON.parse(e.data);
-    const pct = d.progress || 0;
-    document.getElementById('stab-bar').style.width = pct + '%';
-    document.getElementById('stab-pct').textContent = pct + '%';
-    document.getElementById('stab-msg').textContent = d.msg || '';
-
-    // Highlight stages
-    document.getElementById('stab-s1').style.color = pct >= 5  ? 'var(--accent)' : 'var(--text2)';
-    document.getElementById('stab-s2').style.color = pct >= 50 ? 'var(--accent)' : 'var(--text2)';
-    document.getElementById('stab-s3').style.color = pct >= 100 ? '#34c759' : 'var(--text2)';
-
-    if (d.status === 'done') {
-      _stabSSE.close();
-      pz.style.display = 'none';
-      const rz = document.getElementById('stab-result-zone');
-      rz.style.display = 'flex';
-      document.getElementById('stab-done-msg').textContent = d.msg || '';
-    } else if (d.status === 'error') {
-      _stabSSE.close();
-      pz.style.display = 'none';
-      document.getElementById('stab-error-zone').style.display = 'block';
-      document.getElementById('stab-err-msg').textContent = d.msg || 'Неизвестная ошибка';
-    }
-  };
-  _stabSSE.onerror = () => {
-    _stabSSE.close();
-    document.getElementById('stab-progress-zone').style.display = 'none';
-    document.getElementById('stab-error-zone').style.display = 'block';
-    document.getElementById('stab-err-msg').textContent = 'Потеря соединения';
-  };
-}
-function stabDownload() {
-  if (!_stabJobId) return;
-  window.location.href = `/app/stabilize/download/${_stabJobId}`;
-}
-// ====== END STABILIZATION ======
 
 let _brLastResult = null;
 let _agLastAnswer = null;
