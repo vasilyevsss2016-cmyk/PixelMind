@@ -4971,17 +4971,55 @@ _STAB_UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "pixelmind_stab")
 os.makedirs(_STAB_UPLOAD_DIR, exist_ok=True)
 
 
+def _stab_detect_rotation(input_path: str) -> int:
+    """Определяет угол поворота видео из метаданных (для телефонных видео)."""
+    # Метод 1: теги потока
+    for args in [
+        ["-show_entries", "stream_tags=rotate"],
+        ["-show_entries", "stream_side_data=rotation"],
+    ]:
+        r = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0"] + args +
+            ["-of", "default=noprint_wrappers=1:nokey=1", input_path],
+            capture_output=True, text=True, timeout=15
+        )
+        for line in r.stdout.strip().splitlines():
+            line = line.strip()
+            if line and line.lstrip("-").isdigit():
+                return int(line)
+    return 0
+
+
+def _stab_rotation_filter(rotation: int) -> str:
+    """Возвращает FFmpeg filter строку для коррекции поворота."""
+    r = rotation % 360
+    if r == 90:
+        return "transpose=1"          # 90° по часовой
+    if r == 270 or r == -90:
+        return "transpose=2"          # 90° против часовой
+    if r == 180:
+        return "transpose=1,transpose=1"
+    return ""
+
+
 def _stab_worker(job_id: str, input_path: str, output_path: str, transforms_path: str):
-    """Двухпроходная стабилизация через FFmpeg libvidstab."""
+    """Двухпроходная стабилизация через FFmpeg libvidstab с коррекцией поворота."""
     def _upd(progress: int, msg: str, status: str = "processing"):
         with _stab_jobs_lock:
             _stab_jobs[job_id].update({"progress": progress, "msg": msg, "status": status})
 
     try:
-        # Получаем количество кадров для прогресса
+        _upd(2, "Читаю метаданные видео...")
+
+        # ── Определяем поворот ───────────────────────────────────────────────
+        rotation = _stab_detect_rotation(input_path)
+        rot_filter = _stab_rotation_filter(rotation)
+        logger.info(f"[Stab] {job_id}: rotation={rotation}° filter='{rot_filter}'")
+
+        # ── Количество кадров для прогресса ─────────────────────────────────
         probe = subprocess.run(
             ["ffprobe", "-v", "error", "-select_streams", "v:0",
-             "-count_frames", "-show_entries", "stream=nb_read_frames",
+             "-count_packets", "-show_entries", "stream=nb_read_packets",
              "-of", "csv=p=0", input_path],
             capture_output=True, text=True, timeout=60
         )
@@ -4989,46 +5027,64 @@ def _stab_worker(job_id: str, input_path: str, output_path: str, transforms_path
             total_frames = int(probe.stdout.strip().splitlines()[-1])
         except Exception:
             total_frames = 0
-
         with _stab_jobs_lock:
             _stab_jobs[job_id]["frames"] = total_frames
 
-        # === ПРОХОД 1: анализ движения ===
+        # ── ПРОХОД 1: анализ движения ────────────────────────────────────────
+        # -noautorotate: отключаем автоповорот FFmpeg, обрабатываем raw пиксели
+        # Фильтр поворота применяем ДО vidstabdetect, чтобы анализ был в правильной ориентации
         _upd(5, "Анализирую движение камеры...")
+        vf1_parts = []
+        if rot_filter:
+            vf1_parts.append(rot_filter)
+        vf1_parts.append(f"vidstabdetect=stepsize=6:shakiness=10:accuracy=15:result={transforms_path}")
+        vf1 = ",".join(vf1_parts)
+
         cmd1 = [
-            "ffmpeg", "-y", "-i", input_path,
-            "-vf", f"vidstabdetect=stepsize=6:shakiness=10:accuracy=15:result={transforms_path}",
+            "ffmpeg", "-y", "-noautorotate", "-i", input_path,
+            "-vf", vf1,
             "-f", "null", "-"
         ]
         proc1 = subprocess.Popen(cmd1, stderr=subprocess.PIPE, text=True, bufsize=1)
         for line in proc1.stderr:
             m = re.search(r"frame=\s*(\d+)", line)
             if m and total_frames > 0:
-                pct = min(45, int(int(m.group(1)) / total_frames * 45))
+                pct = min(44, int(int(m.group(1)) / total_frames * 44))
                 _upd(5 + pct, "Анализирую движение камеры...")
         proc1.wait()
         if proc1.returncode != 0:
             _upd(0, "Ошибка при анализе видео", "error")
             return
 
-        # === ПРОХОД 2: применение стабилизации ===
-        _upd(50, "Применяю стабилизацию (Super Stabilization)...")
-        vf2 = (
-            f"vidstabtransform=input={transforms_path}:zoom=5:smoothing=30:crop=black"
-            ",unsharp=5:5:0.8:3:3:0.4"
+        # ── ПРОХОД 2: стабилизация + высокое качество ────────────────────────
+        _upd(50, "Применяю Super Stabilization...")
+        vf2_parts = []
+        if rot_filter:
+            vf2_parts.append(rot_filter)  # сначала поворот (как в проходе 1)
+        vf2_parts.append(
+            f"vidstabtransform=input={transforms_path}:zoom=5:smoothing=30:crop=black:optzoom=1"
         )
+        vf2_parts.append("unsharp=5:5:1.2:3:3:0.4")  # шарпенинг для компенсации blur
+        vf2 = ",".join(vf2_parts)
+
         cmd2 = [
-            "ffmpeg", "-y", "-i", input_path,
+            "ffmpeg", "-y", "-noautorotate", "-i", input_path,
             "-vf", vf2,
-            "-c:v", "libx264", "-preset", "fast", "-crf", "18",
-            "-c:a", "copy", output_path
+            "-c:v", "libx264",
+            "-preset", "medium",   # лучшее качество vs fast
+            "-crf", "16",          # высокое качество (было 18)
+            "-pix_fmt", "yuv420p", # совместимость со всеми плеерами
+            "-c:a", "copy",
+            # Убираем rotate-метаданные — поворот уже встроен в пиксели
+            "-metadata:s:v:0", "rotate=0",
+            output_path
         ]
         proc2 = subprocess.Popen(cmd2, stderr=subprocess.PIPE, text=True, bufsize=1)
         for line in proc2.stderr:
             m = re.search(r"frame=\s*(\d+)", line)
             if m and total_frames > 0:
                 pct = min(45, int(int(m.group(1)) / total_frames * 45))
-                _upd(50 + pct, "Применяю стабилизацию (Super Stabilization)...")
+                _upd(50 + pct, "Применяю Super Stabilization...")
         proc2.wait()
 
         # Удаляем временный файл трансформаций
@@ -5038,17 +5094,19 @@ def _stab_worker(job_id: str, input_path: str, output_path: str, transforms_path
             pass
 
         if proc2.returncode != 0 or not os.path.exists(output_path):
+            # Логируем stderr для диагностики
+            logger.error(f"[Stab] job {job_id} pass2 failed (rc={proc2.returncode})")
             _upd(0, "Ошибка при стабилизации видео", "error")
             return
 
         size_mb = os.path.getsize(output_path) / 1024 / 1024
-        _upd(100, f"Готово! Размер: {size_mb:.1f} МБ", "done")
+        rot_info = f" · поворот {rotation}°" if rotation else ""
+        _upd(100, f"Готово! Размер: {size_mb:.1f} МБ{rot_info}", "done")
 
     except Exception as e:
         logger.error(f"[Stab] job {job_id} failed: {e}")
         _upd(0, f"Ошибка: {e}", "error")
     finally:
-        # Удаляем входной файл
         try:
             os.remove(input_path)
         except Exception:
