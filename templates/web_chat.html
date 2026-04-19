@@ -3352,28 +3352,58 @@ function startVoiceAnimation() {
   const cx = W / 2, cy = H / 2;
   const dataArr = new Uint8Array(128);
 
-  // Частицы для орба
+  // ── Частицы для орба (ИИ говорит) ─────────────────────────────────────
   const PARTICLE_COUNT = 70;
-  const particles = Array.from({ length: PARTICLE_COUNT }, (_, i) => ({
-    angle:  Math.random() * Math.PI * 2,
-    r:      0.38 + Math.random() * 0.18,   // доля от W/2
-    speed:  (Math.random() > 0.5 ? 1 : -1) * (0.003 + Math.random() * 0.009),
-    size:   0.8 + Math.random() * 2.2,
-    phase:  Math.random() * Math.PI * 2,
-    drift:  0.002 + Math.random() * 0.006,
-    baseA:  0.25 + Math.random() * 0.65,
+  const particles = Array.from({ length: PARTICLE_COUNT }, () => ({
+    angle: Math.random() * Math.PI * 2,
+    r:     0.38 + Math.random() * 0.18,
+    speed: (Math.random() > 0.5 ? 1 : -1) * (0.003 + Math.random() * 0.009),
+    size:  0.8 + Math.random() * 2.2,
+    phase: Math.random() * Math.PI * 2,
+    drift: 0.002 + Math.random() * 0.006,
+    baseA: 0.25 + Math.random() * 0.65,
   }));
 
-  // Плавные высоты баров (для инерции)
-  const BAR_N = 5;
-  const barHeights = new Float32Array(BAR_N);
+  // ── Инерция для 4 баров (ты говоришь) ─────────────────────────────────
+  const barH = [0, 0, 0, 0];
 
+  // ── Plавный blob-буфер (ИИ думает) ────────────────────────────────────
+  const BLOB_N = 9;
+  const blobSeeds = Array.from({length: BLOB_N}, (_, i) => ({
+    phase:  (i / BLOB_N) * Math.PI * 2,
+    speed1: 0.6 + Math.random() * 0.8,
+    speed2: 0.3 + Math.random() * 0.5,
+    amp1:   0.10 + Math.random() * 0.12,
+    amp2:   0.04 + Math.random() * 0.06,
+  }));
+
+  // ── Вспомогательная функция: плавный blob через Catmull-Rom ───────────
+  function drawBlob(pts) {
+    const n = pts.length;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i - 1 + n) % n];
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % n];
+      const p3 = pts[(i + 2) % n];
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      if (i === 0) ctx.moveTo(p1[0], p1[1]);
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2[0], p2[1]);
+    }
+    ctx.closePath();
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 1. ИИ ГОВОРИТ — синий орб с пылью
+  // ════════════════════════════════════════════════════════════════════════
   function drawOrb(ts) {
     const t = ts * 0.001;
     const pulse = 1 + Math.sin(t * 1.8) * 0.04;
     const R = W * 0.26 * pulse;
 
-    // Дальнее свечение
     const g1 = ctx.createRadialGradient(cx, cy, R * 0.2, cx, cy, R * 3.2);
     g1.addColorStop(0, 'rgba(80,160,255,0.13)');
     g1.addColorStop(0.5, 'rgba(60,130,255,0.06)');
@@ -3381,39 +3411,33 @@ function startVoiceAnimation() {
     ctx.fillStyle = g1;
     ctx.beginPath(); ctx.arc(cx, cy, R * 3.2, 0, Math.PI * 2); ctx.fill();
 
-    // Ближнее свечение
     const g2 = ctx.createRadialGradient(cx, cy, R * 0.5, cx, cy, R * 1.7);
     g2.addColorStop(0, 'rgba(140,200,255,0.22)');
     g2.addColorStop(1, 'transparent');
     ctx.fillStyle = g2;
     ctx.beginPath(); ctx.arc(cx, cy, R * 1.7, 0, Math.PI * 2); ctx.fill();
 
-    // Сам шар
     const g3 = ctx.createRadialGradient(cx - R * 0.28, cy - R * 0.28, R * 0.05, cx, cy, R);
-    g3.addColorStop(0,   'rgba(210,235,255,0.95)');
-    g3.addColorStop(0.35,'rgba(100,175,255,0.90)');
-    g3.addColorStop(0.7, 'rgba(50,120,240,0.85)');
-    g3.addColorStop(1,   'rgba(20,70,180,0.80)');
+    g3.addColorStop(0,    'rgba(210,235,255,0.95)');
+    g3.addColorStop(0.35, 'rgba(100,175,255,0.90)');
+    g3.addColorStop(0.7,  'rgba(50,120,240,0.85)');
+    g3.addColorStop(1,    'rgba(20,70,180,0.80)');
     ctx.fillStyle = g3;
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
 
-    // Блик
     const g4 = ctx.createRadialGradient(cx - R * 0.3, cy - R * 0.32, 0, cx - R * 0.22, cy - R * 0.22, R * 0.45);
     g4.addColorStop(0, 'rgba(255,255,255,0.55)');
     g4.addColorStop(1, 'transparent');
     ctx.fillStyle = g4;
     ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
 
-    // Частицы / пыль
-    const orbR = R;
     particles.forEach(p => {
-      p.angle += p.speed * (voiceState === 'thinking' ? 0.45 : 1);
+      p.angle += p.speed;
       const radius = W * p.r + Math.sin(t * p.drift + p.phase) * W * 0.04;
-      if (radius < orbR + p.size) return; // внутри шара — не рисуем
+      if (radius < R + p.size) return;
       const px = cx + Math.cos(p.angle) * radius;
       const py = cy + Math.sin(p.angle) * radius;
-      // Прозрачность зависит от дальности: чем дальше — слабее
-      const distFactor = 1 - Math.max(0, (radius - orbR * 1.05) / (W * 0.2));
+      const distFactor = 1 - Math.max(0, (radius - R * 1.05) / (W * 0.2));
       const alpha = p.baseA * distFactor * (0.55 + Math.sin(t * 2.1 + p.phase) * 0.45);
       ctx.beginPath();
       ctx.arc(px, py, p.size, 0, Math.PI * 2);
@@ -3422,58 +3446,129 @@ function startVoiceAnimation() {
     });
   }
 
-  function drawBars(ts) {
-    if (voiceAnalyser) voiceAnalyser.getByteFrequencyData(dataArr);
+  // ════════════════════════════════════════════════════════════════════════
+  // 2. ИИ ДУМАЕТ — белый blob (пузырь мысли)
+  // ════════════════════════════════════════════════════════════════════════
+  function drawThought(ts) {
     const t = ts * 0.001;
-    const BAR_W = Math.round(W * 0.065);
-    const GAP   = Math.round(W * 0.035);
-    const totalW = BAR_N * BAR_W + (BAR_N - 1) * GAP;
-    const startX = cx - totalW / 2;
-    const MAX_H  = H * 0.72;
-    const MIN_H  = BAR_W;
+    const breathe = 1 + Math.sin(t * 0.85) * 0.035;
+    const R = W * 0.235 * breathe;
+    const bx = cx, by = cy - R * 0.08;
 
-    for (let i = 0; i < BAR_N; i++) {
-      // Центральный бар реагирует сильнее
-      const freqIdx = [2, 6, 14, 6, 2][i];
-      const raw = (dataArr[freqIdx] || 0) / 255;
-      // Плавная инерция
-      barHeights[i] += (raw - barHeights[i]) * 0.22;
-      const bh = MIN_H + barHeights[i] * (MAX_H - MIN_H);
+    // Строим точки плавного blob-а
+    const pts = blobSeeds.map((s, i) => {
+      const baseAngle = (i / BLOB_N) * Math.PI * 2 - Math.PI / 2;
+      const v = Math.sin(t * s.speed1 + s.phase) * s.amp1
+              + Math.sin(t * s.speed2 + s.phase * 1.7) * s.amp2;
+      const r = R * (1 + v);
+      return [bx + Math.cos(baseAngle) * r, by + Math.sin(baseAngle) * r];
+    });
+
+    // Свечение
+    ctx.shadowColor = 'rgba(160,210,255,0.35)';
+    ctx.shadowBlur = 40;
+
+    // Основной blob
+    drawBlob(pts);
+    ctx.fillStyle = 'rgba(230,242,255,0.93)';
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Блик на blob-е
+    const blikG = ctx.createRadialGradient(
+      bx - R * 0.25, by - R * 0.28, 0,
+      bx - R * 0.18, by - R * 0.18, R * 0.48
+    );
+    blikG.addColorStop(0, 'rgba(255,255,255,0.50)');
+    blikG.addColorStop(1, 'transparent');
+    drawBlob(pts);
+    ctx.fillStyle = blikG;
+    ctx.fill();
+
+    // Пузырьки-хвост (как у ChatGPT)
+    const tailX = bx - R * 0.32;
+    const tailY = by + R * 0.82;
+    const dots = [
+      { x: tailX,          y: tailY,          r: R * 0.115 },
+      { x: tailX - R*0.18, y: tailY + R*0.21, r: R * 0.068 },
+      { x: tailX - R*0.32, y: tailY + R*0.40, r: R * 0.038 },
+    ];
+    dots.forEach((d, i) => {
+      const pulse = 1 + Math.sin(t * 1.1 + i * 0.7) * 0.06;
+      ctx.beginPath();
+      ctx.arc(d.x, d.y, d.r * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(225,240,255,${0.88 - i * 0.18})`;
+      ctx.fill();
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 3. ТЫ ГОВОРИШЬ — 4 белых пульсирующих овала
+  // ════════════════════════════════════════════════════════════════════════
+  function drawBars4(ts) {
+    const t = ts * 0.001;
+    if (voiceAnalyser) voiceAnalyser.getByteFrequencyData(dataArr);
+
+    const N = 4;
+    const BAR_W  = Math.round(W * 0.082);
+    const GAP    = Math.round(W * 0.042);
+    const totalW = N * BAR_W + (N - 1) * GAP;
+    const startX = cx - totalW / 2;
+    const MAX_H  = H * 0.52;
+    const MIN_H  = BAR_W * 0.82;
+
+    // Разные фазы и частоты для каждого бара — независимое дыхание
+    const phases  = [0.0,  1.3,  2.7,  4.1];
+    const freqs   = [1.15, 0.88, 1.42, 0.97];
+    const audIdx  = [5,    12,   22,   12  ];
+
+    for (let i = 0; i < N; i++) {
+      const audioRaw = (dataArr[audIdx[i]] || 0) / 255;
+      barH[i] += (audioRaw - barH[i]) * 0.2;
+
+      // Базовое дыхание (даже если тихо)
+      const breath = (Math.sin(t * freqs[i] + phases[i]) + 1) * 0.5;
+      const base   = 0.18 + breath * 0.28;
+      const frac   = Math.max(base, barH[i]);
+      const h      = MIN_H + frac * (MAX_H - MIN_H);
 
       const x = startX + i * (BAR_W + GAP);
-      const y = cy - bh / 2;
-
-      const bg = ctx.createLinearGradient(x, cy - MAX_H / 2, x, cy + MAX_H / 2);
-      bg.addColorStop(0,   'rgba(120,190,255,0.15)');
-      bg.addColorStop(0.35,'rgba(120,190,255,0.85)');
-      bg.addColorStop(0.5, 'rgba(160,215,255,1.00)');
-      bg.addColorStop(0.65,'rgba(120,190,255,0.85)');
-      bg.addColorStop(1,   'rgba(120,190,255,0.15)');
-
+      const y = cy - h / 2;
       const r = BAR_W / 2;
-      ctx.fillStyle = bg;
-      ctx.beginPath();
-      ctx.roundRect(x, y, BAR_W, bh, r);
-      ctx.fill();
 
-      // Мягкое свечение вокруг бара
-      ctx.shadowColor = 'rgba(100,180,255,0.6)';
-      ctx.shadowBlur  = 10;
-      ctx.fillStyle   = 'transparent';
+      // Свечение
+      ctx.shadowColor = 'rgba(180,220,255,0.55)';
+      ctx.shadowBlur  = 18;
+
+      ctx.fillStyle = 'rgba(235,245,255,0.93)';
+      ctx.beginPath();
+      ctx.roundRect(x, y, BAR_W, h, r);
       ctx.fill();
-      ctx.shadowBlur  = 0;
+      ctx.shadowBlur = 0;
+
+      // Лёгкий блик
+      const blikY = y + h * 0.08;
+      const blikH = h * 0.28;
+      const blikG = ctx.createLinearGradient(x, blikY, x, blikY + blikH);
+      blikG.addColorStop(0, 'rgba(255,255,255,0.32)');
+      blikG.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = blikG;
+      ctx.beginPath();
+      ctx.roundRect(x + BAR_W * 0.12, blikY, BAR_W * 0.76, blikH, r * 0.7);
+      ctx.fill();
     }
   }
 
+  // ── Главный цикл ───────────────────────────────────────────────────────
   function draw(ts) {
     voiceAnimFrame = requestAnimationFrame(draw);
     ctx.clearRect(0, 0, W, H);
-
     if (voiceState === 'listening') {
-      drawBars(ts);
+      drawBars4(ts);
+    } else if (voiceState === 'thinking') {
+      drawThought(ts);
     } else {
-      // speaking / thinking / idle — орб с пылью
-      drawOrb(ts);
+      drawOrb(ts);   // speaking / idle
     }
   }
 
