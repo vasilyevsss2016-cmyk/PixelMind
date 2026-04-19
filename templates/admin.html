@@ -7,15 +7,15 @@
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 :root {
-  --bg1:#0a0e1a; --bg2:#0f1525;
-  --glass:rgba(255,255,255,0.06);
-  --glass-hover:rgba(255,255,255,0.10);
-  --glass-border:rgba(255,255,255,0.12);
-  --glass-shine:rgba(255,255,255,0.18);
-  --accent:#5aabff; --accent2:#34d058;
-  --danger:#ff453a; --warn:#ffb340;
-  --ban-color:#ff453a;
-  --text:#f2f6ff; --text2:#a8bad4; --text3:#7a90b0;
+  --bg1:#eef3fa; --bg2:#e4edf8;
+  --glass:rgba(255,255,255,0.82);
+  --glass-hover:rgba(255,255,255,0.95);
+  --glass-border:rgba(0,0,0,0.09);
+  --glass-shine:rgba(255,255,255,0.96);
+  --accent:#2e7eff; --accent2:#22a348;
+  --danger:#ff3b30; --warn:#f59500;
+  --ban-color:#ff3b30;
+  --text:#1a2436; --text2:#4a5e78; --text3:#7a90a8;
   --header-h:54px; --stats-h:48px; --bottom-nav-h:64px;
 }
 
@@ -84,7 +84,7 @@ body.theme-light #invite-panel input, body.theme-light #payments-panel input, bo
 html,body { height:100%; overflow:hidden; }
 body {
   font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;
-  background: radial-gradient(ellipse at 20% 10%, #0d1f3c 0%, #0a0e1a 50%, #060810 100%);
+  background: radial-gradient(ellipse at 20% 10%, #d8eaff 0%, #eef4fd 55%, #f4f8ff 100%);
   color:var(--text); min-height:100vh;
   transition: background 0.4s, color 0.2s;
 }
@@ -96,20 +96,20 @@ body {
 #login-screen { display:flex; align-items:center; justify-content:center; height:100vh; padding:20px; }
 .login-box {
   width:100%; max-width:380px; padding:44px 36px; border-radius:28px; text-align:center;
-  background:rgba(15,24,48,0.75);
-  backdrop-filter:blur(40px) saturate(200%); -webkit-backdrop-filter:blur(40px) saturate(200%);
-  border:1px solid rgba(255,255,255,0.14);
-  box-shadow:0 24px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,0.2);
+  background:rgba(255,255,255,0.97);
+  backdrop-filter:blur(40px) saturate(180%); -webkit-backdrop-filter:blur(40px) saturate(180%);
+  border:1px solid rgba(0,0,0,0.08);
+  box-shadow:0 24px 80px rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,0.9);
 }
 .login-logo { font-size:52px; margin-bottom:6px; filter:drop-shadow(0 0 20px rgba(90,171,255,0.6)); }
 .login-box h1 { font-size:26px; font-weight:700; color:var(--accent); margin-bottom:6px; letter-spacing:-.5px; }
 .login-box p { color:var(--text2); margin-bottom:28px; font-size:14px; }
 .login-box input {
   width:100%; padding:14px 18px; margin-bottom:14px;
-  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12);
+  background:rgba(255,255,255,0.9); border:1px solid rgba(0,0,0,0.12);
   border-radius:14px; color:var(--text); font-size:16px; outline:none; transition:border .2s,background .2s;
 }
-.login-box input:focus { border-color:rgba(90,171,255,.6); background:rgba(255,255,255,0.1); }
+.login-box input:focus { border-color:rgba(46,126,255,.5); background:#fff; }
 .login-box button {
   width:100%; padding:14px;
   background:linear-gradient(135deg,rgba(90,171,255,0.9),rgba(59,130,246,0.9));
@@ -592,6 +592,61 @@ header {
   .main.panel-open #web-chat-panel { transform:translateX(0); }
   .wc-bubble { max-width:88%; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   ADMIN WHITE THEME — переопределения тёмных цветов
+   ═══════════════════════════════════════════════════════ */
+.glass { box-shadow:0 2px 32px rgba(0,0,0,.07),inset 0 1px 0 var(--glass-shine) !important; }
+#app-header { background:rgba(235,243,255,0.92) !important; border-bottom:1px solid rgba(0,0,0,0.08) !important; }
+.stats-bar { background:rgba(228,237,250,0.92) !important; border-bottom-color:rgba(0,0,0,0.07) !important; }
+.tabs-bar { background:rgba(228,237,250,0.92) !important; border-bottom-color:rgba(0,0,0,0.07) !important; }
+.tab-btn { color:var(--text2) !important; }
+.tab-btn.active { background:rgba(46,126,255,0.14) !important; color:var(--accent) !important; border-color:rgba(46,126,255,0.28) !important; box-shadow:none !important; }
+.tab-btn:hover:not(.active) { background:rgba(0,0,0,0.04) !important; color:var(--text) !important; }
+.sidebar { background:rgba(222,232,248,0.92) !important; border-right-color:rgba(0,0,0,0.08) !important; }
+.sidebar-header { border-bottom-color:rgba(0,0,0,0.07) !important; }
+.search-input { background:rgba(255,255,255,0.85) !important; border-color:rgba(0,0,0,0.10) !important; color:var(--text) !important; }
+.chat-item { border-bottom-color:rgba(0,0,0,0.04) !important; }
+.chat-item:hover { background:rgba(0,0,0,0.04) !important; }
+.chat-item.active { background:rgba(46,126,255,0.12) !important; border-left-color:var(--accent) !important; }
+.chat-name { color:var(--text) !important; }
+.chat-preview { color:var(--text2) !important; }
+#mobile-menu { background:rgba(235,243,255,0.97) !important; border-color:rgba(0,0,0,0.10) !important; box-shadow:0 12px 40px rgba(0,0,0,.10) !important; }
+.menu-item { color:var(--text) !important; }
+.chat-panel { background:rgba(235,243,255,0.55) !important; }
+#web-chat-panel { background:rgba(235,243,255,0.55) !important; }
+#chat-header,.wc-header { background:rgba(225,236,252,0.95) !important; border-bottom-color:rgba(0,0,0,0.07) !important; }
+.msg.user .msg-bubble { background:rgba(46,126,255,0.14) !important; border-color:rgba(46,126,255,0.24) !important; color:var(--text) !important; }
+.msg.assistant .msg-bubble { background:rgba(255,255,255,0.92) !important; border-color:rgba(0,0,0,0.08) !important; color:var(--text) !important; }
+.msg.admin .msg-bubble { background:rgba(255,179,64,0.12) !important; border-color:rgba(255,179,64,0.25) !important; color:var(--text) !important; }
+.user-item { border-bottom-color:rgba(0,0,0,0.05) !important; }
+.user-item:hover { background:rgba(0,0,0,0.03) !important; }
+.invite-list-card { background:rgba(255,255,255,0.80) !important; border-color:rgba(0,0,0,0.07) !important; }
+.invite-header-card { background:rgba(255,255,255,0.88) !important; border-color:rgba(0,0,0,0.07) !important; }
+.invite-list-header { border-bottom-color:rgba(0,0,0,0.06) !important; }
+#invite-panel,#payments-panel,#settings-panel,#anydesk-panel { background:rgba(228,237,250,0.55) !important; }
+#profile-panel { background:rgba(228,237,250,0.55) !important; }
+.profile-card { background:rgba(255,255,255,0.88) !important; border-color:rgba(0,0,0,0.07) !important; }
+.profile-stat { background:rgba(0,0,0,0.03) !important; border-color:rgba(0,0,0,0.07) !important; }
+.profile-row { border-bottom-color:rgba(0,0,0,0.06) !important; }
+#bottom-nav { background:rgba(228,237,250,0.97) !important; border-top-color:rgba(0,0,0,0.08) !important; }
+.nav-btn { color:var(--text2) !important; }
+.nav-btn.active { color:var(--accent) !important; }
+.modal-overlay { background:rgba(0,0,0,0.22) !important; }
+.modal { background:rgba(245,249,255,0.99) !important; border-color:rgba(0,0,0,0.09) !important; box-shadow:0 20px 60px rgba(0,0,0,.10) !important; color:var(--text) !important; }
+.confirm-box { background:rgba(245,249,255,0.99) !important; border:1px solid rgba(0,0,0,0.09) !important; color:var(--text) !important; box-shadow:0 16px 50px rgba(0,0,0,.10) !important; }
+.fa-info-box { background:rgba(46,126,255,0.07) !important; border-color:rgba(46,126,255,0.18) !important; }
+.btn-ghost { background:rgba(0,0,0,0.05) !important; color:var(--text) !important; border-color:rgba(0,0,0,0.10) !important; }
+.btn-ghost:hover { background:rgba(0,0,0,0.09) !important; }
+input[type=text],input[type=password],input[type=email],input[type=number] { background:rgba(255,255,255,0.88) !important; border-color:rgba(0,0,0,0.12) !important; color:var(--text) !important; }
+textarea { background:rgba(255,255,255,0.88) !important; border-color:rgba(0,0,0,0.12) !important; color:var(--text) !important; }
+.wc-bubble { color:var(--text) !important; }
+.wc-send-bar { background:rgba(225,236,252,0.95) !important; border-top-color:rgba(0,0,0,0.07) !important; }
+.wc-send-bar textarea { background:rgba(255,255,255,0.88) !important; border-color:rgba(0,0,0,0.10) !important; color:var(--text) !important; }
+.stat { background:rgba(255,255,255,0.65) !important; border-color:rgba(0,0,0,0.07) !important; }
+.no-items,.invite-empty,.wc-empty p { color:var(--text3) !important; }
+#invite-panel input,#payments-panel input,#settings-panel input { background:rgba(255,255,255,0.88) !important; border-color:rgba(0,0,0,0.12) !important; color:var(--text) !important; }
+.fa-box { background:rgba(255,255,255,0.97) !important; border-color:rgba(0,0,0,0.09) !important; box-shadow:0 24px 80px rgba(0,0,0,.10) !important; }
 </style>
 </head>
 <body>
