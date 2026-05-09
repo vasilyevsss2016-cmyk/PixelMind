@@ -796,7 +796,7 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
         response = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {get_api_key()}",
                 "Content-Type": "application/json",
             },
             json={
@@ -832,7 +832,7 @@ def describe_image_with_ai(chat_id: int, image_data: bytes, user_prompt: str = "
         response = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {get_api_key()}",
                 "Content-Type": "application/json",
             },
             json={
@@ -1024,7 +1024,7 @@ def generate_image(prompt: str) -> bytes | None:
         resp = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Authorization": f"Bearer {get_api_key()}",
                 "Content-Type": "application/json",
             },
             json={
@@ -2388,7 +2388,7 @@ def api_generate_block_message():
     try:
         resp = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
             json={
                 "model": AI_MODEL,
                 "messages": [{
@@ -2441,7 +2441,7 @@ def api_generate_block_button():
     try:
         resp = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
             json={
                 "model": AI_MODEL,
                 "messages": [{
@@ -3180,7 +3180,7 @@ def web_chat_send():
         try:
             resp = http_requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
                 json={"model": _model, "messages": messages, "max_tokens": 1500},
                 timeout=60
             )
@@ -3209,7 +3209,7 @@ def web_chat_send():
         try:
             name_resp = http_requests.post(
                 "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+                headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
                 json={
                     "model": AI_MODEL,
                     "messages": [
@@ -3474,7 +3474,7 @@ def web_voice_chat():
         "Ты PixelMind — голосовой AI-ассистент. Отвечай коротко, разговорно и по-дружески. "
         "Максимум 2-3 предложения. Без списков, без markdown. Только живая речь. Отвечай на русском."
     )
-    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    OPENROUTER_KEY = get_api_key()
 
     # Если есть кадр с камеры — используем vision-модель
     if image_b64:
@@ -3950,7 +3950,7 @@ def web_browser_control():
     if screenshot_bytes is None:
         return jsonify({"ok": False, "error": f"Не удалось открыть: {page_text}"}), 500
     screenshot_b64 = base64.b64encode(screenshot_bytes).decode()
-    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    OPENROUTER_KEY = get_api_key()
     ai_response = f"Страница загружена: {title}"
     if OPENROUTER_KEY:
         try:
@@ -4118,7 +4118,7 @@ def web_homework_ask():
         "Для математики показывай все шаги вычислений. Для языков объясняй правила. "
         "Пиши кратко но ясно. Используй эмодзи для структуры. Отвечай на русском языке."
     )
-    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    OPENROUTER_KEY = get_api_key()
     try:
         if image_b64:
             messages = [
@@ -4170,7 +4170,7 @@ def web_analyze_image():
     prompt = (data.get("prompt") or "Опиши подробно что изображено на фото. Если есть текст — прочитай его. Если QR-код — опиши куда он ведёт.").strip()
     if not image_b64:
         return jsonify({"ok": False, "error": "Нет изображения"}), 400
-    OPENROUTER_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+    OPENROUTER_KEY = get_api_key()
     try:
         messages = [{"role": "user", "content": [
             {"type": "text", "text": prompt},
@@ -4753,7 +4753,7 @@ def api_analyze_error():
     try:
         resp = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
             json={"model": AI_MODEL, "messages": [
                 {"role": "system", "content": "Ты — помощник разработчика. Отвечай на русском языке. Будь кратким и понятным."},
                 {"role": "user", "content": ai_prompt}
