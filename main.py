@@ -51,7 +51,25 @@ except ImportError:
 
 # ============ НАСТРОЙКИ ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+
+# ── Пул API-ключей с round-robin ротацией ─────────────────────────────────
+_raw_keys = os.environ.get("OPENROUTER_API_KEY", "")
+OPENROUTER_API_KEYS: list[str] = [k.strip() for k in _raw_keys.split(",") if k.strip()]
+_key_index = 0
+_key_lock  = __import__("threading").Lock()
+
+def get_api_key() -> str:
+    """Возвращает следующий ключ из пула (round-robin)."""
+    global _key_index
+    if not OPENROUTER_API_KEYS:
+        return ""
+    with _key_lock:
+        key = OPENROUTER_API_KEYS[_key_index % len(OPENROUTER_API_KEYS)]
+        _key_index += 1
+    return key
+
+# Обратная совместимость — первый ключ как дефолт
+OPENROUTER_API_KEY = OPENROUTER_API_KEYS[0] if OPENROUTER_API_KEYS else ""
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
 AI_MODEL = "google/gemma-4-26b-a4b-it:free"
