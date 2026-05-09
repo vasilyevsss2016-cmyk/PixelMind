@@ -52,23 +52,70 @@ except ImportError:
 # ============ НАСТРОЙКИ ============
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
-# ── Пул API-ключей с round-robin ротацией ─────────────────────────────────
+# ── Пул API-ключей с fallback + cooldown ──────────────────────────────────
+import threading as _threading
+import time as _time
+
 _raw_keys = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_API_KEYS: list[str] = [k.strip() for k in _raw_keys.split(",") if k.strip()]
-_key_index = 0
-_key_lock  = __import__("threading").Lock()
+_key_lock      = _threading.Lock()
+_key_cooldowns: dict[str, float] = {}   # key → unix timestamp когда снова можно
+_KEY_COOLDOWN  = 60.0                   # секунд отдыха после 429
 
 def get_api_key() -> str:
-    """Возвращает следующий ключ из пула (round-robin)."""
-    global _key_index
+    """Возвращает первый не-охлаждённый ключ из пула (round-robin по живым)."""
     if not OPENROUTER_API_KEYS:
         return ""
+    now = _time.time()
     with _key_lock:
-        key = OPENROUTER_API_KEYS[_key_index % len(OPENROUTER_API_KEYS)]
-        _key_index += 1
-    return key
+        # Ищем первый ключ без активного cooldown
+        for k in OPENROUTER_API_KEYS:
+            if now >= _key_cooldowns.get(k, 0):
+                return k
+        # Все на кулдауне — возвращаем тот, у которого cooldown истекает раньше
+        return min(OPENROUTER_API_KEYS, key=lambda k: _key_cooldowns.get(k, 0))
 
-# Обратная совместимость — первый ключ как дефолт
+def _mark_key_cooldown(key: str) -> None:
+    """Ставит ключ на паузу на KEY_COOLDOWN секунд (вызывается при 429)."""
+    with _key_lock:
+        _key_cooldowns[key] = _time.time() + _KEY_COOLDOWN
+        active = sum(1 for k in OPENROUTER_API_KEYS if _time.time() >= _key_cooldowns.get(k, 0))
+    logger.warning(f"🔑 Ключ ...{key[-8:]} на кулдауне {_KEY_COOLDOWN}s. Живых ключей: {active}/{len(OPENROUTER_API_KEYS)}")
+
+def call_openrouter(payload: dict, timeout: int = 60) -> dict:
+    """
+    Делает запрос к OpenRouter с автоматическим fallback по ключам.
+    При 429 на текущем ключе — ставит его на cooldown и пробует следующий.
+    Возвращает dict с ответом или выбрасывает Exception если все ключи исчерпаны.
+    """
+    if not OPENROUTER_API_KEYS:
+        raise RuntimeError("Нет API ключей в OPENROUTER_API_KEY")
+
+    tried: set[str] = set()
+    while len(tried) < len(OPENROUTER_API_KEYS):
+        key = get_api_key()
+        if key in tried:
+            break
+        tried.add(key)
+        try:
+            resp = http_requests.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json=payload,
+                timeout=timeout,
+            )
+            if resp.status_code == 429:
+                _mark_key_cooldown(key)
+                continue          # пробуем следующий ключ
+            resp.raise_for_status()
+            return resp.json()
+        except Exception as e:
+            logger.warning(f"🔑 Ключ ...{key[-8:]} ошибка: {e}")
+            _mark_key_cooldown(key)
+            continue
+    raise RuntimeError("Все API ключи недоступны — попробуй позже")
+
+# Обратная совместимость
 OPENROUTER_API_KEY = OPENROUTER_API_KEYS[0] if OPENROUTER_API_KEYS else ""
 REPLIT_URL = os.environ.get("REPLIT_DEV_DOMAIN", "")
 BOT_NAME = "PixelMind"
@@ -793,21 +840,12 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
     messages = [{"role": "system", "content": get_system_prompt(chat_id)}] + history
 
     try:
-        response = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {get_api_key()}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": AI_MODEL,
-                "messages": messages,
-                "max_tokens": 500,
-                "temperature": 0.8,
-            },
-            timeout=30,
-        )
-        data = response.json()
+        data = call_openrouter({
+            "model": AI_MODEL,
+            "messages": messages,
+            "max_tokens": 500,
+            "temperature": 0.8,
+        }, timeout=30)
         msg = data["choices"][0]["message"]
         reply = (msg.get("content") or msg.get("reasoning") or "").strip()
 
@@ -829,28 +867,14 @@ def get_ai_reply(chat_id: int, user_message: str) -> str:
 def describe_image_with_ai(chat_id: int, image_data: bytes, user_prompt: str = "Опиши что на этом изображении подробно.") -> str:
     b64 = base64.b64encode(image_data).decode("utf-8")
     try:
-        response = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {get_api_key()}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": VISION_MODEL,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": user_prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
-                        ]
-                    }
-                ],
-                "max_tokens": 600,
-            },
-            timeout=40,
-        )
-        data = response.json()
+        data = call_openrouter({
+            "model": VISION_MODEL,
+            "messages": [{"role": "user", "content": [
+                {"type": "text", "text": user_prompt},
+                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+            ]}],
+            "max_tokens": 600,
+        }, timeout=40)
         _m = data["choices"][0]["message"]
         return (_m.get("content") or _m.get("reasoning") or "").strip()
     except Exception as e:
@@ -1021,10 +1045,12 @@ IMAGE_GEN_MODEL = "google/gemini-2.5-flash-image"
 def generate_image(prompt: str) -> bytes | None:
     """Генерирует изображение через OpenRouter (Gemini Image)."""
     try:
+        # Используем прямой запрос (изображения возвращают base64, а не text)
+        _img_key = get_api_key()
         resp = http_requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {get_api_key()}",
+                "Authorization": f"Bearer {_img_key}",
                 "Content-Type": "application/json",
             },
             json={
@@ -1034,6 +1060,8 @@ def generate_image(prompt: str) -> bytes | None:
             },
             timeout=60,
         )
+        if resp.status_code == 429:
+            _mark_key_cooldown(_img_key)
         if resp.status_code == 200:
             data = resp.json()
             images = (
@@ -2386,10 +2414,7 @@ def api_generate_block_message():
     data = request.get_json(silent=True) or {}
     problem = (data.get("problem") or "").strip() or "сервисе"
     try:
-        resp = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
-            json={
+        _gbd = call_openrouter({
                 "model": AI_MODEL,
                 "messages": [{
                     "role": "user",
@@ -2401,10 +2426,8 @@ def api_generate_block_message():
                     )
                 }],
                 "max_tokens": 150,
-            },
-            timeout=15
-        )
-        _m = resp.json()["choices"][0]["message"]
+            }, timeout=15)
+        _m = _gbd["choices"][0]["message"]
         msg = (_m.get("content") or _m.get("reasoning") or "").strip().strip('"').strip("'")
         return jsonify({"ok": True, "message": msg})
     except Exception as e:
@@ -2439,10 +2462,7 @@ def api_generate_block_button():
     if not text and not action:
         return jsonify({"ok": False, "error": "empty"}), 400
     try:
-        resp = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
-            json={
+        _bud = call_openrouter({
                 "model": AI_MODEL,
                 "messages": [{
                     "role": "user",
@@ -2455,10 +2475,8 @@ def api_generate_block_button():
                     )
                 }],
                 "max_tokens": 80,
-            },
-            timeout=15
-        )
-        _m2 = resp.json()["choices"][0]["message"]
+            }, timeout=15)
+        _m2 = _bud["choices"][0]["message"]
         url = (_m2.get("content") or _m2.get("reasoning") or "").strip().strip('"').strip("'")
         if not url.startswith(("http", "mailto", "tg:")):
             url = "https://" + url.lstrip("/")
@@ -3178,14 +3196,8 @@ def web_chat_send():
     reply = None
     for _model in [AI_MODEL] + AI_FALLBACKS:
         try:
-            resp = http_requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
-                json={"model": _model, "messages": messages, "max_tokens": 1500},
-                timeout=60
-            )
-            resp.raise_for_status()
-            _m3 = resp.json()["choices"][0]["message"]
+            _d = call_openrouter({"model": _model, "messages": messages, "max_tokens": 1500}, timeout=60)
+            _m3 = _d["choices"][0]["message"]
             reply = (_m3.get("content") or _m3.get("reasoning") or "").strip()
             if reply:
                 break
@@ -3207,20 +3219,15 @@ def web_chat_send():
     # Auto-name chat via AI on first user message
     if len(history) == 2 and chat.get("name", "").startswith("Чат "):
         try:
-            name_resp = http_requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
-                json={
+            _nd = call_openrouter({
                     "model": AI_MODEL,
                     "messages": [
                         {"role": "system", "content": "Придумай короткое (2-4 слова) название темы для чата на основе сообщения пользователя. Только название, без кавычек и пунктуации в конце."},
                         {"role": "user", "content": text[:200]}
                     ],
                     "max_tokens": 20
-                },
-                timeout=10
-            )
-            _mn = name_resp.json()["choices"][0]["message"]
+                }, timeout=10)
+            _mn = _nd["choices"][0]["message"]
             generated = (_mn.get("content") or _mn.get("reasoning") or "").strip().strip('"').strip("'")
             if generated and len(generated) < 60:
                 chat["name"] = generated
@@ -3474,8 +3481,6 @@ def web_voice_chat():
         "Ты PixelMind — голосовой AI-ассистент. Отвечай коротко, разговорно и по-дружески. "
         "Максимум 2-3 предложения. Без списков, без markdown. Только живая речь. Отвечай на русском."
     )
-    OPENROUTER_KEY = get_api_key()
-
     # Если есть кадр с камеры — используем vision-модель
     if image_b64:
         user_content = [
@@ -3491,17 +3496,11 @@ def web_voice_chat():
     last_err = None
     for model in models_to_try:
         try:
-            resp = http_requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
-                json={"model": model, "messages": [
+            _vd = call_openrouter({"model": model, "messages": [
                     {"role": "system", "content": VOICE_SYSTEM},
                     {"role": "user", "content": user_content}
-                ], "max_tokens": 200},
-                timeout=15
-            )
-            resp.raise_for_status()
-            content = resp.json()["choices"][0]["message"]["content"]
+                ], "max_tokens": 200}, timeout=15)
+            content = _vd["choices"][0]["message"].get("content", "")
             if content and content.strip():
                 answer = content.strip()
                 break
@@ -3701,15 +3700,8 @@ class BrowserAgent:
         ]}]
         for model in [VISION_MODEL] + VISION_FALLBACKS:
             try:
-                resp = http_requests.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                    json={"model": model, "messages": msgs, "max_tokens": 30},
-                    timeout=20
-                )
-                resp.raise_for_status()
-                text = resp.json()["choices"][0]["message"]["content"].strip()
-                # Берём только первую строку, убираем лишнее
+                _cd = call_openrouter({"model": model, "messages": msgs, "max_tokens": 30}, timeout=20)
+                text = _cd["choices"][0]["message"]["content"].strip()
                 text = text.splitlines()[0].strip().strip('"').strip("'")
                 if text:
                     return text
@@ -3735,8 +3727,7 @@ class BrowserAgent:
             self.page.wait_for_timeout(random.randint(10, 30))
 
     def _ask_ai(self, task: str, history: list, shot_b64: str) -> dict:
-        key = os.environ.get("OPENROUTER_API_KEY", "")
-        if not key:
+        if not OPENROUTER_API_KEYS:
             return {"thought": "Нет API ключа", "action": "finish", "answer": "OPENROUTER_API_KEY не задан"}
         cur_url = self.page.url
         cur_title = ""
@@ -3755,14 +3746,8 @@ class BrowserAgent:
         last_err = "Нет ответа от AI"
         for model in models_to_try:
             try:
-                resp = http_requests.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-                    json={"model": model, "messages": msgs, "max_tokens": 400},
-                    timeout=35
-                )
-                resp.raise_for_status()
-                raw = resp.json()["choices"][0]["message"]["content"].strip()
+                _aad = call_openrouter({"model": model, "messages": msgs, "max_tokens": 400}, timeout=35)
+                raw = _aad["choices"][0]["message"]["content"].strip()
                 m = re.search(r'\{.*\}', raw, re.DOTALL)
                 if m:
                     return json.loads(m.group())
@@ -3950,24 +3935,17 @@ def web_browser_control():
     if screenshot_bytes is None:
         return jsonify({"ok": False, "error": f"Не удалось открыть: {page_text}"}), 500
     screenshot_b64 = base64.b64encode(screenshot_bytes).decode()
-    OPENROUTER_KEY = get_api_key()
     ai_response = f"Страница загружена: {title}"
-    if OPENROUTER_KEY:
+    if OPENROUTER_API_KEYS:
         try:
-            resp = http_requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
-                json={"model": VISION_MODEL, "messages": [
+            _bd = call_openrouter({"model": VISION_MODEL, "messages": [
                     {"role": "system", "content": "Ты PixelMind Browser — AI-ассистент который анализирует веб-страницы. Отвечай кратко и по делу на русском языке."},
                     {"role": "user", "content": [
                         {"type": "text", "text": f"Задача: {task}\n\nСайт: {url}\nЗаголовок: {title}\n\nТекст со страницы:\n{page_text[:1000]}"},
                         {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{screenshot_b64}"}}
                     ]}
-                ], "max_tokens": 600},
-                timeout=30
-            )
-            resp.raise_for_status()
-            ai_response = resp.json()["choices"][0]["message"]["content"].strip()
+                ], "max_tokens": 600}, timeout=30)
+            ai_response = _bd["choices"][0]["message"]["content"].strip()
         except Exception as e:
             logger.warning(f"Browser AI error: {e}")
     return jsonify({"ok": True, "title": title, "url": url, "screenshot": screenshot_b64, "ai_response": ai_response})
@@ -4118,7 +4096,6 @@ def web_homework_ask():
         "Для математики показывай все шаги вычислений. Для языков объясняй правила. "
         "Пиши кратко но ясно. Используй эмодзи для структуры. Отвечай на русском языке."
     )
-    OPENROUTER_KEY = get_api_key()
     try:
         if image_b64:
             messages = [
@@ -4135,14 +4112,8 @@ def web_homework_ask():
                 {"role": "user", "content": question}
             ]
             model = AI_MODEL
-        resp = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
-            json={"model": model, "messages": messages, "max_tokens": 2000},
-            timeout=60
-        )
-        resp.raise_for_status()
-        answer = resp.json()["choices"][0]["message"]["content"]
+        _hd = call_openrouter({"model": model, "messages": messages, "max_tokens": 2000}, timeout=60)
+        answer = _hd["choices"][0]["message"]["content"]
         if credits != -1:
             u["credits"] = max(0, credits - 1)
             save_web_users(users)
@@ -4170,20 +4141,13 @@ def web_analyze_image():
     prompt = (data.get("prompt") or "Опиши подробно что изображено на фото. Если есть текст — прочитай его. Если QR-код — опиши куда он ведёт.").strip()
     if not image_b64:
         return jsonify({"ok": False, "error": "Нет изображения"}), 400
-    OPENROUTER_KEY = get_api_key()
     try:
         messages = [{"role": "user", "content": [
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}}
         ]}]
-        resp = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_KEY}", "Content-Type": "application/json"},
-            json={"model": VISION_MODEL, "messages": messages, "max_tokens": 1000},
-            timeout=60
-        )
-        resp.raise_for_status()
-        answer = resp.json()["choices"][0]["message"]["content"]
+        _aid = call_openrouter({"model": VISION_MODEL, "messages": messages, "max_tokens": 1000}, timeout=60)
+        answer = _aid["choices"][0]["message"]["content"]
         if credits != -1:
             u["credits"] = max(0, credits - 1)
             save_web_users(users)
@@ -4751,17 +4715,11 @@ def api_analyze_error():
         f"Ошибка: {error_text}\n\nТрейсбек:\n{tb_text[:2000]}"
     )
     try:
-        resp = http_requests.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {get_api_key()}", "Content-Type": "application/json"},
-            json={"model": AI_MODEL, "messages": [
+        _ead = call_openrouter({"model": AI_MODEL, "messages": [
                 {"role": "system", "content": "Ты — помощник разработчика. Отвечай на русском языке. Будь кратким и понятным."},
                 {"role": "user", "content": ai_prompt}
-            ], "max_tokens": 700},
-            timeout=60
-        )
-        resp.raise_for_status()
-        _ma = resp.json()["choices"][0]["message"]
+            ], "max_tokens": 700}, timeout=60)
+        _ma = _ead["choices"][0]["message"]
         analysis = (_ma.get("content") or _ma.get("reasoning") or "").strip()
         return jsonify({"ok": True, "analysis": analysis})
     except Exception as exc:
