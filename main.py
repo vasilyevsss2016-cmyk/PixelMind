@@ -4984,4 +4984,10 @@ def _payment_checker_loop():
 startup()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=PORT, threaded=True)
+    try:
+        from waitress import serve
+        logger.info(f"🚀 Запуск через Waitress на порту {PORT}")
+        serve(app, host="0.0.0.0", port=PORT, threads=16)
+    except ImportError:
+        logger.info(f"🚀 Waitress не найден, запуск через Flask dev server на порту {PORT}")
+        app.run(host="0.0.0.0", port=PORT, threaded=True)

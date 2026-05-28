@@ -11,3 +11,4 @@ pyotp==2.9.0
 qrcode==8.2
 aiohttp==3.13.4
 python-dotenv==1.0.1
+waitress==3.0.2
