@@ -483,6 +483,34 @@ header {
 .upg-btn-ghost:hover { background:var(--glass-hover); color:var(--text); }
 .upg-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
 
+/* ===== MOBILE HEADER MORE MENU ===== */
+.hdr-more-btn {
+  display:none; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:10px; border:1px solid var(--glass-border);
+  background:var(--glass); color:var(--text2); font-size:20px; cursor:pointer;
+  flex-shrink:0; transition:background .18s;
+}
+.hdr-more-btn:hover { background:var(--glass-hover); color:var(--text); }
+.hdr-dropdown {
+  display:none; position:fixed; top:60px; right:10px; z-index:600;
+  background:rgba(12,18,34,0.97); backdrop-filter:blur(20px);
+  border:1px solid var(--glass-border); border-radius:16px;
+  padding:8px; min-width:200px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  flex-direction:column; gap:4px;
+}
+.hdr-dropdown.open { display:flex; }
+.hdr-drop-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 14px; border-radius:10px; border:none;
+  background:none; color:var(--text); font-size:14px; cursor:pointer;
+  width:100%; text-align:left; transition:background .15s;
+}
+.hdr-drop-item:hover { background:var(--glass-hover); }
+.hdr-drop-item .drop-icon { font-size:18px; flex-shrink:0; }
+.hdr-drop-sep { height:1px; background:var(--glass-border); margin:4px 0; }
+.hdr-drop-item.danger { color:var(--danger); }
+
 /* ===== MOBILE ===== */
 @media(max-width:600px) {
   .auth-box { padding:28px 20px 22px; }
@@ -491,6 +519,8 @@ header {
   .msg { max-width:90%; }
   .plan-cards { grid-template-columns:1fr; }
   .credits-badge span.cr-label { display:none; }
+  .hdr-action { display:none !important; }
+  .hdr-more-btn { display:flex; }
 }
 
 /* ===== VOICE CHAT FULLSCREEN (ChatGPT-style) ===== */
@@ -1039,15 +1069,28 @@ header {
         <div class="user-avatar" id="user-avatar-letter">?</div>
         <span class="uname" id="header-username"></span>
       </div>
-      <button class="hdr-btn hdr-btn-ghost" onclick="openSupportModal()" title="Удалённая поддержка" style="font-size:17px">🖥</button>
-      <button class="hdr-btn hdr-btn-ghost" onclick="openBrowserModal()" title="AI Браузер" style="font-size:17px">🌐</button>
-      <button class="hdr-btn hdr-btn-ghost" onclick="openVoiceChat()" title="Голосовой чат" style="font-size:17px">🎙</button>
-      <button class="hdr-btn hdr-btn-ghost" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
-      <button class="hdr-btn hdr-btn-ghost" onclick="openHomework()" title="Помощь с ДЗ" style="font-size:17px">📚</button>
-      <button class="hdr-btn hdr-btn-ghost" onclick="clearHistory()" title="Очистить чат">🗑</button>
-      <button class="hdr-btn hdr-btn-red" onclick="doLogout()">Выйти</button>
+      <button class="hdr-btn hdr-btn-ghost hdr-action" onclick="openSupportModal()" title="Удалённая поддержка" style="font-size:17px">🖥</button>
+      <button class="hdr-btn hdr-btn-ghost hdr-action" onclick="openBrowserModal()" title="AI Браузер" style="font-size:17px">🌐</button>
+      <button class="hdr-btn hdr-btn-ghost hdr-action" onclick="openVoiceChat()" title="Голосовой чат" style="font-size:17px">🎙</button>
+      <button class="hdr-btn hdr-btn-ghost hdr-action" onclick="openCamera()" title="Умная камера" style="font-size:17px">📷</button>
+      <button class="hdr-btn hdr-btn-ghost hdr-action" onclick="openHomework()" title="Помощь с ДЗ" style="font-size:17px">📚</button>
+      <button class="hdr-btn hdr-btn-ghost hdr-action" onclick="clearHistory()" title="Очистить чат">🗑</button>
+      <button class="hdr-btn hdr-btn-red hdr-action" onclick="doLogout()">Выйти</button>
+      <!-- Mobile: кнопка ⋮ -->
+      <button class="hdr-more-btn" id="hdr-more-btn" onclick="toggleHdrDropdown()" title="Ещё">⋮</button>
     </div>
   </header>
+  <!-- Mobile dropdown menu -->
+  <div class="hdr-dropdown" id="hdr-dropdown">
+    <button class="hdr-drop-item" onclick="closeHdrDropdown();openSupportModal()"><span class="drop-icon">🖥</span>Удалённая поддержка</button>
+    <button class="hdr-drop-item" onclick="closeHdrDropdown();openBrowserModal()"><span class="drop-icon">🌐</span>AI Браузер</button>
+    <button class="hdr-drop-item" onclick="closeHdrDropdown();openVoiceChat()"><span class="drop-icon">🎙</span>Голосовой чат</button>
+    <button class="hdr-drop-item" onclick="closeHdrDropdown();openCamera()"><span class="drop-icon">📷</span>Умная камера</button>
+    <button class="hdr-drop-item" onclick="closeHdrDropdown();openHomework()"><span class="drop-icon">📚</span>Помощь с ДЗ</button>
+    <button class="hdr-drop-item" onclick="closeHdrDropdown();clearHistory()"><span class="drop-icon">🗑</span>Очистить чат</button>
+    <div class="hdr-drop-sep"></div>
+    <button class="hdr-drop-item danger" onclick="closeHdrDropdown();doLogout()"><span class="drop-icon">🚪</span>Выйти</button>
+  </div>
 
   <!-- UPGRADE MODAL -->
   <div class="modal-overlay" id="upgrade-modal" onclick="if(event.target===this&&upgradeStep!=='sbp')closeUpgrade()">
@@ -1983,6 +2026,19 @@ async function doResendCode() {
     else { showErr(errEl, d.error || 'Ошибка'); }
   } catch(e) { showErr(errEl, 'Ошибка сети'); }
 }
+
+function toggleHdrDropdown() {
+  const d = document.getElementById('hdr-dropdown');
+  d.classList.toggle('open');
+}
+function closeHdrDropdown() {
+  document.getElementById('hdr-dropdown').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#hdr-more-btn') && !e.target.closest('#hdr-dropdown')) {
+    closeHdrDropdown();
+  }
+});
 
 async function doLogout() {
   await fetch('/app/logout', { method:'POST' });
