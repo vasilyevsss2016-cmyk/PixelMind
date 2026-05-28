@@ -2492,6 +2492,35 @@ def api_generate_block_button():
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+def _polling_loop():
+    """Long-polling Telegram updates — для локального запуска без HTTPS."""
+    offset = 0
+    logger.info("🔄 Polling loop started")
+    while True:
+        try:
+            resp = http_requests.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/getUpdates",
+                params={"offset": offset, "timeout": 30, "allowed_updates": ["message"]},
+                timeout=35
+            )
+            if resp.status_code != 200:
+                _time.sleep(3)
+                continue
+            data = resp.json()
+            for update in data.get("result", []):
+                offset = update["update_id"] + 1
+                message = update.get("message")
+                if message:
+                    threading.Thread(
+                        target=_process_message_safe,
+                        args=(message,),
+                        daemon=True
+                    ).start()
+        except Exception as e:
+            logger.warning(f"Polling error: {e}")
+            _time.sleep(5)
+
+
 def startup():
     if not BOT_TOKEN:
         logger.error("❌ Не указан BOT_TOKEN — добавь его в Secrets")
@@ -2512,13 +2541,21 @@ def startup():
             set_webhook()
         except Exception as e:
             logger.error(f"Ошибка установки webhook: {e}")
-    else:
-        logger.warning("⚠️ REPLIT_DEV_DOMAIN не найден — установи webhook вручную")
-
-    if REPLIT_URL:
         ka_thread = threading.Thread(target=keep_alive_loop, daemon=True)
         ka_thread.start()
         logger.info("Keep-alive запущен")
+    else:
+        # Локальный запуск — удаляем webhook и запускаем polling
+        try:
+            http_requests.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/deleteWebhook",
+                timeout=10
+            )
+        except Exception:
+            pass
+        polling_thread = threading.Thread(target=_polling_loop, daemon=True)
+        polling_thread.start()
+        logger.info("🔄 Polling mode запущен (локальный запуск)")
 
     # Автопроверка платежей через IMAP
     if PAYMENT_EMAIL_USER and PAYMENT_EMAIL_PASS:
