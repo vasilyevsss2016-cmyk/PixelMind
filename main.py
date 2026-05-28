@@ -2,6 +2,13 @@
 PixelMind — AI чат-бот для Telegram + веб-панель администратора.
 """
 
+# Загружаем .env если он есть (для локального запуска)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 import os
 import re
 import io
