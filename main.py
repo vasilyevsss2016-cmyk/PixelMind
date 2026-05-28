@@ -213,6 +213,21 @@ SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 SMTP_HOST     = "smtp.mail.ru"
 SMTP_PORT     = 465
 
+def _smtp_send(msg, to_email: str):
+    """Отправляет письмо: сначала SSL:465, при таймауте fallback на STARTTLS:587."""
+    try:
+        with smtplib.SMTP_SSL(SMTP_HOST, 465, timeout=10) as s:
+            s.login(SMTP_USER, SMTP_PASSWORD)
+            s.sendmail(SMTP_USER, to_email, msg.as_string())
+        return
+    except (OSError, smtplib.SMTPException) as e:
+        logger.warning(f"SMTP SSL:465 failed ({e}), trying STARTTLS:587…")
+    with smtplib.SMTP(SMTP_HOST, 587, timeout=10) as s:
+        s.ehlo()
+        s.starttls()
+        s.login(SMTP_USER, SMTP_PASSWORD)
+        s.sendmail(SMTP_USER, to_email, msg.as_string())
+
 ADMIN_EMAILS_FILE = "admin_emails.json"
 ADMIN_EMAILS: dict[str, str] = {}   # username → email
 
@@ -429,9 +444,7 @@ def send_2fa_email(to_email: str, username: str, code: str) -> bool:
 </body></html>"""
         msg.attach(MIMEText(text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        _smtp_send(msg, to_email)
         logger.info(f"2FA код отправлен на {to_email} для {username}")
         return True
     except Exception as e:
@@ -530,9 +543,7 @@ def send_invite_email(to_email: str) -> bool:
         msg.attach(MIMEText(text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
 
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        _smtp_send(msg, to_email)
         logger.info(f"Приглашение отправлено на {to_email}")
         return True
     except Exception as e:
@@ -627,9 +638,7 @@ def send_payment_receipt_email(to_email: str, username: str, ptype: str, label: 
         msg["To"] = to_email
         msg.attach(MIMEText(text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        _smtp_send(msg, to_email)
         logger.info(f"Чек об оплате отправлен на {to_email} ({username}, {label})")
         return True
     except Exception as e:
@@ -720,9 +729,7 @@ def send_payment_notify_to_admin(pid: str, username: str, user_email: str,
         msg["To"] = admin_email
         msg.attach(MIMEText(text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, admin_email, msg.as_string())
+        _smtp_send(msg, admin_email)
         logger.info(f"📧 Заявка об оплате отправлена на {admin_email} (pid={pid}, user={username})")
         return True
     except Exception as e:
@@ -768,9 +775,7 @@ def send_reset_email(to_email: str, username: str, reset_url: str) -> bool:
         msg.attach(MIMEText(text, "plain", "utf-8"))
         msg.attach(MIMEText(html, "html", "utf-8"))
 
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.login(SMTP_USER, SMTP_PASSWORD)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
+        _smtp_send(msg, to_email)
         logger.info(f"Письмо восстановления отправлено на {to_email}")
         return True
     except Exception as e:
@@ -2635,9 +2640,7 @@ def send_web_reg_code(email: str, code: str, username: str) -> bool:
   <p style="margin:20px 0 0;color:#8892b0;font-size:13px;text-align:center">Код действителен 10 минут. Если вы не регистрировались — проигнорируйте это письмо.</p>
 </div>"""
         msg.attach(MIMEText(html, "html", "utf-8"))
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as srv:
-            srv.login(SMTP_USER, SMTP_PASSWORD)
-            srv.sendmail(SMTP_USER, email, msg.as_string())
+        _smtp_send(msg, email)
         return True
     except Exception as e:
         logger.error(f"Ошибка отправки email регистрации: {e}")
@@ -4576,9 +4579,7 @@ def _send_error_email_to_admins(error: str, tb: str, source: str = "bot", chat_i
                 msg["From"] = f"PixelMind <{SMTP_USER}>"
                 msg["To"] = to_email
                 msg.attach(MIMEText(html_body, "html", "utf-8"))
-                with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as srv:
-                    srv.login(SMTP_USER, SMTP_PASSWORD)
-                    srv.sendmail(SMTP_USER, to_email, msg.as_string())
+                _smtp_send(msg, to_email)
                 logger.info(f"📧 Email об ошибке отправлен: {to_email}")
             except Exception as mail_err:
                 logger.error(f"Ошибка отправки email об ошибке {to_email}: {mail_err}")
